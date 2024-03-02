@@ -53,8 +53,8 @@ class myApp(tk.Frame):
 
     def init_sidebar_components(self):
         # Title
-        self.label_title = ttk.Label(self.panel_title, anchor='center', text="DRONE SWARM BOUNDARIES & POSE ESTIMATION",
-                                     font=font.Font(name='Helvetica', weight='bold', size=30), foreground='white', background=self.panel_title['bg'])
+        self.label_title = ttk.Label(self.panel_title, anchor='center', text="DRONE SWARM BOUNDARIES \n&\n POSE ESTIMATION", justify='center',
+                                     font=font.Font(name='Helvetica', weight='bold', size=16), foreground='white', background=self.panel_title['bg'])
         self.label_title.grid(column=0,row=0, sticky='NEWS')
 
         # Drone number
