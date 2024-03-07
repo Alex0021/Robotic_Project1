@@ -1,0 +1,16 @@
+{
+    "drone_count": 10,
+    "neighbor_count": 9,
+    "swarm_spread": 10.0,
+    "noise_pos": 0.0,
+    "noise_orient": 0.0,
+    "delta": 0.0,
+    "dref": 0.0,
+    "vref": 0.0,
+    "a": 0.0,
+    "b": 0.0,
+    "c": 0.0,
+    "z_offset": 10.0,
+    "target_x": 5.0,
+    "target_y": 5.0
+}

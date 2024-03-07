@@ -10,9 +10,11 @@ import sys
 from swarm import *
 from renderer import *
 from simulator import Simulator
+import json
 
 w,h = (1600,800)
 DEFAULT_NB_DRONES = 10
+CONFIG_FILENAME = 'app_config.json'
 
 
 class myApp(tk.Frame):
@@ -23,6 +25,44 @@ class myApp(tk.Frame):
         self.mainframe.grid_columnconfigure(0, weight=1)
         self.mainframe.grid_columnconfigure(1, weight=3)
         self.mainframe.grid_rowconfigure(0,weight=1)
+        # App variables
+        self.var_drone_count = tk.IntVar(value=DEFAULT_NB_DRONES)
+        self.var_neighbor_count = tk.IntVar(value= DEFAULT_NB_DRONES-1)
+        self.var_swarm_spread = tk.DoubleVar(value=10.0)
+        self.var_noise_pos = tk.DoubleVar()
+        self.var_noise_orient = tk.DoubleVar()
+        self.var_delta = tk.DoubleVar()
+        self.var_dref = tk.DoubleVar()
+        self.var_vref = tk.DoubleVar()
+        self.var_a = tk.DoubleVar()
+        self.var_b = tk.DoubleVar()
+        self.var_c = tk.DoubleVar()
+        self.var_z_offset = tk.DoubleVar(value=10.0)
+        self.var_target = tk.StringVar(value='{0};{1};{2}'.format(5.0,5.0,round(self.var_z_offset.get(),1)))
+
+        # Initialize with json default values
+        # Load values from json file
+        try:
+            with open(CONFIG_FILENAME) as f:
+                config = json.load(f)
+        except FileNotFoundError:
+            config = {}
+
+        # Initialize app variables with json values or defaults
+        self.var_drone_count = tk.IntVar(value=config.get('drone_count', DEFAULT_NB_DRONES))
+        self.var_neighbor_count = tk.IntVar(value=config.get('neighbor_count', DEFAULT_NB_DRONES-1))
+        self.var_swarm_spread = tk.DoubleVar(value=config.get('swarm_spread', 10.0))
+        self.var_noise_pos = tk.DoubleVar(value=config.get('noise_pos', 0.0))
+        self.var_noise_orient = tk.DoubleVar(value=config.get('noise_orient', 0.0))
+        self.var_delta = tk.DoubleVar(value=config.get('delta', 0.0))
+        self.var_dref = tk.DoubleVar(value=config.get('dref', 0.0))
+        self.var_vref = tk.DoubleVar(value=config.get('vref', 0.0))
+        self.var_a = tk.DoubleVar(value=config.get('a', 0.0))
+        self.var_b = tk.DoubleVar(value=config.get('b', 0.0))
+        self.var_c = tk.DoubleVar(value=config.get('c', 0.0))
+        self.var_z_offset = tk.DoubleVar(value=config.get('z_offset', 10.0))
+        self.var_target = tk.StringVar(value='{0};{1};{2}'.format(config.get('target_x', 5.0), config.get('target_y', 5.0), round(self.var_z_offset.get(), 1)))
+
         self.init_main_panels()
         self.init_sidebar_components()
         # Start 3D plot renderer
@@ -50,7 +90,7 @@ class myApp(tk.Frame):
         self.panel_params = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=5, pady=5)
         self.panel_params.grid_columnconfigure(0, weight=2)
         self.panel_params.grid_columnconfigure((1,2), weight=1)
-        self.panel_params.grid_rowconfigure((1,2,3,4),weight=1)
+        self.panel_params.grid_rowconfigure(list(range(9)),weight=1)
         self.panel_params.grid(column=0, row=1,sticky='NWES')
 
         self.panel_sim = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=5, pady=5)
@@ -68,17 +108,100 @@ class myApp(tk.Frame):
         # Drone number
         self.label_drone_nb = ttk.Label(self.panel_params, anchor='w', text="# drones: ")
         self.label_drone_nb.grid(column=0,row=0, sticky='NEWS')
-        self.spinner_drone_nb = ttk.Spinbox(self.panel_params, increment=1,from_=0, to=50)
-        self.spinner_drone_nb.set(DEFAULT_NB_DRONES)
+        self.spinner_drone_nb = ttk.Spinbox(self.panel_params, increment=1,from_=1, to=50, textvariable=self.var_drone_count, command=self._update_neighbors_spinbox)
         self.spinner_drone_nb.grid(row=0,column=1,sticky='w', padx=5)
+
+        # Neighbors
+        self.label_neighbors = ttk.Label(self.panel_params, anchor='w', text="# Neighbors: ")
+        self.label_neighbors.grid(column=0,row=1, sticky='NEWS')
+        self.spinner_neighbors = ttk.Spinbox(self.panel_params, increment=1,from_=0, to=self.var_drone_count.get(), textvariable=self.var_neighbor_count)
+        self.spinner_neighbors.grid(row=1,column=1,sticky='w', padx=5)
+        self.listbox_neighbors_algo = ttk.Combobox(self.panel_params, values=["Eucledian", "Topological", "Voronoi", "Visual LoS"])
+        self.listbox_neighbors_algo.set("Topological")
+        self.listbox_neighbors_algo.grid(row=1,column=2,sticky='we', padx=5)
 
         # Swarm spread
         self.label_swarm_spread = ttk.Label(self.panel_params, anchor='w', text="Swarm spread (r): ")
-        self.label_swarm_spread.grid(column=0,row=1, sticky='NEWS')
-        self.slider_spread = ttk.Scale(self.panel_params, from_=0,to=20, value=10, orient='horizontal')
-        self.slider_spread.grid(row=1, column=1, sticky='WE', padx=5)
+        self.label_swarm_spread.grid(column=0,row=2, sticky='NEWS')
+        self.slider_spread = ttk.Scale(self.panel_params, from_=0,to=20, orient='horizontal', variable=self.var_swarm_spread, command=lambda val: self.var_swarm_spread.set(round(float(val),2)))
+        self.slider_spread.grid(row=2, column=1, sticky='WE', padx=5)
+        self.textbox_slider_value = ttk.Entry(self.panel_params, textvariable=self.var_swarm_spread, width=10)
+        self.textbox_slider_value.grid(row=2, column=2, sticky='W', padx=5)
 
+        # Control params panel
+        self.panel_control_scheme = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
+        self.panel_control_scheme.grid(column=0, row=3, columnspan=3, rowspan=3, sticky='NWES', padx=0, pady=5)
+        self.panel_control_scheme.grid_columnconfigure((0,1,2,3,4,5), weight=1)
+        self.panel_control_scheme.grid_rowconfigure((0,1,2), weight=1)
+        # COntrol scheme
+        self.label_control_scheme = ttk.Label(self.panel_control_scheme, anchor='w', text="Control scheme: ")
+        self.label_control_scheme.grid(column=0,row=0, columnspan=2, sticky='NEWS')
+        self.listbox_control_scheme = ttk.Combobox(self.panel_control_scheme, values=["Olfati-Saber"])
+        self.listbox_control_scheme.set("Olfati-Saber")
+        self.listbox_control_scheme.grid(row=0,column=2,columnspan=2, sticky='we', padx=5)
+        # Control variables
+        self.label_control_delta = ttk.Label(self.panel_control_scheme, anchor='w', text="delta: ")
+        self.label_control_delta.grid(column=0,row=1, sticky='NEWS')
+        self.textbox_control_delta = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_delta)
+        self.textbox_control_delta.grid(column=1, row=1, sticky='W', padx=5)
+
+        self.label_control_dref = ttk.Label(self.panel_control_scheme, anchor='w', text="dref: ")
+        self.label_control_dref.grid(column=2,row=1, sticky='NEWS')
+        self.textbox_control_dref = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_dref)
+        self.textbox_control_dref.grid(column=3, row=1, sticky='W', padx=5)
+
+        self.label_control_vref = ttk.Label(self.panel_control_scheme, anchor='w', text="vref: ")
+        self.label_control_vref.grid(column=4,row=1, sticky='NEWS')
+        self.textbox_control_vref = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_vref)
+        self.textbox_control_vref.grid(column=5, row=1, sticky='W', padx=5)
+
+        self.label_control_a = ttk.Label(self.panel_control_scheme, anchor='w', text="a: ")
+        self.label_control_a.grid(column=0,row=2, sticky='NEWS')
+        self.textbox_control_a = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_a)
+        self.textbox_control_a.grid(column=1, row=2, sticky='W', padx=5)
+
+        self.label_control_b = ttk.Label(self.panel_control_scheme, anchor='w', text="b: ")
+        self.label_control_b.grid(column=2,row=2, sticky='NEWS')
+        self.textbox_control_b = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_b)
+        self.textbox_control_b.grid(column=3, row=2, sticky='W', padx=5)
+
+        self.label_control_c = ttk.Label(self.panel_control_scheme, anchor='w', text="c: ")
+        self.label_control_c.grid(column=4,row=2, sticky='NEWS')
+        self.textbox_control_c = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_c)
+        self.textbox_control_c.grid(column=5, row=2, sticky='W', padx=5)
+        
         # Noise
+        self.pnael_noise = tk.Frame(self.panel_params)
+        self.pnael_noise.grid(column=0, row=6, columnspan=3, sticky='NWES', padx=0, pady=5)
+        self.pnael_noise.grid_columnconfigure((0,1,2,3,4,5,6), weight=1)
+        self.pnael_noise.grid_rowconfigure(0, weight=1)
+        self.label_noise = ttk.Label(self.pnael_noise, anchor='w', text="Noise: ")
+        self.label_noise.grid(column=0,row=0, sticky='NEWS')
+        self.listbox_noise_type = ttk.Combobox(self.pnael_noise, values=["None", "Uniform", "Gaussian"])
+        self.listbox_noise_type.set("None")
+        self.listbox_noise_type.grid(column=1,row=0, sticky='we', padx=5)
+        self.label_noise_pos = ttk.Label(self.pnael_noise, anchor='e', text="Position :", justify='right')
+        self.label_noise_pos.grid(column=2,row=0, sticky='NEWS')
+        self.textbox_noise_pos = ttk.Entry(self.pnael_noise, width=10, textvariable=self.var_noise_pos)
+        self.textbox_noise_pos.grid(column=3, row=0, sticky='W', padx=5)
+        self.label_noise_orient = ttk.Label(self.pnael_noise, anchor='e', text="Orientation: ", justify='right')
+        self.label_noise_orient.grid(column=4,row=0, sticky='NEWS')
+        self.textbox_noise_orient = ttk.Entry(self.pnael_noise, width=10, textvariable=self.var_noise_orient)
+        self.textbox_noise_orient.grid(column=5, row=0, sticky='W', padx=5)
+
+        # Z-offset
+        self.label_z_offset = ttk.Label(self.panel_params, anchor='w', text="Z-offset: ")
+        self.label_z_offset.grid(column=0,row=7, sticky='NEWS')
+        self.spinner_z_offset = ttk.Spinbox(self.panel_params, increment=0.1,from_=0, to=10, textvariable=self.var_z_offset)
+        self.spinner_z_offset.grid(row=7,column=1,sticky='w', padx=5)
+        
+        # Target
+        self.label_target = ttk.Label(self.panel_params, anchor='w', text="Target: ")
+        self.label_target.grid(column=0,row=8, sticky='NEWS')
+        self.textbox_target = ttk.Entry(self.panel_params, textvariable=self.var_target, font=font.Font(size=10))
+        self.textbox_target.grid(column=1, row=8, sticky='WE', padx=5)
+        self.label_target_format = ttk.Label(self.panel_params, anchor='w', text="(#.#;#.#;#.#) or empty", justify='left', font=font.Font(size=10))
+        self.label_target_format.grid(column=2,row=8, sticky='NEWS')
 
         # Simulate buttons
         self.btn_init = ttk.Button(self.panel_sim, text="Initialize", command=self._initialize_simulation)
@@ -110,7 +233,9 @@ class myApp(tk.Frame):
         
     def _initialize_simulation(self):
         # Retrieve all necessary parameters from app widgets
-        nb_drones = int(self.spinner_drone_nb.get())
+        nb_drones = self.var_drone_count.get()
+        neighbors = self.var_neighbor_count.get()
+        swarm_spread = self.slider_spread.get()
         
         self.swarm = Swarm(count=nb_drones, box=[0,0,10,5,5,5])
         #self.swarm.initialize_random_vel([0.1, 0.5, -0.3, 0.3, 0, 0.2])
@@ -149,6 +274,11 @@ class myApp(tk.Frame):
             pass
         finally:
             exit()
+
+    def _update_neighbors_spinbox(self):
+        self.spinner_neighbors.config(to=self.var_drone_count.get()-1)
+        if self.var_neighbor_count.get() >= self.var_drone_count.get():
+            self.var_neighbor_count.set(self.var_drone_count.get()-1)
 
 if __name__ == "__main__":
     root = tk.Tk()
