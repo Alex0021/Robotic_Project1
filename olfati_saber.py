@@ -6,28 +6,6 @@ import numpy as np
     All rights reserved
 '''
 
-# Define constants
-d_ref = 1.0
-d_ref_obs = 1.0
-v_ref = np.array([0.0,0.0,0.0])
-
-r0_coh = 20
-delta = 0.1
-
-a = 0.3                 
-b = 0.5        
-c = (b - a)/(2*np.sqrt(a*b))
-
-c_vm = 1                        # Coefficient of velocity matching
-
-r0_obs = 0.6                    # Radius of obstacle avoidance
-lambda_obs = 1                  # (0,1]
-c_pm_obs = 4.3                  # Coefficient of obstacle avoidance
-c_vm_obs = 0                    # Coefficient of velocity matching
-
-gamma = 1
-
-
 # Calculate the cohesion intensity for the Olfati-Saber model
 def get_cohesion_intensity(r, d_ref, a, b, c):
     
@@ -70,7 +48,7 @@ def get_cohesion_force(r, d_ref, a, b, c, r0, delta):
     
     return 1/r0 * get_neighbour_weight_der(r, r0, delta) * get_cohesion_intensity(r, d_ref, a, b, c) + get_neighbour_weight(r, r0, delta) * get_cohesion_intensity_der(r, d_ref, a, b, c)
 
-def get_migration_force(p_mig, p_i, v_ref, v_i):
+def get_migration_force(p_mig, p_i, v_ref, v_i, gamma):
     if p_mig is None:
         return 0
     d = np.linalg.norm(p_mig - p_i)
@@ -78,7 +56,21 @@ def get_migration_force(p_mig, p_i, v_ref, v_i):
     return gamma*d*(v_ref*u_i-v_i)
 
 # Compute the olfati-saber swarm commands
-def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None):
+def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, **params):
+    # Extract necessary params
+    v_ref = params.get('v_ref',np.array([0.0,0.0,0.0]))
+    d_ref = params.get('d_ref',1.0)
+    r0_coh = params.get('r0_coh',20)
+    delta = params.get('delta',0.1)
+    a = params.get('a',0.3)
+    b = params.get('b',0.5)
+    c = params.get('c',(b - a)/(2*np.sqrt(a*b)))
+    c_vm = params.get('c_vm',1)
+    r0_obs = params.get('r0_obs',0.6)
+    lambda_obs = params.get('lambda_obs',1)
+    c_pm_obs = params.get('c_pm_obs',4.3)
+    c_vm_obs = params.get('c_vm_obs',0)
+    gamma = params.get('gamma',1)
     
     #count += 1
     drone_pos = drone_pose[0]
@@ -123,7 +115,7 @@ def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None):
         #acc_coh = rot_global2body(acc_coh, drone_pose[2][2])
     
     # Compute the migration force
-    acc_mig += get_migration_force(p_mig, drone_pos, v_ref, drone_vel)
+    acc_mig += get_migration_force(p_mig, drone_pos, v_ref, drone_vel, gamma)
 
     # # Initialize the obstacle avoidance commands
     # acc_obs = np.zeros(3)

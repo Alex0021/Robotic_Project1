@@ -25,7 +25,10 @@ class myApp(tk.Frame):
         self.mainframe.grid_columnconfigure(0, weight=1)
         self.mainframe.grid_columnconfigure(1, weight=3)
         self.mainframe.grid_rowconfigure(0,weight=1)
-        # App variables
+
+        #==================================#
+        #       APP VARIABLES              #
+        #==================================#
         self.var_drone_count = tk.IntVar(value=DEFAULT_NB_DRONES)
         self.var_neighbor_count = tk.IntVar(value= DEFAULT_NB_DRONES-1)
         self.var_swarm_spread = tk.DoubleVar(value=10.0)
@@ -40,14 +43,16 @@ class myApp(tk.Frame):
         self.var_z_offset = tk.DoubleVar(value=10.0)
         self.var_target = tk.StringVar(value='{0};{1};{2}'.format(5.0,5.0,round(self.var_z_offset.get(),1)))
 
-        # Initialize with json default values
-        # Load values from json file
+        self.window_2d = None
+
+        #==================================#
+        # JSON CONFIG FILE INITIALIZATION  #
+        #==================================#
         try:
             with open(CONFIG_FILENAME) as f:
                 config = json.load(f)
         except FileNotFoundError:
             config = {}
-
         # Initialize app variables with json values or defaults
         self.var_drone_count = tk.IntVar(value=config.get('drone_count', DEFAULT_NB_DRONES))
         self.var_neighbor_count = tk.IntVar(value=config.get('neighbor_count', DEFAULT_NB_DRONES-1))
@@ -61,8 +66,11 @@ class myApp(tk.Frame):
         self.var_b = tk.DoubleVar(value=config.get('b', 0.0))
         self.var_c = tk.DoubleVar(value=config.get('c', 0.0))
         self.var_z_offset = tk.DoubleVar(value=config.get('z_offset', 10.0))
-        self.var_target = tk.StringVar(value='{0};{1};{2}'.format(config.get('target_x', 5.0), config.get('target_y', 5.0), round(self.var_z_offset.get(), 1)))
-
+        self.var_target = tk.StringVar(value='{0};{1};{2}'.format(config.get('target_x', 0.0), config.get('target_y', 0.0), config.get('target_y', 0.0)))
+        self.spawn_box = config.get('spawn_box', [0,0,10,5,5,5])
+        #==================================#
+        #       APP INITIALIZATION         #
+        #==================================#
         self.init_main_panels()
         self.init_sidebar_components()
         # Start 3D plot renderer
@@ -123,7 +131,7 @@ class myApp(tk.Frame):
         # Swarm spread
         self.label_swarm_spread = ttk.Label(self.panel_params, anchor='w', text="Swarm spread (r): ")
         self.label_swarm_spread.grid(column=0,row=2, sticky='NEWS')
-        self.slider_spread = ttk.Scale(self.panel_params, from_=0,to=20, orient='horizontal', variable=self.var_swarm_spread, command=lambda val: self.var_swarm_spread.set(round(float(val),2)))
+        self.slider_spread = ttk.Scale(self.panel_params, from_=0,to=30, orient='horizontal', variable=self.var_swarm_spread, command=lambda val: self.var_swarm_spread.set(round(float(val),2)))
         self.slider_spread.grid(row=2, column=1, sticky='WE', padx=5)
         self.textbox_slider_value = ttk.Entry(self.panel_params, textvariable=self.var_swarm_spread, width=10)
         self.textbox_slider_value.grid(row=2, column=2, sticky='W', padx=5)
@@ -214,6 +222,8 @@ class myApp(tk.Frame):
         self.btn_center.grid(column=2, row=1, sticky='EW', padx=10, pady=5)
         self.btn_reset = ttk.Button(self.panel_sim, text="Reset", command=self._button_reset_callback)
         self.btn_reset.grid(column=0, row=1, sticky='EW', padx=10, pady=5)
+        self.btn_2D_view = ttk.Button(self.panel_sim, text="2D view", command=self.btn_2D_view_callback, state='disabled')
+        self.btn_2D_view.grid(column=2, row=2, sticky='EW', padx=10, pady=5)
 
         # Simulation timestep
         self.panel_sim_timestep = tk.Frame(self.panel_sim)
@@ -236,8 +246,19 @@ class myApp(tk.Frame):
         nb_drones = self.var_drone_count.get()
         neighbors = self.var_neighbor_count.get()
         swarm_spread = self.slider_spread.get()
+        noise = {'type': self.listbox_noise_type.get(), 'param_pos': self.var_noise_pos.get(), 'param_heading': self.var_noise_orient.get()}
+        target_numbers = self.var_target.get().split(';')
+        target = np.asarray(target_numbers, dtype=float)
         
-        self.swarm = Swarm(count=nb_drones, box=[0,0,10,5,5,5])
+        algo_params = {
+            'delta': self.var_delta.get(),
+            'd_ref': self.var_dref.get(),
+            'v_ref': np.array([self.var_vref.get()]*3),
+            'a': self.var_a.get(),
+            'b': self.var_b.get(),
+            'r0_coh': swarm_spread
+        }
+        self.swarm = Swarm(count=nb_drones, box=self.spawn_box, algo_params=algo_params, noise=noise, migration_point=target)
         #self.swarm.initialize_random_vel([0.1, 0.5, -0.3, 0.3, 0, 0.2])
         self.swarm.print_swarm()
         #self.swarm.migration_point = np.array([5,0,10])
@@ -245,12 +266,15 @@ class myApp(tk.Frame):
         self.sim = Simulator(dt, self.swarm)
         self.renderer._swarm_ref = self.swarm
         self.renderer.start()
+        # Unlock buttons
+        self.btn_2D_view.config(state='normal')
 
     def _button_reset_callback(self):
         self.renderer.reset()
         self.renderer._swarm_ref = None
         try:
             self.sim.stop()
+            self.sim = None
         except:
             pass
  
@@ -266,6 +290,16 @@ class myApp(tk.Frame):
     def btn_step_callback(self):
         self.sim.step()
 
+    def btn_2D_view_callback(self):
+        # Initialize 2D view windows
+        if self.window_2d is None:
+            self.window_2d = tk.Toplevel(self.mainframe)
+            self.window_2d.protocol("WM_DELETE_WINDOW", self.window_2d_closing)
+            self.window_2d.title("2D Swarm viewer")
+            self.window_2d.geometry('1000x800')
+            self.renderer2D = Renderer2D(self.window_2d, self.swarm)
+        self.window_2d.deiconify()
+
     def app_closing(self):
         try:
             self.renderer.stop()
@@ -274,6 +308,12 @@ class myApp(tk.Frame):
             pass
         finally:
             exit()
+
+    def window_2d_closing(self):
+        self.window_2d.destroy()
+        self.window_2d = None
+        self.renderer2D.stop()
+        self.renderer2D = None
 
     def _update_neighbors_spinbox(self):
         self.spinner_neighbors.config(to=self.var_drone_count.get()-1)
