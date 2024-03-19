@@ -1,5 +1,11 @@
 import numpy as np
 
+from olfati_saber import get_RB2W, get_W2B
+from scipy import spatial
+
+DEFAULT_RANGE_SENSING = 2.0
+DEFAULT_NB_NEIGHBORS = 3
+
 class Drone:
     '''
     Class to represent a drone object. 
@@ -21,10 +27,10 @@ class Drone:
         phi = self.angles[0]
         theta = self.angles[1]
         psi = self.angles[2]
-        return Drone.get_RB2W(phi, theta, psi) @ np.array([1,0,0])
+        return get_RB2W(phi, theta, psi) @ np.array([1,0,0])
     
     def update(self, dt, new_acc, new_rates=np.zeros(3)):
-        self.acc = new_acc
+        self.acc = get_RB2W(self.angles[0], self.angles[1], self.angles[2]) @ new_acc
         self.rates = new_rates
         
         # Perform simple Euler forward integration
@@ -39,18 +45,56 @@ class Drone:
         for i in range(len(names)):
             print("{0}{1}".format(names[i], state[i]))
 
-    def compute_neihgborhood(self, members: list["Drone"], metric, noise):
+    def compute_neihgborhood(self, members: list["Drone"], metric, noise, metric_data=dict()):
         index = members.index(self)
-        poss_neighbors = [i for i in range(len(members)-1) if i != index]
+        poss_neighbors = np.array([i for i in range(len(members)) if i != index])
         match metric:
             case "Eucledian":
-                pass
+                sensing_range = metric_data.get('sensing_range', DEFAULT_RANGE_SENSING)
+                distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
+                indices = np.nonzero(distances < sensing_range)
+                self.neighbors = [DroneNeighbor(i, distances[j], (members[i].pos - self.pos) / distances[j], members[i].angles) for i,j in zip(poss_neighbors[indices], indices)]
             case "Topological":
-                pass
+                nb = metric_data.get('nb_neighbors', DEFAULT_NB_NEIGHBORS)
+                distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
+                indices = np.argsort(distances)[:nb]
+                self.neighbors = [DroneNeighbor(i, distances[j], (members[i].pos - self.pos) / distances[j], members[i].angles) for i,j in zip(poss_neighbors[indices], indices)]
             case "Voronoi":
-                pass
+                # This should be called once on one of the drone only
+                points = np.array([members[i].pos for i in range(len(members))])
+                indptr_neig, neighbors = spatial.Delaunay(points, qhull_options="QJ").vertex_neighbor_vertices
+                for i in range(len(members)):
+                    members[i].neighbors = [DroneNeighbor(j, np.linalg.norm(members[j].pos - members[i].pos), (members[j].pos - members[i].pos) / np.linalg.norm(members[j].pos - members[i].pos), members[j].angles) for j in neighbors[indptr_neig[i]:indptr_neig[i+1]]]
             case "Visual LoS":
-                pass
+                sensing_range = metric_data.get('sensing_range', np.inf)
+                r_agent = metric_data.get('r_agent', 0.05)
+                # Keep neighbors that are within the sensing range
+                distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
+                distances = distances[distances < sensing_range]
+                poss_neighbors = poss_neighbors[distances < sensing_range]
+                # Get headings and distances to all neighbors
+                headings = np.array([(members[i].pos - self.pos)/distances[j] for i,j in zip(poss_neighbors, range(len(poss_neighbors)))])
+                indices = np.argsort(distances)
+                self.neighbors = []
+                while len(indices) > 0:
+                    n_index = poss_neighbors[indices[0]]
+                    self.neighbors.append(DroneNeighbor(n_index, distances[indices[0]], headings[indices[0]], members[n_index].angles))
+                    # Check if the neighbor is within the field of view
+                    d_ij = distances[indices[0]]
+                    u_ij = headings[indices[0]]
+                    r_ij = r_agent/d_ij
+                    to_remove = [0]
+                    for i in range(1, len(indices)):
+                        # Looping through all others
+                        d_ik = distances[indices[i]]
+                        u_ik = headings[indices[i]]
+                        r_ik = r_agent/d_ik
+                        # First condition (d_ij < d_ik) is already satisfied by the sorting
+                        if np.linalg.norm(u_ij-u_ik) < (r_ij + r_ik):
+                            to_remove.append(i)
+                    indices = np.delete(indices, to_remove)
+
+                
             case "TEST":
                 indices = np.random.choice(poss_neighbors, np.random.randint(0, len(poss_neighbors)))
                 for i in indices:
@@ -73,18 +117,6 @@ class Drone:
                 return value + np.random.uniform(-noise[type], noise[type])
             case _:
                 return value
-
-    def get_RB2W(phi, theta, psi):
-        R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
-        R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
-        R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
-        return R_psi @ R_theta @ R_phi
-    
-    def get_W2B(phi, theta, psi):
-        R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
-        R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
-        R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
-        return np.transpose(R_phi @ R_theta @ R_psi)
     
 
 class DroneNeighbor:
@@ -99,6 +131,6 @@ class DroneNeighbor:
 
     def get_state(self):
         pos = self.dir * self.distance
-        heading = Drone.get_RB2W(self.angles[0], self.angles[1], self.angles[2]) @ np.array([1,0,0])
+        heading = get_RB2W(self.angles[0], self.angles[1], self.angles[2]) @ np.array([1,0,0])
         return np.vstack((pos, self.vel, self.acc, heading))
 

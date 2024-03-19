@@ -7,12 +7,14 @@
     "noise_orient": 0.0,
     "delta": 0.1,
     "dref": 1.0,
-    "vref": 0.0,
+    "vref": 1.0,
     "a": 0.3,
     "b": 0.5,
     "c": 0.0,
     "z_offset": 10.0,
     "target_x": 0.0,
     "target_y": 0.0,
-    "target_z": 0.0
+    "target_z": 0.0,
+    "cmd_yaw": 0.5,
+    "cmd_vel": 0.5
 }

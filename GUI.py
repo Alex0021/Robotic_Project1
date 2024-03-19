@@ -21,6 +21,12 @@ class myApp(tk.Frame):
     def __init__(self, root):
         super().__init__(root)
         self.mainframe = root
+
+        #==================================#
+        #        EVENT HANDLERS            #
+        #==================================#
+        self.mainframe.bind("<KeyPress>", self.key_press_callback)
+        self.mainframe.bind("<KeyRelease>", self.key_release_callback)
         self.mainframe.protocol("WM_DELETE_WINDOW", self.app_closing)
         self.mainframe.grid_columnconfigure(0, weight=1)
         self.mainframe.grid_columnconfigure(1, weight=3)
@@ -44,6 +50,7 @@ class myApp(tk.Frame):
         self.var_target = tk.StringVar(value='{0};{1};{2}'.format(5.0,5.0,round(self.var_z_offset.get(),1)))
 
         self.window_2d = None
+        self.swarm = None
 
         #==================================#
         # JSON CONFIG FILE INITIALIZATION  #
@@ -66,8 +73,10 @@ class myApp(tk.Frame):
         self.var_b = tk.DoubleVar(value=config.get('b', 0.0))
         self.var_c = tk.DoubleVar(value=config.get('c', 0.0))
         self.var_z_offset = tk.DoubleVar(value=config.get('z_offset', 10.0))
-        self.var_target = tk.StringVar(value='{0};{1};{2}'.format(config.get('target_x', 0.0), config.get('target_y', 0.0), config.get('target_y', 0.0)))
+        self.var_target = tk.StringVar(value='')
         self.spawn_box = config.get('spawn_box', [0,0,10,5,5,5])
+        self.cmd_yaw = config.get('cmd_yaw', 0.5)
+        self.cmd_vel = config.get('cmd_vel', 0.5)
         #==================================#
         #       APP INITIALIZATION         #
         #==================================#
@@ -161,6 +170,7 @@ class myApp(tk.Frame):
         self.label_control_vref = ttk.Label(self.panel_control_scheme, anchor='w', text="vref: ")
         self.label_control_vref.grid(column=4,row=1, sticky='NEWS')
         self.textbox_control_vref = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_vref)
+        #self.textbox_control_vref.bind("<Return>", lambda e: self.swarm.set_cmd_velocity(np.array([float(self.var_vref.get())]*3)))
         self.textbox_control_vref.grid(column=5, row=1, sticky='W', padx=5)
 
         self.label_control_a = ttk.Label(self.panel_control_scheme, anchor='w', text="a: ")
@@ -224,6 +234,9 @@ class myApp(tk.Frame):
         self.btn_reset.grid(column=0, row=1, sticky='EW', padx=10, pady=5)
         self.btn_2D_view = ttk.Button(self.panel_sim, text="2D view", command=self.btn_2D_view_callback, state='disabled')
         self.btn_2D_view.grid(column=2, row=2, sticky='EW', padx=10, pady=5)
+        self.btn_show_neighbors = ttk.Button(self.panel_sim, text="Toggle neighbors", command=self.btn_show_neighbors_callback)
+        self.btn_show_neighbors.grid(column=1, row=2, sticky='EW', padx=10, pady=5)
+
 
         # Simulation timestep
         self.panel_sim_timestep = tk.Frame(self.panel_sim)
@@ -245,27 +258,36 @@ class myApp(tk.Frame):
         # Retrieve all necessary parameters from app widgets
         nb_drones = self.var_drone_count.get()
         neighbors = self.var_neighbor_count.get()
+        neighbors_algo = self.listbox_neighbors_algo.get()
         swarm_spread = self.slider_spread.get()
         noise = {'type': self.listbox_noise_type.get(), 'param_pos': self.var_noise_pos.get(), 'param_heading': self.var_noise_orient.get()}
-        target_numbers = self.var_target.get().split(';')
-        target = np.asarray(target_numbers, dtype=float)
+        if self.var_target.get() == '':
+            target = None
+        else:
+            target_numbers = self.var_target.get().split(';')
+            target = np.asarray(target_numbers, dtype=float)
         
         algo_params = {
             'delta': self.var_delta.get(),
             'd_ref': self.var_dref.get(),
-            'v_ref': np.array([self.var_vref.get()]*3),
+            'v_ref': np.zeros(3),
             'a': self.var_a.get(),
             'b': self.var_b.get(),
-            'r0_coh': swarm_spread
+            'r0_coh': swarm_spread,
+            'neighborhood_metric': neighbors_algo,
+            'neighborhood_metric_data': {'nb_neighbors': neighbors}
         }
         self.swarm = Swarm(count=nb_drones, box=self.spawn_box, algo_params=algo_params, noise=noise, migration_point=target)
         #self.swarm.initialize_random_vel([0.1, 0.5, -0.3, 0.3, 0, 0.2])
         self.swarm.print_swarm()
+        print("Initializing swarm with parameters: ")
+        print(algo_params)
         #self.swarm.migration_point = np.array([5,0,10])
         dt = float(self.spinner_sim_dt.get())
         self.sim = Simulator(dt, self.swarm)
         self.renderer._swarm_ref = self.swarm
         self.renderer.start()
+        #self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,0.2]))
         # Unlock buttons
         self.btn_2D_view.config(state='normal')
 
@@ -299,6 +321,49 @@ class myApp(tk.Frame):
             self.window_2d.geometry('1000x800')
             self.renderer2D = Renderer2D(self.window_2d, self.swarm)
         self.window_2d.deiconify()
+
+    def btn_show_neighbors_callback(self):
+        self.renderer.show_neighbors = not self.renderer.show_neighbors
+        self.swarm.is_computing_neighborhood = self.renderer.show_neighbors
+
+    def key_press_callback(self, event):
+        if self.swarm is None:
+            return
+        target_vel = self.swarm.get_cmd_velocity()
+        match event.char:
+            case 'q':
+                self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,self.cmd_yaw]))
+            case 'e':
+                self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,-self.cmd_yaw]))
+            case 'w':
+                target_vel[0] = self.var_vref.get()
+            case 's':
+                target_vel[0] = -self.var_vref.get()
+            case 'a':
+                target_vel[1] = self.var_vref.get()
+            case 'd':
+                target_vel[1] = -self.var_vref.get()
+        self.swarm.set_cmd_velocity(target_vel)   
+
+
+    def key_release_callback(self, event):
+        if self.swarm is None:
+            return
+        target_vel = self.swarm.get_cmd_velocity()
+        match event.char:
+            case 'q':
+                self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,0.0]))
+            case 'e':
+                self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,0.0]))
+            case 'w':
+                target_vel[0] = 0
+            case 's':
+                target_vel[0] = 0
+            case 'a':
+                target_vel[1] = 0
+            case 'd':
+                target_vel[1] = 0
+        self.swarm.set_cmd_velocity(target_vel)    
 
     def app_closing(self):
         try:

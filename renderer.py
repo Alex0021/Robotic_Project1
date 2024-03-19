@@ -5,7 +5,11 @@ import tkinter as tk
 from matplotlib.animation import FuncAnimation
 from swarm import Swarm
 from collections import OrderedDict
+from matplotlib.widgets import Slider
 
+# Set the default keymap to close the window to ctrl+w
+plt.rcParams['keymap.quit'] = 'ctrl+w'
+plt.rcParams['keymap.save'] = 'ctrl+s'
 
 PLOT_AXIS_MARGIN = 1.2
 
@@ -24,12 +28,15 @@ class Renderer():
         self.canvas = FigureCanvasTkAgg(self.fig, self.master)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.mpl_connect('key_press_event', self.key_pressed)
+        self.canvas.mpl_connect('pick_event', self.onpick)
         self.configure_plot()
 
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=True)
         self.toolbar.update()
 
         self._swarm_ref = swarm
+        self.show_neighbors = False
         self.ani = FuncAnimation(self.fig, self.render, interval=5, cache_frame_data=False)
 
 
@@ -58,17 +65,25 @@ class Renderer():
     
     def render(self, i):
         if self._swarm_ref is not None:
-            self.data = self._swarm_ref.get_states()
-            self.ax.clear()
-            self.configure_plot()
-            # Plot the drones as points
-            self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=40, marker='o', c='b', cmap=None)
-            # Plot the heading as arrows
-            self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
-            # Plot the migration point
-            if self._swarm_ref.migration_point is not None:
-                self.ax.plot(self._swarm_ref.migration_point[0], self._swarm_ref.migration_point[1], self._swarm_ref.migration_point[2],'r', marker='x', markersize=20)
-
+            try:
+                self.data = self._swarm_ref.get_states()
+                self.ax.clear()
+                self.configure_plot()
+                # Plot the drones as points
+                colors = np.array(['#0000FFFF']*self._swarm_ref.count)
+                colors[self._swarm_ref.selected_drone] = '#00ff00ff'
+                if self.show_neighbors:
+                    neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
+                    if len(neighbors_id) > 0:
+                        colors[neighbors_id] = '#ff0000ff'
+                self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=40, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=False)
+                # Plot the heading as arrows
+                self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
+                # Plot the migration point
+                if self._swarm_ref.migration_point is not None:
+                    self.ax.plot(self._swarm_ref.migration_point[0], self._swarm_ref.migration_point[1], self._swarm_ref.migration_point[2],'r', marker='x', markersize=20)
+            except Exception as e:
+                print(e)
     def stop(self):
         self.ani.event_source.stop()
 
@@ -81,13 +96,24 @@ class Renderer():
         self.canvas.draw()
         self.ax.view_init(18,-170,0)
 
+    def key_pressed(self, event):
+        pass
+
+    def onpick(self, event):
+        index = event.ind
+        if index is None:
+            return
+
+        print("Selected drone: {0}".format(index[0]))
+        self._swarm_ref.selected_drone = index[0]
+
+
 
 class Renderer2D():
     def __init__(self, panel:tk.Frame, swarm:Swarm):
         self.master = panel
         # Single drone view definitions
         self.viewing_radius = 5
-        self.selected_drone = 0
         #swarm.compute_neighborhood("TEST")
         # Initialize the figure
         self.fig = plt.figure(2, constrained_layout=True)
@@ -97,25 +123,39 @@ class Renderer2D():
         self.canvas = FigureCanvasTkAgg(self.fig, self.master)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.mpl_connect('key_press_event', self.key_pressed)
+        self.canvas.mpl_connect('pick_event', self.onpick)
         self.ax_limits = np.array([[-5,5], [-5,5], [5,15]])
+        # Add slider
+        ax_viewing = self.fig.add_axes([0.55, 0.07, 0.35, 0.05])
+        self.freq_slider = Slider(
+            ax=ax_viewing,
+            label='Viewing Radius',
+            valmin=1,
+            valmax=10,
+            valinit=5,
+            valstep=0.1
+        )
+        self.freq_slider.on_changed(self.update_viewing_radius)
         # Configuring necessary plots
         self.artists = {
-            "scatter_xy":self.ax[0].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True),
-            "scatter_xz":self.ax[1].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True),
-            "scatter_yz":self.ax[2].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True),
+            "scatter_xy":self.ax[0].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True, picker=True),
+            "scatter_xz":self.ax[1].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True, picker=True),
+            "scatter_yz":self.ax[2].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True, picker=True),
             "h_dashed": self.ax[3].plot([],[],'k--', animated=True, linewidth=1.5, alpha=0.6)[0],
             "v_dashed": self.ax[3].plot([],[],'k--', animated=True, linewidth=1.5, alpha=0.6)[0],
             "scatter_single": self.ax[3].scatter([],[],s=60, marker='o', c='r', cmap=None, animated=True),
-            "scatter_swarm": self.ax[3].scatter([],[],s=60, marker='o', edgecolors='k', facecolors='None', cmap=None, animated=True, linestyle='dotted')
+            "scatter_swarm": self.ax[3].scatter([],[],s=60, marker='o', edgecolors='k', facecolors='None', cmap=None, animated=True, linestyle='dotted',picker=True)
         }
 
         #self.configure_plots()
         self._swarm_ref = swarm
         self.ani = FuncAnimation(self.fig, init_func=self.init_plots, frames=self.frame_iter, func=self.render, interval=5, cache_frame_data=False, blit=True)
 
-    def set_drone(self, index, viewing_radius = 5):
-        self.selected_drone = index
-        self.viewing_radius = viewing_radius
+    def update_viewing_radius(self, val):
+        self.viewing_radius = val
+        RendererDara.axis_limits = np.array([[-self.viewing_radius,self.viewing_radius], [-self.viewing_radius,self.viewing_radius], [5,15]])
+        self.init_plots()
 
     def init_plots(self):
         # XY plot
@@ -139,6 +179,8 @@ class Renderer2D():
         # Single plot
         self.ax[3].set_xlabel("x")
         self.ax[3].set_ylabel("y")
+        self.ax[3].set_xlim(RendererDara.axis_limits[0])
+        self.ax[3].set_ylim(RendererDara.axis_limits[1])
         self.ax[3].set_title("Single Drone View")
 
         return self.artists.values()
@@ -147,32 +189,34 @@ class Renderer2D():
         swarm_states = np.empty((1,12))
         if self._swarm_ref is not None:
             swarm_states = self._swarm_ref.get_states()
-            neighbors = self._swarm_ref.members[self.selected_drone].neighbors
-        yield (swarm_states,neighbors)
+            selected_drone = self._swarm_ref.selected_drone
+            neighbors = self._swarm_ref.members[selected_drone].neighbors
+        yield (swarm_states,neighbors, selected_drone)
     
     def render(self, data):
         swarm_states = data[0]
         neighbors = data[1]
+        selected_drone = data[2]
         # Plot the drones as points
-        self.artists["scatter_xy"].set(offsets=swarm_states[:,:2])
-        self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)])
-        self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3])
+        colors = ['#0000FFFF']*self._swarm_ref.count
+        colors[selected_drone] = '#80ff00'
+        self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors)
+        self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors)
+        self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3], color=colors)
         # Plot the heading as arrows
-        if np.sum(np.concatenate((swarm_states[:,-3], swarm_states[:,-2]))) > 0:
+        if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-2])))) > 0:
             self.artists["quiver_xy"] = self.ax[0].quiver(swarm_states[:,0],swarm_states[:,1],swarm_states[:,-3],swarm_states[:,-2],width=0.005, animated=True)
-        if np.sum(np.concatenate((swarm_states[:,-3], swarm_states[:,-1]))) > 0:  
+        if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-1])))) > 0:  
             self.artists["quiver_xz"] = self.ax[1].quiver(swarm_states[:,0],swarm_states[:,2],swarm_states[:,-3],swarm_states[:,-1],width=0.005, animated=True)
-        if np.sum(np.concatenate((swarm_states[:,-2], swarm_states[:,-1]))) > 0:
+        if np.sum(np.abs(np.concatenate((swarm_states[:,-2], swarm_states[:,-1])))) > 0:
             self.artists["quiver_yz"] = self.ax[2].quiver(swarm_states[:,1],swarm_states[:,2],swarm_states[:,-2],swarm_states[:,-1],width=0.005, animated=True)
         # Plot single drone + neighbors
         # Apply needed rotations with respect to body frame
-        t_x, t_y = swarm_states[self.selected_drone,:2]
-        self.ax[3].set_xlim([-self.viewing_radius, self.viewing_radius])
-        self.ax[3].set_ylim([-self.viewing_radius, self.viewing_radius])
+        t_x, t_y = swarm_states[selected_drone,:2]
         points = np.array([[-2*self.viewing_radius, 2*self.viewing_radius, 0, 0], 
                             [0, 0, 2*-self.viewing_radius, 2*self.viewing_radius]])
-        R_2D = np.array([[swarm_states[self.selected_drone,-3], -swarm_states[self.selected_drone,-2]],
-                        [swarm_states[self.selected_drone,-2], swarm_states[self.selected_drone,-3]]])
+        R_2D = np.array([[swarm_states[selected_drone,-3], -swarm_states[selected_drone,-2]],
+                        [swarm_states[selected_drone,-2], swarm_states[selected_drone,-3]]])
         r_points = R_2D @ points
         self.artists["h_dashed"].set_data(r_points[0,:2], r_points[1,:2])
         self.artists["v_dashed"].set_data(r_points[0,2:4], r_points[1,2:4])
@@ -190,14 +234,29 @@ class Renderer2D():
             n_data2 = np.vstack([n.get_state()[3,0:2] for n in neighbors])
             self.artists["quiver_n"] = self.ax[3].quiver(n_data[:,0],n_data[:,1],n_data2[:,0],n_data2[:,1],width=0.005, animated=True)
         # Plot heading of the selected drone
-        self.artists["arrow_single"] = self.ax[3].arrow(0, 0, swarm_states[self.selected_drone,-3], swarm_states[self.selected_drone,-2], width=0.075, head_width=0.3, head_length=0.25, fc='g', ec='g')
+        scale = self.viewing_radius / 5.0
+        self.artists["arrow_single"] = self.ax[3].arrow(0, 0, swarm_states[selected_drone,-3], swarm_states[selected_drone,-2], width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='g', ec='g')
         # Plot swarm
-        self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != self.selected_drone])
+        self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone])
 
         return self.artists.values()
     
     def stop(self):
         self.fig.clear()
+
+    def key_pressed(self, event):
+        pass
+
+    def onpick(self, event):
+        index = event.ind
+        if index is None:
+            return
+
+        if (event.artist == self.artists["scatter_swarm"]):
+            if index[0] >= self._swarm_ref.selected_drone:
+                index[0] += 1
+        print("Selected drone: {0}".format(index[0]))
+        self._swarm_ref.selected_drone = index[0]
             
 def main():
     root = tk.Tk()
@@ -206,6 +265,7 @@ def main():
     swarm = Swarm(10, [0,0,10,5,5,0])
     swarm.set_noise("Uniform",0.2,0.1)
     swarm.members[0].angles = np.array([0,0,np.pi/4])
+    swarm.compute_neighborhood("Visual LoS", {"sensing_range":100, "r_agent":0.3})
     r = Renderer2D(root, swarm)
     root.mainloop()
 

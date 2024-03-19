@@ -55,8 +55,28 @@ def get_migration_force(p_mig, p_i, v_ref, v_i, gamma):
     u_i = 1/d * (p_mig - p_i)
     return gamma*d*(v_ref*u_i-v_i)
 
+def get_RB2W(phi, theta, psi):
+    R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
+    R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
+    R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
+    return R_psi @ R_theta @ R_phi
+
+def get_W2B(phi, theta, psi):
+    R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
+    R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
+    R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
+    return np.transpose(R_phi @ R_theta @ R_psi)
+
+def rot_global2body(input, angles):
+    R = get_W2B(angles[0], angles[1], angles[2])
+    return R @ input
+
+def rot_body2global(input, angles):
+    R = get_RB2W(angles[0], angles[1], angles[2])
+    return R @ input
+
 # Compute the olfati-saber swarm commands
-def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, **params):
+def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, params=dict()):
     # Extract necessary params
     v_ref = params.get('v_ref',np.array([0.0,0.0,0.0]))
     d_ref = params.get('d_ref',1.0)
@@ -80,18 +100,19 @@ def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, 
     neighbour_positions = [neighbour_pose[0] for neighbour_pose in neighbour_poses if neighbour_pose[0][2] > 0.1]
     num_neighbours = len(neighbour_poses)
 
-    # TODO Set reference velocity based either on a command input or migration point   
+    # Getting v_ref vector from vel_cmd
+    v_ref_glob = rot_body2global(v_ref, drone_pose[3]) 
 
     # Normalize the reference velocity
-    if np.linalg.norm(v_ref) > 0:
-        v_ref_u = v_ref / np.linalg.norm(v_ref)
+    if np.linalg.norm(v_ref_glob) > 0:
+        v_ref_u = v_ref_glob / np.linalg.norm(v_ref_glob)
     else:
-        v_ref_u = v_ref
+        v_ref_u = v_ref_glob
 
     # Compute the velocity matching force
     acc_vel = np.zeros(3)
     if p_mig is None:
-        acc_vel = c_vm * (v_ref - drone_vel)
+        acc_vel = c_vm * (v_ref_glob - drone_vel)
         
     # Initialize the cohesion command
     acc_coh = np.zeros(3)
@@ -112,10 +133,11 @@ def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, 
             
         # TODO Verify if this is needed
         # Rotate the cohesion force to the body reference frame
-        #acc_coh = rot_global2body(acc_coh, drone_pose[2][2])
+        #acc_coh = rot_global2body(acc_coh, drone_pose[3])
     
     # Compute the migration force
-    acc_mig += get_migration_force(p_mig, drone_pos, v_ref, drone_vel, gamma)
+    acc_mig += get_migration_force(p_mig, drone_pos, v_ref_glob, drone_vel, gamma)
+    #acc_mig = rot_global2body(acc_mig, drone_pose[3])
 
     # # Initialize the obstacle avoidance commands
     # acc_obs = np.zeros(3)
@@ -150,5 +172,6 @@ def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, 
     # Remove the z component of the cohesion command
     #acc_coh[2] = 0        
     acc_command = acc_vel + acc_coh + acc_mig #+ acc_obs
+    acc_command = rot_global2body(acc_command, drone_pose[3])
 
     return acc_command
