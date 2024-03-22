@@ -36,7 +36,7 @@ class Renderer():
         self.toolbar.update()
 
         self._swarm_ref = swarm
-        self.show_neighbors = False
+        self.show_neighbors = True
         self.ani = FuncAnimation(self.fig, self.render, interval=5, cache_frame_data=False)
 
 

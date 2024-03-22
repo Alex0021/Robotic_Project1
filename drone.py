@@ -58,13 +58,17 @@ class Drone:
                 nb = metric_data.get('nb_neighbors', DEFAULT_NB_NEIGHBORS)
                 distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
                 indices = np.argsort(distances)[:nb]
-                self.neighbors = [DroneNeighbor(i, distances[j], (members[i].pos - self.pos) / distances[j], members[i].angles) for i,j in zip(poss_neighbors[indices], indices)]
+                self.neighbors = [DroneNeighbor(i, self._apply_noise(distances[j], noise, 'param_pos'), 
+                                                self._apply_noise((members[i].pos - self.pos) / distances[j], noise, 'param_pos'), 
+                                                self._apply_noise(members[i].angles, noise, 'param_heading')) for i,j in zip(poss_neighbors[indices], indices)]
             case "Voronoi":
                 # This should be called once on one of the drone only
                 points = np.array([members[i].pos for i in range(len(members))])
                 indptr_neig, neighbors = spatial.Delaunay(points, qhull_options="QJ").vertex_neighbor_vertices
                 for i in range(len(members)):
-                    members[i].neighbors = [DroneNeighbor(j, np.linalg.norm(members[j].pos - members[i].pos), (members[j].pos - members[i].pos) / np.linalg.norm(members[j].pos - members[i].pos), members[j].angles) for j in neighbors[indptr_neig[i]:indptr_neig[i+1]]]
+                    members[i].neighbors = [DroneNeighbor(j, self._apply_noise(np.linalg.norm(members[j].pos - members[i].pos),noise, 'param_pos'), 
+                                                          self._apply_noise((members[j].pos - members[i].pos) / np.linalg.norm(members[j].pos - members[i].pos), noise, 'param_pos'), 
+                                                          self._apply_noise(members[j].angles, noise, 'param_heading')) for j in neighbors[indptr_neig[i]:indptr_neig[i+1]]]
             case "Visual LoS":
                 sensing_range = metric_data.get('sensing_range', np.inf)
                 r_agent = metric_data.get('r_agent', 0.05)
@@ -78,7 +82,9 @@ class Drone:
                 self.neighbors = []
                 while len(indices) > 0:
                     n_index = poss_neighbors[indices[0]]
-                    self.neighbors.append(DroneNeighbor(n_index, distances[indices[0]], headings[indices[0]], members[n_index].angles))
+                    self.neighbors.append(DroneNeighbor(n_index, self._apply_noise(distances[indices[0]], noise, 'param_pos'), 
+                                                        self._apply_noise(headings[indices[0]], noise, 'param_pos'), 
+                                                        self._apply_noise(members[n_index].angles), noise, 'param_heading'))
                     # Check if the neighbor is within the field of view
                     d_ij = distances[indices[0]]
                     u_ij = headings[indices[0]]
@@ -93,7 +99,6 @@ class Drone:
                         if np.linalg.norm(u_ij-u_ik) < (r_ij + r_ik):
                             to_remove.append(i)
                     indices = np.delete(indices, to_remove)
-
                 
             case "TEST":
                 indices = np.random.choice(poss_neighbors, np.random.randint(0, len(poss_neighbors)))

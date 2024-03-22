@@ -1,12 +1,13 @@
 {
     "spawn_box": [0.0,0.0,10.0,5.0,5.0,5.0],
     "drone_count": 10,
-    "neighbor_count": 9,
-    "swarm_spread": 20.0,
-    "noise_pos": 0.0,
-    "noise_orient": 0.0,
+    "neighbor_count": 1,
+    "swarm_spread": 1.50,
+    "noise_pos": 0.025,
+    "noise_orient": 0.025,
+    "noise_heading": 0.0,
     "delta": 0.1,
-    "dref": 1.0,
+    "r_coh": 20.0,
     "vref": 1.0,
     "a": 0.3,
     "b": 0.5,
@@ -16,5 +17,6 @@
     "target_y": 0.0,
     "target_z": 0.0,
     "cmd_yaw": 0.5,
-    "cmd_vel": 0.5
+    "cmd_vel": 0.5,
+    "neighbor_sampling": 1
 }
