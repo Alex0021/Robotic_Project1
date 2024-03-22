@@ -197,48 +197,50 @@ class Renderer2D():
         swarm_states = data[0]
         neighbors = data[1]
         selected_drone = data[2]
-        # Plot the drones as points
-        colors = ['#0000FFFF']*self._swarm_ref.count
-        colors[selected_drone] = '#80ff00'
-        self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors)
-        self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors)
-        self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3], color=colors)
-        # Plot the heading as arrows
-        if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-2])))) > 0:
-            self.artists["quiver_xy"] = self.ax[0].quiver(swarm_states[:,0],swarm_states[:,1],swarm_states[:,-3],swarm_states[:,-2],width=0.005, animated=True)
-        if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-1])))) > 0:  
-            self.artists["quiver_xz"] = self.ax[1].quiver(swarm_states[:,0],swarm_states[:,2],swarm_states[:,-3],swarm_states[:,-1],width=0.005, animated=True)
-        if np.sum(np.abs(np.concatenate((swarm_states[:,-2], swarm_states[:,-1])))) > 0:
-            self.artists["quiver_yz"] = self.ax[2].quiver(swarm_states[:,1],swarm_states[:,2],swarm_states[:,-2],swarm_states[:,-1],width=0.005, animated=True)
-        # Plot single drone + neighbors
-        # Apply needed rotations with respect to body frame
-        t_x, t_y = swarm_states[selected_drone,:2]
-        points = np.array([[-2*self.viewing_radius, 2*self.viewing_radius, 0, 0], 
-                            [0, 0, 2*-self.viewing_radius, 2*self.viewing_radius]])
-        R_2D = np.array([[swarm_states[selected_drone,-3], -swarm_states[selected_drone,-2]],
-                        [swarm_states[selected_drone,-2], swarm_states[selected_drone,-3]]])
-        r_points = R_2D @ points
-        self.artists["h_dashed"].set_data(r_points[0,:2], r_points[1,:2])
-        self.artists["v_dashed"].set_data(r_points[0,2:4], r_points[1,2:4])
-        colors = ['#FF0000A0']*(len(neighbors) + 1)
-        colors[-1] = '#80ff00'
-        sizes = [60]*(len(neighbors) + 1)
-        sizes[-1] = 150
-        if len(neighbors) > 0:
-            n_data = np.vstack([n.get_state()[0,0:2] for n in neighbors])
-        else:
-            n_data = np.array([0,0])
-        self.artists["scatter_single"].set(offsets=np.vstack((n_data, [0,0])), color=colors, sizes=sizes)
-        # Plot heading of estimated neighbors
-        if len(neighbors) > 0:
-            n_data2 = np.vstack([n.get_state()[3,0:2] for n in neighbors])
-            self.artists["quiver_n"] = self.ax[3].quiver(n_data[:,0],n_data[:,1],n_data2[:,0],n_data2[:,1],width=0.005, animated=True)
-        # Plot heading of the selected drone
-        scale = self.viewing_radius / 5.0
-        self.artists["arrow_single"] = self.ax[3].arrow(0, 0, swarm_states[selected_drone,-3], swarm_states[selected_drone,-2], width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='g', ec='g')
-        # Plot swarm
-        self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone])
-
+        try:
+            # Plot the drones as points
+            colors = ['#0000FFFF']*self._swarm_ref.count
+            colors[selected_drone] = '#80ff00'
+            self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors)
+            self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors)
+            self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3], color=colors)
+            # Plot the heading as arrows
+            if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-2])))) > 0:
+                self.artists["quiver_xy"] = self.ax[0].quiver(swarm_states[:,0],swarm_states[:,1],swarm_states[:,-3],swarm_states[:,-2],width=0.005, animated=True)
+            if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-1])))) > 0:  
+                self.artists["quiver_xz"] = self.ax[1].quiver(swarm_states[:,0],swarm_states[:,2],swarm_states[:,-3],swarm_states[:,-1],width=0.005, animated=True)
+            if np.sum(np.abs(np.concatenate((swarm_states[:,-2], swarm_states[:,-1])))) > 0:
+                self.artists["quiver_yz"] = self.ax[2].quiver(swarm_states[:,1],swarm_states[:,2],swarm_states[:,-2],swarm_states[:,-1],width=0.005, animated=True)
+            # Plot single drone + neighbors
+            # Apply needed rotations with respect to body frame
+            t_x, t_y = swarm_states[selected_drone,:2]
+            points = np.array([[-2*self.viewing_radius, 2*self.viewing_radius, 0, 0], 
+                                [0, 0, 2*-self.viewing_radius, 2*self.viewing_radius]])
+            R_2D = np.array([[swarm_states[selected_drone,-3], -swarm_states[selected_drone,-2]],
+                            [swarm_states[selected_drone,-2], swarm_states[selected_drone,-3]]])
+            r_points = R_2D @ points
+            self.artists["h_dashed"].set_data(r_points[0,:2], r_points[1,:2])
+            self.artists["v_dashed"].set_data(r_points[0,2:4], r_points[1,2:4])
+            colors = ['#FF0000A0']*(len(neighbors) + 1)
+            colors[-1] = '#80ff00'
+            sizes = [60]*(len(neighbors) + 1)
+            sizes[-1] = 150
+            if len(neighbors) > 0:
+                n_data = np.vstack([n.get_state()[0,0:2] for n in neighbors])
+            else:
+                n_data = np.array([0,0])
+            self.artists["scatter_single"].set(offsets=np.vstack((n_data, [0,0])), color=colors, sizes=sizes)
+            # Plot heading of estimated neighbors
+            if len(neighbors) > 0:
+                n_data2 = np.vstack([n.get_state()[3,0:2] for n in neighbors])
+                self.artists["quiver_n"] = self.ax[3].quiver(n_data[:,0],n_data[:,1],n_data2[:,0],n_data2[:,1],width=0.005, animated=True)
+            # Plot heading of the selected drone
+            scale = self.viewing_radius / 5.0
+            self.artists["arrow_single"] = self.ax[3].arrow(0, 0, swarm_states[selected_drone,-3], swarm_states[selected_drone,-2], width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='g', ec='g')
+            # Plot swarm
+            self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone])
+        except:
+            pass
         return self.artists.values()
     
     def stop(self):

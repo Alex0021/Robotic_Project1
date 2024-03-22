@@ -40,28 +40,30 @@ class myApp(tk.Frame):
         #==================================#
         try:
             with open(CONFIG_FILENAME) as f:
-                config = json.load(f)
+                self.app_config = json.load(f)
         except FileNotFoundError:
-            config = {}
+            self.app_config = {}
         # Initialize app variables with json values or defaults
-        self.var_drone_count = tk.IntVar(value=config.get('drone_count', DEFAULT_NB_DRONES))
-        self.var_neighbor_count = tk.IntVar(value=config.get('neighbor_count', DEFAULT_NB_DRONES-1))
-        self.var_swarm_spread = tk.DoubleVar(value=config.get('swarm_spread', 1.0))
-        self.var_noise_pos = tk.DoubleVar(value=config.get('noise_pos', 0.025))
-        self.var_noise_orient = tk.DoubleVar(value=config.get('noise_orient', 0.025))
-        self.var_noise_heading = tk.DoubleVar(value=config.get('noise_heading', 0.0))
-        self.var_delta = tk.DoubleVar(value=config.get('delta', 0.0))
-        self.var_coh = tk.DoubleVar(value=config.get('r_coh', 0.0))
-        self.var_vref = tk.DoubleVar(value=config.get('vref', 0.0))
-        self.var_a = tk.DoubleVar(value=config.get('a', 0.0))
-        self.var_b = tk.DoubleVar(value=config.get('b', 0.0))
-        self.var_c = tk.DoubleVar(value=config.get('c', 0.0))
-        self.var_z_offset = tk.DoubleVar(value=config.get('z_offset', 10.0))
-        self.var_target = tk.StringVar(value='')
-        self.var_neighbor_sampling = tk.IntVar(value=config.get('neighbor_sampling', 1))
-        self.spawn_box = config.get('spawn_box', [0,0,10,5,5,5])
-        self.cmd_yaw = config.get('cmd_yaw', 0.5)
-        self.cmd_vel = config.get('cmd_vel', 0.5)
+        self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', DEFAULT_NB_DRONES))
+        self.var_neighbor_count = tk.IntVar(value=self.app_config['neighbors'].get('count', DEFAULT_NB_DRONES-1))
+        self.var_neighbor_radius = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
+        self.var_neighbor_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
+        self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
+        self.var_noise_pos = tk.DoubleVar(value=self.app_config.get('noise_pos', 0.025))
+        self.var_noise_orient = tk.DoubleVar(value=self.app_config.get('noise_orient', 0.025))
+        self.var_noise_heading = tk.DoubleVar(value=self.app_config.get('noise_heading', 0.0))
+        self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
+        self.var_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
+        self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
+        self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
+        self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
+        self.var_c = tk.DoubleVar(value=self.app_config.get('c', 0.0))
+        self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
+        self.var_agent = tk.StringVar(value='')
+        self.var_neighbor_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
+        self.spawn_box = self.app_config.get('spawn_box', [0,0,10,5,5,5])
+        self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
+        self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
 
         #==================================#
         # APP VARIABLES TRACKING  #
@@ -78,6 +80,8 @@ class myApp(tk.Frame):
         self.var_noise_orient.trace_add('write', self.noise_changed_callback)
         self.var_noise_heading.trace_add('write', self.noise_changed_callback)
         self.var_neighbor_sampling.trace_add('write', self._set_neighbors_algo_params)
+        self.var_neighbor_radius.trace_add('write', self._set_neighbors_algo_params)
+        self.var_neighbor_r_agent.trace_add('write', self._set_neighbors_algo_params)
         #==================================#
         #       APP INITIALIZATION         #
         #==================================#
@@ -133,20 +137,23 @@ class myApp(tk.Frame):
         # Neighbors
         self.panel_neighbors = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
         self.panel_neighbors.grid(column=0, row=1, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=5)
-        self.panel_neighbors.grid_columnconfigure((0,1,2,3,4), weight=1)
+        self.panel_neighbors.grid_columnconfigure((0,1,2,3,4,5), weight=1)
         self.panel_neighbors.grid_rowconfigure(0, weight=1)
         self.label_neighbors = ttk.Label(self.panel_neighbors, anchor='w', text="Neighbors: ")
         self.label_neighbors.grid(column=0,row=0, sticky='NEWS')
         self.listbox_neighbors_algo = ttk.Combobox(self.panel_neighbors, values=["Eucledian", "Topological", "Voronoi", "Visual LoS"])
-        self.listbox_neighbors_algo.set("Topological")
+        self.listbox_neighbors_algo.set(self.app_config['neighbors'].get('metric', 'Topological'))
         self.listbox_neighbors_algo.grid(row=0,column=1,sticky='we', padx=5)
-        self.listbox_neighbors_algo.bind("<<ComboboxSelected>>", lambda e: self._set_neighbors_algo_params())
+        self.listbox_neighbors_algo.bind("<<ComboboxSelected>>", lambda e: self._update_neighbors_panel_components())
         self.label_neighbors_algo_param = ttk.Label(self.panel_neighbors, anchor='e', text="# ")
         self.label_neighbors_algo_param.grid(column=2,row=0,sticky='NEWS')
-        self.spinner_neighbors = ttk.Spinbox(self.panel_neighbors, increment=1,from_=0, to=self.var_drone_count.get(), textvariable=self.var_neighbor_count)
+        self.spinner_neighbors = ttk.Spinbox(self.panel_neighbors, increment=1,from_=0, to=self.var_drone_count.get()-1, textvariable=self.var_neighbor_count)
         self.spinner_neighbors.grid(row=0,column=3,sticky='w', padx=5)
-        self.btn_apply_all_neighbors = ttk.Button(self.panel_neighbors, text="Apply to all", command=lambda e: self._set_neighbors_algo_params(apply_to_all=True))
-        self.btn_apply_all_neighbors.grid(row=0,column=4,sticky='wens', padx=5, pady=10)
+        self.label_spinner_r_agent = ttk.Label(self.panel_neighbors, anchor='e', text="r_agent: ")
+        self.spinner_r_agent = ttk.Spinbox(self.panel_neighbors, increment=0.01, from_=0, to=1, textvariable=self.var_neighbor_r_agent)
+        # Disable all components in the neighbors panel
+        for child in self.panel_neighbors.winfo_children():
+            child.config(state='disabled')
 
         # Swarm spread
         self.label_swarm_spread = ttk.Label(self.panel_params, anchor='w', text="Swarm spread (r): ")
@@ -210,6 +217,8 @@ class myApp(tk.Frame):
         self.listbox_noise_type.set("None")
         self.listbox_noise_type.grid(column=1,row=0, sticky='we', padx=5)
         self.listbox_noise_type.bind("<<ComboboxSelected>>", lambda e: self.noise_changed_callback())
+        self.btn_apply_noise_all = ttk.Button(self.pnael_noise, text="Apply to all", command=self.btn_apply_all_callback)
+        self.btn_apply_noise_all.grid(column=3,row=0, columnspan=2, sticky='NEWS', pady=10)
         self.label_noise_pos = ttk.Label(self.pnael_noise, anchor='e', text="Dist:", justify='right')
         self.label_noise_pos.grid(column=0,row=1, sticky='NEWS')
         self.spinner_noise_pos = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_pos)
@@ -226,7 +235,7 @@ class myApp(tk.Frame):
         # Target
         self.label_target = ttk.Label(self.panel_params, anchor='w', text="Target: ")
         self.label_target.grid(column=0,row=8, sticky='NEWS')
-        self.textbox_target = ttk.Entry(self.panel_params, textvariable=self.var_target, font=font.Font(size=10))
+        self.textbox_target = ttk.Entry(self.panel_params, textvariable=self.var_agent, font=font.Font(size=10))
         self.textbox_target.grid(column=1, row=8, sticky='WE', padx=5)
         self.label_target_format = ttk.Label(self.panel_params, anchor='w', text="(#.#;#.#;#.#) or empty", justify='left', font=font.Font(size=10))
         self.label_target_format.grid(column=2,row=8, sticky='NEWS')
@@ -268,7 +277,7 @@ class myApp(tk.Frame):
         self.spinner_neighbor_sampling = ttk.Spinbox(self.panel_sim_neighbors, increment=1, from_=1, to=100, textvariable=self.var_neighbor_sampling)
         self.spinner_neighbor_sampling.grid(column=1, row=0, sticky='W', padx=5)
         self.listbox_neighbors_select = ttk.Combobox(self.panel_sim_neighbors, values=["None", "Selected", "All"])
-        self.listbox_neighbors_select.set("None")
+        self.listbox_neighbors_select.set(self.app_config['neighbors'].get('computation', 'None'))
         self.listbox_neighbors_select.bind("<<ComboboxSelected>>", lambda e: self._set_neighbors_algo_params())
         self.listbox_neighbors_select.grid(column=2, row=0, sticky='WE', padx=5)
 
@@ -280,12 +289,11 @@ class myApp(tk.Frame):
     def _initialize_simulation(self):
         # Retrieve all necessary parameters from app widgets
         nb_drones = self.var_drone_count.get()
-        swarm_spread = self.slider_spread.get()
         noise = {'type': self.listbox_noise_type.get(), 'param_pos': self.var_noise_pos.get(), 'param_heading': self.var_noise_orient.get()}
-        if self.var_target.get() == '':
+        if self.var_agent.get() == '':
             target = None
         else:
-            target_numbers = self.var_target.get().split(';')
+            target_numbers = self.var_agent.get().split(';')
             target = np.asarray(target_numbers, dtype=float)
 
         self.swarm = Swarm(count=nb_drones, box=self.spawn_box, noise=noise, migration_point=target)
@@ -305,6 +313,10 @@ class myApp(tk.Frame):
         self.btn_2D_view.config(state='normal')
         self.btn_simulate.config(state='normal')
         self.btn_center.config(state='normal')
+        # Enable all components in the neighbors panel
+        for child in self.panel_neighbors.winfo_children():
+            child.config(state='normal')
+        self._update_neighbors_panel_components()
 
     def _set_swarm_algo_params(self, *args):
         if self.swarm is None:
@@ -322,7 +334,38 @@ class myApp(tk.Frame):
         except Exception as e:
             print("Error setting swarm algo params: {0}".format(e))
 
-    def _set_neighbors_algo_params(self, apply_to_all=False, *args):
+    def _update_neighbors_panel_components(self):
+        current_algo = self.listbox_neighbors_algo.get()
+        self.spinner_neighbors.config(state='normal')
+        if self.label_spinner_r_agent in self.panel_neighbors.winfo_children():
+            self.label_spinner_r_agent.grid_forget()
+            self.spinner_r_agent.grid_forget()
+        match current_algo:
+            case 'Eucledian':
+                self.label_neighbors_algo_param.config(text="radius")
+                default_val = self.app_config['neighbors'].get('sensing_range', 1.0)
+                current_val = self.swarm.get_neighbor_metric('sensing_range', default_val)
+                self.var_neighbor_radius.set(current_val)
+                self.spinner_neighbors.config(from_=0, to=100, increment=0.1, textvariable=self.var_neighbor_radius)
+            case 'Topological':
+                self.label_neighbors_algo_param.config(text="# ")
+                default_val = self.app_config['neighbors'].get('count', 1)
+                current_val = self.swarm.get_neighbor_metric('count', default_val)
+                self.var_neighbor_count.set(current_val)
+                self.spinner_neighbors.config(from_=0, to=self.var_drone_count.get()-1, increment=1, textvariable=self.var_neighbor_count)
+            case 'Voronoi':
+                self.label_neighbors_algo_param.config(text="")
+                self.spinner_neighbors.config(state='disabled')
+            case 'Visual LoS':
+                self.label_neighbors_algo_param.config(text="radius ")
+                default_val = self.app_config['neighbors'].get('sensing_range', 1.0)
+                self.var_neighbor_radius.set(self.swarm.get_neighbor_metric('sensing_range', default_val))
+                self.spinner_neighbors.config(from_=0, to=100, increment=0.1, textvariable=self.var_neighbor_radius)
+                self.label_spinner_r_agent.grid(column=4,row=0,sticky='NEWS')
+                self.spinner_r_agent.grid(column=5,row=0,sticky='W')
+        self._set_neighbors_algo_params()
+    
+    def _set_neighbors_algo_params(self, *args):
         if self.swarm is None:
             return
         try:
@@ -330,8 +373,10 @@ class myApp(tk.Frame):
                 'computation': self.listbox_neighbors_select.get(),
                 'metric': self.listbox_neighbors_algo.get(),
                 'sampling': self.var_neighbor_sampling.get(),
-                'metric_specific': {'nb_neighbors': self.var_neighbor_count.get()}
-            }, apply_to_all)
+                'count' : self.var_neighbor_count.get(),
+                'sensing_range': self.var_neighbor_radius.get(),
+                'r_agent': self.var_neighbor_r_agent.get()
+            })
         except Exception as e:
             print("Error setting neighbors algo params: {0}".format(e))
 
@@ -342,6 +387,9 @@ class myApp(tk.Frame):
         self.btn_center.config(state='disabled')
         self.btn_simulate.config(state='disabled')
         self.btn_2D_view.config(state='disabled')
+        # Disable all components in the neighbors panel
+        for child in self.panel_neighbors.winfo_children():
+            child.config(state='disabled')
         try:
             self.sim.stop()
             self.sim = None
@@ -372,8 +420,12 @@ class myApp(tk.Frame):
             self.window_2d.title("2D Swarm viewer")
             self.window_2d.geometry('1000x800')
             self.renderer2D = Renderer2D(self.window_2d, self.swarm)
+            self.window_2d.bind("<KeyPress>", self.key_press_callback)
+            self.window_2d.bind("<KeyRelease>", self.key_release_callback)
         self.window_2d.deiconify()
 
+    def btn_apply_all_callback(self):
+        pass
 
     def noise_changed_callback(self, *args):
         if self.listbox_noise_type.get() == 'None':
@@ -409,6 +461,10 @@ class myApp(tk.Frame):
                 target_vel[1] = self.var_vref.get()
             case 'd':
                 target_vel[1] = -self.var_vref.get()
+            case 'Q':
+                target_vel[2] = self.cmd_vel
+            case 'E':
+                target_vel[2] = -self.cmd_vel
         self.swarm.set_cmd_velocity(target_vel)   
 
 
@@ -417,18 +473,14 @@ class myApp(tk.Frame):
             return
         target_vel = self.swarm.get_cmd_velocity()
         match event.char:
-            case 'q':
+            case 'q' | 'e':
                 self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,0.0]))
-            case 'e':
-                self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,0.0]))
-            case 'w':
+            case 'w' | 's':
                 target_vel[0] = 0
-            case 's':
-                target_vel[0] = 0
-            case 'a':
+            case 'a' | 'd':
                 target_vel[1] = 0
-            case 'd':
-                target_vel[1] = 0
+            case 'Q' | 'E':
+                target_vel[2] = 0
         self.swarm.set_cmd_velocity(target_vel)    
 
     def app_closing(self):

@@ -52,10 +52,10 @@ class Drone:
             case "Eucledian":
                 sensing_range = metric_data.get('sensing_range', DEFAULT_RANGE_SENSING)
                 distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
-                indices = np.nonzero(distances < sensing_range)
+                indices = np.nonzero(distances < sensing_range)[0]
                 self.neighbors = [DroneNeighbor(i, distances[j], (members[i].pos - self.pos) / distances[j], members[i].angles) for i,j in zip(poss_neighbors[indices], indices)]
             case "Topological":
-                nb = metric_data.get('nb_neighbors', DEFAULT_NB_NEIGHBORS)
+                nb = metric_data.get('count', DEFAULT_NB_NEIGHBORS)
                 distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
                 indices = np.argsort(distances)[:nb]
                 self.neighbors = [DroneNeighbor(i, self._apply_noise(distances[j], noise, 'param_pos'), 
@@ -74,8 +74,8 @@ class Drone:
                 r_agent = metric_data.get('r_agent', 0.05)
                 # Keep neighbors that are within the sensing range
                 distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
-                distances = distances[distances < sensing_range]
                 poss_neighbors = poss_neighbors[distances < sensing_range]
+                distances = distances[distances < sensing_range]
                 # Get headings and distances to all neighbors
                 headings = np.array([(members[i].pos - self.pos)/distances[j] for i,j in zip(poss_neighbors, range(len(poss_neighbors)))])
                 indices = np.argsort(distances)
@@ -84,7 +84,7 @@ class Drone:
                     n_index = poss_neighbors[indices[0]]
                     self.neighbors.append(DroneNeighbor(n_index, self._apply_noise(distances[indices[0]], noise, 'param_pos'), 
                                                         self._apply_noise(headings[indices[0]], noise, 'param_pos'), 
-                                                        self._apply_noise(members[n_index].angles), noise, 'param_heading'))
+                                                        self._apply_noise(members[n_index].angles, noise, 'param_heading')))
                     # Check if the neighbor is within the field of view
                     d_ij = distances[indices[0]]
                     u_ij = headings[indices[0]]

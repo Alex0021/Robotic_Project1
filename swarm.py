@@ -19,11 +19,10 @@ class Swarm():
         if count == 1:
             self.members.append(Drone(init_pos=box[0:3]))
         else:
-            for _ in range(count):
-                x = box[0] + box[3]*(np.random.rand()-0.5)
-                y = box[1] + box[4]*(np.random.rand()-0.5)
-                z = box[2] + box[5]*(np.random.rand()-0.5)
-                self.members.append(Drone(init_pos=[x,y,z], init_angles=[0,0,0]))
+            box = np.array(box)
+            pos = np.random.uniform(box[0:3] - box[3:6]/2, box[0:3] + box[3:6]/2, size=(count,3))
+            for p in pos:
+                self.members.append(Drone(init_pos=p, init_angles=[0,0,0]))
         print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
 
         # Intitialize optional parameters
@@ -33,7 +32,7 @@ class Swarm():
             self.noise = kwargs['noise']
         if 'algo_params' in kwargs:
             self.algo_params = kwargs['algo_params']
-        self.neighbors_metric = kwargs.get('neighbors_metric', {'computation':'None', 'metric': 'Eucledian', 'sampling': 1, 'metric_specific': {}})
+        self.neighbors_params = kwargs.get('neighbors_metric', {'computation':'None', 'metric': 'Eucledian', 'sampling': 1})
         
     def update(self, dt, new_acc):
         for m in self.members:
@@ -47,13 +46,16 @@ class Swarm():
         # Increment the update counter (used for different purposes, e.g. sampling the computation of the neighborhood metric)
         self.update_counter += 1
         # Compute each drone neighborhood
-        computation_method = self.neighbors_metric.get('computation', 'None')
-        if computation_method != 'None':
-            if (self.update_counter % self.neighbors_metric.get('sampling', 1)) == 0:
+        computation_method = self.neighbors_params.get('computation', 'None')
+        if computation_method == 'None':
+            # Clear all neighbors44
+            for m in self.members:
+                m.neighbors = []
+        else:
+            if (self.update_counter % self.neighbors_params.get('sampling', 1)) == 0:
                 # Only execute the computation every N steps
-                metric = self.neighbors_metric.get('metric', 'Eucledian')
-                metric_data = self.neighbors_metric.get('metric_specific', {})
-                self.compute_neighborhood(metric, metric_data, computation_method)
+                metric = self.neighbors_params.get('metric', 'Eucledian')
+                self.compute_neighborhood(metric, self.neighbors_params, computation_method)
 
     def set_cmd_velocity(self, v_ref):
         self.algo_params['v_ref'] = v_ref
@@ -61,8 +63,14 @@ class Swarm():
     def get_cmd_velocity(self):
         return self.algo_params.get('v_ref', np.zeros(3))
     
-    def update_neighbors_metric(self, new_params, apply_to_all):
-        self.neighbors_metric.update(new_params)
+    def update_neighbors_metric(self, new_params):
+        self.neighbors_params.update(new_params)
+
+    def get_neighbor_metric(self, metric, default_val):
+        if metric in self.neighbors_params:
+            return self.neighbors_params[metric]
+        else:
+            return default_val
 
     def set_cmd_ang_rates(self, rates):
         if not np.all(rates == self.ang_rates):
