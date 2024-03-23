@@ -28,8 +28,6 @@ class Swarm():
         # Intitialize optional parameters
         if 'migration_point' in kwargs:
             self.migration_point = kwargs['migration_point']
-        if 'noise' in kwargs:
-            self.noise = kwargs['noise']
         if 'algo_params' in kwargs:
             self.algo_params = kwargs['algo_params']
         self.neighbors_params = kwargs.get('neighbors_metric', {'computation':'None', 'metric': 'Eucledian', 'sampling': 1})
@@ -46,16 +44,7 @@ class Swarm():
         # Increment the update counter (used for different purposes, e.g. sampling the computation of the neighborhood metric)
         self.update_counter += 1
         # Compute each drone neighborhood
-        computation_method = self.neighbors_params.get('computation', 'None')
-        if computation_method == 'None':
-            # Clear all neighbors44
-            for m in self.members:
-                m.neighbors = []
-        else:
-            if (self.update_counter % self.neighbors_params.get('sampling', 1)) == 0:
-                # Only execute the computation every N steps
-                metric = self.neighbors_params.get('metric', 'Eucledian')
-                self.compute_neighborhood(metric, self.neighbors_params, computation_method)
+        self.compute_neighborhood()
 
     def set_cmd_velocity(self, v_ref):
         self.algo_params['v_ref'] = v_ref
@@ -77,7 +66,7 @@ class Swarm():
             #print("Setting angular rates to: {0}".format(rates))
             self.ang_rates = rates
 
-    def set_noise(self, type: str, param_pos:float, param_heading:float):
+    def set_noise(self, type: str, param_dist:float, param_dir: float, param_heading:float, apply_all=False):
         """ Setting the noise to sample when estimating the neigborhood of each drone.
 
         Args:
@@ -85,7 +74,14 @@ class Swarm():
             param_pos (float): Noise in position (computed based on distance and direction to neighbor) eg. sigma
             param_heading (float): Noise in heading (added to true heading of neighbor)
         """
-        self.noise = {'type': type, 'param_pos': param_pos, 'param_heading': param_heading}
+        if apply_all:
+            for m in self.members:
+                m.set_noise(type, param_dist, param_dir, param_heading)
+        else:
+            self.members[self.selected_drone].set_noise(type, param_dist, param_dir, param_heading)
+
+    def get_noise(self):
+        return self.members[self.selected_drone].noise
 
     def get_neighbors(self, d:Drone, metric='Olfati-Saber') -> list[Drone]:
         '''
@@ -100,17 +96,21 @@ class Swarm():
             case _:
                 return list()
     
-    def compute_neighborhood(self, metric, metric_data=dict(), computation_method='Selected'):
+    def compute_neighborhood(self):
+        computation_method = self.neighbors_params.get('computation', 'None')
+        metric = self.neighbors_params.get('metric', 'Eucledian')
         if computation_method == 'Selected':
-            self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.noise, metric_data)
+            self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.neighbors_params)
         elif computation_method == 'All':
             for m in self.members:
-                m.compute_neihgborhood(self.members, metric, self.noise, metric_data)
+                m.compute_neihgborhood(self.members, metric, self.neighbors_params)
                 if metric == "Voronoi":
                     break
                     # only one drone needs to compute the voronoi neighbors
         else:
-            pass
+            # clear all neighbors
+            for m in self.members:
+                m.neighbors = []
 
     def initialize_random_vel(self, bounds):
         for m in self.members:

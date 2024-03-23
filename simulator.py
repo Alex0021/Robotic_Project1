@@ -36,5 +36,8 @@ class Simulator():
     def pause(self):
         self._paused = True
 
+    def paused(self):
+        return self._paused
+
     def single_step(self):
         self._step = True

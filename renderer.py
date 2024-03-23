@@ -14,7 +14,9 @@ plt.rcParams['keymap.save'] = 'ctrl+s'
 PLOT_AXIS_MARGIN = 1.2
 
 class RendererDara:
-    axis_limits = np.array([[-5,5], [-5,5], [5,15]])
+    axis_limits = np.array([[-5,5], [-5,5], [5,15]], dtype=np.float64)
+    viewing_radius = 5
+    axis_limits_single = np.array([[-viewing_radius,viewing_radius], [-viewing_radius,viewing_radius]], dtype=np.float64)
 
 class Renderer():
     def __init__(self, panel:tk.Frame, swarm:Swarm):
@@ -52,13 +54,16 @@ class Renderer():
         try:
             min_x, max_x = np.min(self.data[:,0]), np.max(self.data[:,0])
             min_y, max_y = np.min(self.data[:,1]), np.max(self.data[:,1])
+            min_z, max_z = np.min(self.data[:,2]), np.max(self.data[:,2])
 
             center_x = (max_x + min_x) / 2
             center_y = (max_y + min_y) / 2
+            center_z = (max_z + min_z) / 2
 
-            max_diff = max(abs(max_x - center_x), abs(max_y - center_y)) * PLOT_AXIS_MARGIN
-            RendererDara.axis_limits[0] = np.array([center_x - max_diff,center_x + max_diff])
-            RendererDara.axis_limits[1] = np.array([center_y - max_diff, center_y + max_diff])
+            max_diff = max(abs(max_x - center_x), abs(max_y - center_y), abs(max_z - center_z)) * PLOT_AXIS_MARGIN
+            RendererDara.axis_limits[0] = [center_x - max_diff,center_x + max_diff]
+            RendererDara.axis_limits[1] = [center_y - max_diff, center_y + max_diff]
+            RendererDara.axis_limits[2] = [center_z - max_diff, center_z + max_diff]
         except:
             return
 
@@ -106,7 +111,11 @@ class Renderer():
 
         print("Selected drone: {0}".format(index[0]))
         self._swarm_ref.selected_drone = index[0]
-
+        # Update main app noise panel
+        try:
+            self.master.master.drone_selection_changed()
+        except:
+            pass
 
 
 class Renderer2D():
@@ -154,11 +163,12 @@ class Renderer2D():
 
     def update_viewing_radius(self, val):
         self.viewing_radius = val
-        RendererDara.axis_limits = np.array([[-self.viewing_radius,self.viewing_radius], [-self.viewing_radius,self.viewing_radius], [5,15]])
+        RendererDara.axis_limits_single = np.array([[-self.viewing_radius,self.viewing_radius], [-self.viewing_radius,self.viewing_radius]])
         self.init_plots()
 
     def init_plots(self):
         # XY plot
+        #self.ax[0].clear()
         self.ax[0].set_xlabel("x")
         self.ax[0].set_ylabel("y")
         self.ax[0].set_xlim(RendererDara.axis_limits[0])
@@ -179,8 +189,8 @@ class Renderer2D():
         # Single plot
         self.ax[3].set_xlabel("x")
         self.ax[3].set_ylabel("y")
-        self.ax[3].set_xlim(RendererDara.axis_limits[0])
-        self.ax[3].set_ylim(RendererDara.axis_limits[1])
+        self.ax[3].set_xlim(RendererDara.axis_limits_single[0])
+        self.ax[3].set_ylim(RendererDara.axis_limits_single[1])
         self.ax[3].set_title("Single Drone View")
 
         return self.artists.values()
@@ -239,8 +249,8 @@ class Renderer2D():
             self.artists["arrow_single"] = self.ax[3].arrow(0, 0, swarm_states[selected_drone,-3], swarm_states[selected_drone,-2], width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='g', ec='g')
             # Plot swarm
             self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone])
-        except:
-            pass
+        except Exception as e:
+            print(e)
         return self.artists.values()
     
     def stop(self):
@@ -259,6 +269,10 @@ class Renderer2D():
                 index[0] += 1
         print("Selected drone: {0}".format(index[0]))
         self._swarm_ref.selected_drone = index[0]
+        try:
+            self.master.drone_selection_changed()
+        except:
+            pass
             
 def main():
     root = tk.Tk()

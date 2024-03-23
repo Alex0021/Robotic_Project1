@@ -13,7 +13,6 @@ from simulator import Simulator
 import json
 
 w,h = (1600,800)
-DEFAULT_NB_DRONES = 10
 CONFIG_FILENAME = 'app_config.json'
 
 
@@ -31,8 +30,10 @@ class myApp(tk.Frame):
         self.mainframe.grid_columnconfigure(0, weight=1)
         self.mainframe.grid_columnconfigure(1, weight=3)
         self.mainframe.grid_rowconfigure(0,weight=1)
+        self.mainframe.drone_selection_changed = self.drone_selection_changed
 
         self.window_2d = None
+        self.renderer2D = None
         self.swarm = None
 
         #==================================#
@@ -44,14 +45,14 @@ class myApp(tk.Frame):
         except FileNotFoundError:
             self.app_config = {}
         # Initialize app variables with json values or defaults
-        self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', DEFAULT_NB_DRONES))
-        self.var_neighbor_count = tk.IntVar(value=self.app_config['neighbors'].get('count', DEFAULT_NB_DRONES-1))
+        self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', 10))
+        self.var_neighbor_count = tk.IntVar(value=self.app_config['neighbors'].get('count', 1))
         self.var_neighbor_radius = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
         self.var_neighbor_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
         self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
-        self.var_noise_pos = tk.DoubleVar(value=self.app_config.get('noise_pos', 0.025))
-        self.var_noise_orient = tk.DoubleVar(value=self.app_config.get('noise_orient', 0.025))
-        self.var_noise_heading = tk.DoubleVar(value=self.app_config.get('noise_heading', 0.0))
+        self.var_noise_pos = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
+        self.var_noise_orient = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.05))
+        self.var_noise_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
         self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
         self.var_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
         self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
@@ -214,7 +215,7 @@ class myApp(tk.Frame):
         self.label_noise = ttk.Label(self.pnael_noise, anchor='w', text="Noise: ")
         self.label_noise.grid(column=0,row=0, sticky='NEWS')
         self.listbox_noise_type = ttk.Combobox(self.pnael_noise, values=["None", "Uniform", "Gaussian"])
-        self.listbox_noise_type.set("None")
+        self.listbox_noise_type.set(self.app_config['noise'].get('type', 'None'))
         self.listbox_noise_type.grid(column=1,row=0, sticky='we', padx=5)
         self.listbox_noise_type.bind("<<ComboboxSelected>>", lambda e: self.noise_changed_callback())
         self.btn_apply_noise_all = ttk.Button(self.pnael_noise, text="Apply to all", command=self.btn_apply_all_callback)
@@ -296,7 +297,7 @@ class myApp(tk.Frame):
             target_numbers = self.var_agent.get().split(';')
             target = np.asarray(target_numbers, dtype=float)
 
-        self.swarm = Swarm(count=nb_drones, box=self.spawn_box, noise=noise, migration_point=target)
+        self.swarm = Swarm(count=nb_drones, box=self.spawn_box, migration_point=target)
         #self.swarm.initialize_random_vel([0.1, 0.5, -0.3, 0.3, 0, 0.2])
         self._set_neighbors_algo_params()
         self._set_swarm_algo_params()
@@ -317,6 +318,7 @@ class myApp(tk.Frame):
         for child in self.panel_neighbors.winfo_children():
             child.config(state='normal')
         self._update_neighbors_panel_components()
+        self.noise_changed_callback()
 
     def _set_swarm_algo_params(self, *args):
         if self.swarm is None:
@@ -377,8 +379,37 @@ class myApp(tk.Frame):
                 'sensing_range': self.var_neighbor_radius.get(),
                 'r_agent': self.var_neighbor_r_agent.get()
             })
+            if self.sim.paused():
+                self.swarm.compute_neighborhood()
         except Exception as e:
             print("Error setting neighbors algo params: {0}".format(e))
+
+    def noise_changed_callback(self, *args):
+        if self.listbox_noise_type.get() == 'None':
+            self.spinner_noise_pos.config(state='disabled')
+            self.spinner_noise_orient.config(state='disabled')
+            self.spinner_noise_heading.config(state='disabled')
+        else:
+            self.spinner_noise_pos.config(state='normal')
+            self.spinner_noise_orient.config(state='normal')
+            self.spinner_noise_heading.config(state='normal')
+        if self.swarm is None:
+            return
+        try:
+            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_pos.get(), self.var_noise_orient.get(), self.var_noise_heading.get())
+            print('Noise parameters changed: {0}'.format(self.swarm.get_noise()))
+        except Exception as e:
+            print("Error setting noise: {0}".format(e))
+
+    def drone_selection_changed(self, *args):
+        # Update neighbors
+        self.swarm.compute_neighborhood()
+        # Query noise parameters
+        noise = self.swarm.get_noise()
+        self.listbox_noise_type.set(noise.get('type', 'None'))
+        self.var_noise_pos.set(noise.get('param_dist', self.app_config['noise'].get('param_dist', 0.05)))
+        self.var_noise_orient.set(noise.get('param_dir', self.app_config['noise'].get('param_dir', 0.05)))
+        self.var_noise_heading.set(noise.get('param_heading', self.app_config['noise'].get('param_heading', 0.0)))
 
     def _button_reset_callback(self):
         self.renderer.reset()
@@ -408,7 +439,9 @@ class myApp(tk.Frame):
 
     def _btn_center_callback(self):
         self.renderer.center_plot_data()
-
+        #if self.renderer2D is not None:
+            #self.renderer2D.init_plots()
+        
     def btn_step_callback(self):
         self.sim.step()
 
@@ -422,28 +455,16 @@ class myApp(tk.Frame):
             self.renderer2D = Renderer2D(self.window_2d, self.swarm)
             self.window_2d.bind("<KeyPress>", self.key_press_callback)
             self.window_2d.bind("<KeyRelease>", self.key_release_callback)
+            self.window_2d.drone_selection_changed = self.drone_selection_changed
         self.window_2d.deiconify()
 
     def btn_apply_all_callback(self):
-        pass
-
-    def noise_changed_callback(self, *args):
-        if self.listbox_noise_type.get() == 'None':
-            self.spinner_noise_pos.config(state='disabled')
-            self.spinner_noise_orient.config(state='disabled')
-            self.spinner_noise_heading.config(state='disabled')
-        else:
-            self.spinner_noise_pos.config(state='normal')
-            self.spinner_noise_orient.config(state='normal')
-            self.spinner_noise_heading.config(state='normal')
-        if self.swarm is None:
-            return
         try:
-            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_pos.get(), self.var_noise_orient.get())
-            print('Noise parameters changed: {0}'.format(self.swarm.noise))
+            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_pos.get(), self.var_noise_orient.get(), self.var_noise_heading.get(), apply_all=True)
+            print('Noise parameters changed for ALL: {0}'.format(self.swarm.get_noise()))
         except Exception as e:
             print("Error setting noise: {0}".format(e))
-
+    
     def key_press_callback(self, event):
         if self.swarm is None:
             return

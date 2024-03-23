@@ -24,5 +24,11 @@
         "r_agent": 0.01,
         "metric": "Visual LoS",
         "computation": "Selected"
+    },
+    "noise": {
+        "type": "None",
+        "param_dist": 0.05,
+        "param_dir" : 0.05,
+        "param_heading": 0.0
     }
 }
