@@ -44,7 +44,8 @@ class Swarm():
         # Increment the update counter (used for different purposes, e.g. sampling the computation of the neighborhood metric)
         self.update_counter += 1
         # Compute each drone neighborhood
-        self.compute_neighborhood()
+        if self.update_counter % self.neighbors_params.get('sampling', 1) == 0:
+            self.compute_neighborhood()
 
     def set_cmd_velocity(self, v_ref):
         self.algo_params['v_ref'] = v_ref

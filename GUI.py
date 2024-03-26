@@ -98,12 +98,23 @@ class myApp(tk.Frame):
         #self.panel_view.grid_rowconfigure(0,weight=1)
         self.panel_view.grid(column=1,row=0,sticky='NWES')
 
+        # Creating app tabs
+        self.tabbed_pane = ttk.Notebook(self.mainframe)
+        self.tabbed_pane.grid(column=0,row=0,sticky='NWES')
+
+        # Panel global params
         self.panel_sidebar = tk.Frame(self.mainframe, bg='lightgray')
         self.panel_sidebar.grid_columnconfigure(0,weight=1)
         self.panel_sidebar.grid_rowconfigure(0,weight=1)
         self.panel_sidebar.grid_rowconfigure(1,weight=6)
         self.panel_sidebar.grid_rowconfigure(2,weight=4)
-        self.panel_sidebar.grid(column=0, row=0, sticky='NWES')
+        self.tabbed_pane.add(self.panel_sidebar, text='Swarm config')
+
+        # Panel alog params
+        self.panel_algo = tk.Frame(self.mainframe, bg='lightgray')
+        self.panel_algo.grid_columnconfigure((0,1,2),weight=1)
+        self.panel_algo.grid_rowconfigure((0,1,2),weight=1)
+        self.tabbed_pane.add(self.panel_algo, text='Algo params')
 
         # Subpabels of sidebar
         self.panel_title = tk.Frame(self.panel_sidebar, bg='darkslategray')

@@ -2,9 +2,12 @@ import numpy as np
 
 from olfati_saber import get_RB2W, get_W2B
 from scipy import spatial
+from controllers import PdController
 
 DEFAULT_RANGE_SENSING = 2.0
 DEFAULT_NB_NEIGHBORS = 3
+KP_GAIN = 1.0
+KD_GAIN = 0.1
 
 class Drone:
     '''
@@ -20,6 +23,8 @@ class Drone:
         self.mass = 1.0
         self.neighbors = list() # List of most recent neighbours (indices from swam.members list)
         self.noise = {'type': 'None'}
+        self.viewing_dir = np.array([1,0,0])
+        self.controller = PdController(KP_GAIN, KD_GAIN)
         
     def get_state(self):
         return np.vstack((self.pos, self.vel, self.acc, self.angles))
@@ -36,6 +41,11 @@ class Drone:
     def update(self, dt, new_acc, new_rates=np.zeros(3)):
         self.acc = get_RB2W(self.angles[0], self.angles[1], self.angles[2]) @ new_acc
         self.rates = new_rates
+
+        # if np.all(self.rates == 0):
+        #     # Apply PD controller to the angles
+        #     heading = self.get_heading()
+        #     self.rates = np.array([self.controller.get_control_from_orientation(heading[i:(i+1)%3], self.viewing_dir[i:(i+1)%3], dt) for i in range(3)])
         
         # Perform simple Euler forward integration
         self.vel += self.acc * dt
@@ -51,28 +61,29 @@ class Drone:
     def compute_neihgborhood(self, members: list["Drone"], metric, metric_data=dict()):
         index = members.index(self)
         poss_neighbors = np.array([i for i in range(len(members)) if i != index])
+        sampling = metric_data.get('sampling', 1)
         match metric:
             case "Eucledian":
                 sensing_range = metric_data.get('sensing_range', DEFAULT_RANGE_SENSING)
                 distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
                 indices = np.nonzero(distances < sensing_range)[0]
                 self.neighbors = [DroneNeighbor(i, 
-                                                self._apply_noise(distances[j], self.noise, 'param_dist'), 
-                                                self._apply_noise((members[i].pos - self.pos) / distances[j], self.noise, 'param_dir'), 
-                                                self._apply_noise(members[i].angles, self.noise, 'param_heading')) for i,j in zip(poss_neighbors[indices], indices)]
+                                                self._apply_noise(distances[j], self.noise, 'param_dist', sampling), 
+                                                self._apply_noise((members[i].pos - self.pos) / distances[j], self.noise, 'param_dir', sampling), 
+                                                self._apply_noise(members[i].angles, self.noise, 'param_heading', sampling)) for i,j in zip(poss_neighbors[indices], indices)]
             case "Topological":
                 nb = metric_data.get('count', DEFAULT_NB_NEIGHBORS)
                 distances = np.array([np.linalg.norm(members[i].pos - self.pos) for i in poss_neighbors])
                 indices = np.argsort(distances)[:nb]
-                self.neighbors = [DroneNeighbor(i, self._apply_noise(distances[j], self.noise, 'param_dist'), 
-                                                self._apply_noise((members[i].pos - self.pos) / distances[j], self.noise, 'param_dir'), 
-                                                self._apply_noise(members[i].angles, self.noise, 'param_heading')) for i,j in zip(poss_neighbors[indices], indices)]
+                self.neighbors = [DroneNeighbor(i, self._apply_noise(distances[j], self.noise, 'param_dist', sampling), 
+                                                self._apply_noise((members[i].pos - self.pos) / distances[j], self.noise, 'param_dir', sampling), 
+                                                self._apply_noise(members[i].angles, self.noise, 'param_heading', sampling)) for i,j in zip(poss_neighbors[indices], indices)]
             case "Voronoi":
                 # This should be called once on one of the drone only
                 points = np.array([members[i].pos for i in range(len(members))])
                 indptr_neig, neighbors = spatial.Delaunay(points, qhull_options="QJ").vertex_neighbor_vertices
                 for i in range(len(members)):
-                    members[i].neighbors = [DroneNeighbor(j, self._apply_noise(np.linalg.norm(members[j].pos - members[i].pos),self.noise, 'param_dist'), 
+                    members[i].neighbors = [DroneNeighbor(j, self._apply_noise(np.linalg.norm(members[j].pos - members[i].pos),self.noise, 'param_dist',sampling), 
                                                           self._apply_noise((members[j].pos - members[i].pos) / np.linalg.norm(members[j].pos - members[i].pos), self.noise, 'param_dir'), 
                                                           self._apply_noise(members[j].angles, self.noise, 'param_heading')) for j in neighbors[indptr_neig[i]:indptr_neig[i+1]]]
             case "Visual LoS":
@@ -88,9 +99,9 @@ class Drone:
                 self.neighbors = []
                 while len(indices) > 0:
                     n_index = poss_neighbors[indices[0]]
-                    self.neighbors.append(DroneNeighbor(n_index, self._apply_noise(distances[indices[0]], self.noise, 'param_dist'), 
-                                                        self._apply_noise(headings[indices[0]], self.noise, 'param_dir'), 
-                                                        self._apply_noise(members[n_index].angles, self.noise, 'param_heading')))
+                    self.neighbors.append(DroneNeighbor(n_index, self._apply_noise(distances[indices[0]], self.noise, 'param_dist',sampling), 
+                                                        self._apply_noise(headings[indices[0]], self.noise, 'param_dir',sampling), 
+                                                        self._apply_noise(members[n_index].angles, self.noise, 'param_heading',sampling)))
                     # Check if the neighbor is within the field of view
                     d_ij = distances[indices[0]]
                     u_ij = headings[indices[0]]
@@ -109,23 +120,23 @@ class Drone:
             case "TEST":
                 indices = np.random.choice(poss_neighbors, np.random.randint(0, len(poss_neighbors)))
                 for i in indices:
-                    dist = self._apply_noise(np.linalg.norm(members[i].pos - self.pos), self.noise, 'param_dist')
-                    dir = self._apply_noise(((members[i].pos - self.pos) / dist), self.noise, 'param_dir')
-                    angles = self._apply_noise(members[i].angles, self.noise, 'param_heading')
+                    dist = self._apply_noise(np.linalg.norm(members[i].pos - self.pos), self.noise, 'param_dist', sampling)
+                    dir = self._apply_noise(((members[i].pos - self.pos) / dist), self.noise, 'param_dir', sampling)
+                    angles = self._apply_noise(members[i].angles, self.noise, 'param_heading', sampling)
                     self.neighbors.append(DroneNeighbor(i, dist, dir, angles))
             case _:
                 self.neighbors = []
 
         return self.neighbors
     
-    def _apply_noise(self, value, noise, type):
+    def _apply_noise(self, value, noise, type, sampling=1):
         match noise['type']:
             case "None":
                 return value
             case "Gaussian":
-                return value + np.random.normal(0, noise[type])
+                return value + np.mean(np.random.normal(0, noise[type], sampling))
             case "Uniform":
-                return value + np.random.uniform(-noise[type], noise[type])
+                return value + np.mean(np.random.uniform(-noise[type], noise[type], sampling))
             case _:
                 return value
     
