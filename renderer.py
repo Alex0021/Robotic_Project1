@@ -217,6 +217,8 @@ class Renderer2D():
             # Plot the drones as points
             colors = ['#0000FFFF']*self._swarm_ref.count
             colors[selected_drone] = '#80ff00'
+            for n in neighbors:
+                    colors[n.drone_index] = '#ff0000ff'
             sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
             self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors, sizes=sizes)
             self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors, sizes=sizes)
