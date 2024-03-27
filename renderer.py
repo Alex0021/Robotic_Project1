@@ -12,6 +12,7 @@ plt.rcParams['keymap.quit'] = 'ctrl+w'
 plt.rcParams['keymap.save'] = 'ctrl+s'
 
 PLOT_AXIS_MARGIN = 1.2
+CONVERSION_FACTOR = 2226.3210499
 
 class RendererDara:
     axis_limits = np.array([[-5,5], [-5,5], [5,15]], dtype=np.float64)
@@ -81,7 +82,8 @@ class Renderer():
                     neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
                     if len(neighbors_id) > 0:
                         colors[neighbors_id] = '#ff0000ff'
-                self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=40, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=False)
+                sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
+                self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
                 # Plot the heading as arrows
                 self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
                 # Plot the migration point
@@ -89,6 +91,10 @@ class Renderer():
                     self.ax.plot(self._swarm_ref.migration_point[0], self._swarm_ref.migration_point[1], self._swarm_ref.migration_point[2],'r', marker='x', markersize=20)
             except Exception as e:
                 print(e)
+
+    def _get_size_in_points(self, size):
+        return size**2*CONVERSION_FACTOR
+
     def stop(self):
         self.ani.event_source.stop()
 
@@ -211,9 +217,10 @@ class Renderer2D():
             # Plot the drones as points
             colors = ['#0000FFFF']*self._swarm_ref.count
             colors[selected_drone] = '#80ff00'
-            self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors)
-            self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors)
-            self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3], color=colors)
+            sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
+            self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors, sizes=sizes)
+            self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors, sizes=sizes)
+            self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3], color=colors, sizes=sizes)
             # Plot the heading as arrows
             if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-2])))) > 0:
                 self.artists["quiver_xy"] = self.ax[0].quiver(swarm_states[:,0],swarm_states[:,1],swarm_states[:,-3],swarm_states[:,-2],width=0.005, animated=True)
@@ -233,7 +240,7 @@ class Renderer2D():
             self.artists["v_dashed"].set_data(r_points[0,2:4], r_points[1,2:4])
             colors = ['#FF0000A0']*(len(neighbors) + 1)
             colors[-1] = '#80ff00'
-            sizes = [60]*(len(neighbors) + 1)
+            sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*(len(neighbors) + 1)
             sizes[-1] = 150
             if len(neighbors) > 0:
                 n_data = np.vstack([n.get_state()[0,0:2] for n in neighbors])
@@ -248,11 +255,14 @@ class Renderer2D():
             scale = self.viewing_radius / 5.0
             self.artists["arrow_single"] = self.ax[3].arrow(0, 0, swarm_states[selected_drone,-3], swarm_states[selected_drone,-2], width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='g', ec='g')
             # Plot swarm
-            self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone])
+            self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone], sizes=sizes[:-1])
         except Exception as e:
             print(e)
         return self.artists.values()
     
+    def _get_size_in_points(self, size):
+        return size**2*CONVERSION_FACTOR
+
     def stop(self):
         self.fig.clear()
 

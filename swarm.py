@@ -15,6 +15,7 @@ class Swarm():
         self.ang_rates = np.zeros(3)
         self.selected_drone = 0
         self.update_counter = 0
+        self.member_size = 0.025
         # Initialize drones within a given box (random)
         if count == 1:
             self.members.append(Drone(init_pos=box[0:3]))

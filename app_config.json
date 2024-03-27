@@ -21,7 +21,7 @@
         "sampling": 1,
         "count": 1,
         "sensing_range": 2.0,
-        "r_agent": 0.01,
+        "r_agent": 0.2,
         "metric": "Visual LoS",
         "computation": "Selected"
     },

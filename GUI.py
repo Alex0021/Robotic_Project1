@@ -390,6 +390,7 @@ class myApp(tk.Frame):
                 'sensing_range': self.var_neighbor_radius.get(),
                 'r_agent': self.var_neighbor_r_agent.get()
             })
+            self.swarm.member_size = self.var_neighbor_r_agent.get()
             if self.sim.paused():
                 self.swarm.compute_neighborhood()
         except Exception as e:
