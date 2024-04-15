@@ -32,6 +32,7 @@ class Swarm():
         if 'algo_params' in kwargs:
             self.algo_params = kwargs['algo_params']
         self.neighbors_params = kwargs.get('neighbors_metric', {'computation':'None', 'metric': 'Eucledian', 'sampling': 1})
+        self.viewing_params = kwargs.get('viewing_metric', {'algorithm': 'None'})
         
     def update(self, dt, new_acc):
         for m in self.members:
@@ -68,19 +69,22 @@ class Swarm():
             #print("Setting angular rates to: {0}".format(rates))
             self.ang_rates = rates
 
-    def set_noise(self, type: str, param_dist:float, param_dir: float, param_heading:float, apply_all=False):
+    def set_viewing_algorithm(self, algo):
+        self.viewing_params['algorithm'] = algo
+
+    def set_noise(self, type: str, param_dist:float, param_dir:float, apply_all=False):
         """ Setting the noise to sample when estimating the neigborhood of each drone.
 
         Args:
             type (str): Noise distribution type (None, Gaussian, Uniform)
             param_pos (float): Noise in position (computed based on distance and direction to neighbor) eg. sigma
-            param_heading (float): Noise in heading (added to true heading of neighbor)
+            param_dir (float): Noise in sensing cone (direction)
         """
         if apply_all:
             for m in self.members:
-                m.set_noise(type, param_dist, param_dir, param_heading)
+                m.set_noise(type, param_dist, param_dir)
         else:
-            self.members[self.selected_drone].set_noise(type, param_dist, param_dir, param_heading)
+            self.members[self.selected_drone].set_noise(type, param_dist, param_dir)
 
     def get_noise(self):
         return self.members[self.selected_drone].noise
@@ -103,12 +107,14 @@ class Swarm():
         metric = self.neighbors_params.get('metric', 'Eucledian')
         if computation_method == 'Selected':
             self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.neighbors_params)
+            # Compute viewing direction
+            if self.viewing_params.get('algorithm', 'None') != 'None':
+                self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params.get('algorithm', 'None'))
         elif computation_method == 'All':
             for m in self.members:
                 m.compute_neihgborhood(self.members, metric, self.neighbors_params)
-                if metric == "Voronoi":
-                    break
-                    # only one drone needs to compute the voronoi neighbors
+                if self.viewing_params.get('algorithm', 'None') != 'None':
+                    m.compute_viewing_dir(self.members, self.viewing_params.get('algorithm', 'None'))
         else:
             # clear all neighbors
             for m in self.members:

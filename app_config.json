@@ -1,5 +1,5 @@
 {
-    "spawn_box": [0.0,0.0,10.0,5.0,5.0,5.0],
+    "spawn_box": [0.0,0.0,10.0,5.0,5.0,0.0],
     "drone_count": 10,
     "swarm_spread": 1.50,
     "noise_pos": 0.025,
@@ -19,16 +19,19 @@
     "cmd_vel": 0.5,
     "neighbors": {
         "sampling": 1,
-        "count": 1,
+        "count": 3,
         "sensing_range": 2.0,
-        "r_agent": 0.2,
-        "metric": "Visual LoS",
+        "r_agent": 0.05,
+        "metric": "Topological",
         "computation": "Selected"
     },
     "noise": {
         "type": "None",
         "param_dist": 0.05,
-        "param_dir" : 0.05,
+        "param_dir" : 0.01,
         "param_heading": 0.0
+    },
+    "viewing_metric": {
+        "algorithm": "outter"
     }
 }

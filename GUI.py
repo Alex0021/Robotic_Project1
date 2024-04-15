@@ -51,8 +51,7 @@ class myApp(tk.Frame):
         self.var_neighbor_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
         self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
         self.var_noise_pos = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
-        self.var_noise_orient = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.05))
-        self.var_noise_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
+        self.var_noise_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
         self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
         self.var_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
         self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
@@ -78,7 +77,6 @@ class myApp(tk.Frame):
         self.var_b.trace_add('write', self._set_swarm_algo_params)
         self.var_c.trace_add('write', self._set_swarm_algo_params)
         self.var_noise_pos.trace_add('write', self.noise_changed_callback)
-        self.var_noise_orient.trace_add('write', self.noise_changed_callback)
         self.var_noise_heading.trace_add('write', self.noise_changed_callback)
         self.var_neighbor_sampling.trace_add('write', self._set_neighbors_algo_params)
         self.var_neighbor_radius.trace_add('write', self._set_neighbors_algo_params)
@@ -87,6 +85,7 @@ class myApp(tk.Frame):
         #       APP INITIALIZATION         #
         #==================================#
         self.init_main_panels()
+        self.init_algo_components()
         self.init_sidebar_components()
         self.noise_changed_callback()
         # Start 3D plot renderer
@@ -97,6 +96,7 @@ class myApp(tk.Frame):
         #self.panel_view.grid_columnconfigure(0,weight=1)
         #self.panel_view.grid_rowconfigure(0,weight=1)
         self.panel_view.grid(column=1,row=0,sticky='NWES')
+        self.panel_view.update_viewing_dir = self.update_viewing_dir
 
         # Creating app tabs
         self.tabbed_pane = ttk.Notebook(self.mainframe)
@@ -113,7 +113,8 @@ class myApp(tk.Frame):
         # Panel alog params
         self.panel_algo = tk.Frame(self.mainframe, bg='lightgray')
         self.panel_algo.grid_columnconfigure((0,1,2),weight=1)
-        self.panel_algo.grid_rowconfigure((0,1,2),weight=1)
+        self.panel_algo.grid_rowconfigure((0,1,2,3,4),weight=1)
+        self.panel_algo.grid_rowconfigure(5,weight=4)
         self.tabbed_pane.add(self.panel_algo, text='Algo params')
 
         # Subpabels of sidebar
@@ -133,6 +134,36 @@ class myApp(tk.Frame):
         self.panel_sim.grid_columnconfigure((1,2), weight=1)
         self.panel_sim.grid_rowconfigure((0,1,2,3),weight=1)
         self.panel_sim.grid(column=0, row=2,sticky='NWES')
+
+    def init_algo_components(self):
+        self.label_algo = ttk.Label(self.panel_algo, anchor='w', text="Algorithm choice: ", justify='left', font=font.Font(size=14))
+        self.label_algo.grid(column=0,row=0, sticky='NEWS')
+        self.listbox_viewing_algo = ttk.Combobox(self.panel_algo, values=["None", "average", "outter", "tangent_plane"], state='disabled', font=font.Font(size=14))
+        self.listbox_viewing_algo.set(self.app_config['viewing_metric'].get('algorithm', 'None'))
+        self.listbox_viewing_algo.grid(column=1,row=0, sticky='W', padx=5)
+        self.listbox_viewing_algo.bind("<<ComboboxSelected>>", lambda e: self.swarm.set_viewing_algorithm(self.listbox_viewing_algo.get()))
+
+        # Show stats for viewing direction
+        self.label_estimated_viewing_dir = ttk.Label(self.panel_algo, anchor='w', text="Estimated viewing dir: ", font=font.Font(size=14))
+        self.label_estimated_viewing_dir.grid(column=0,row=1, sticky='NEWS')
+        self.label_estimated_viewing_dir_value = ttk.Label(self.panel_algo, anchor='w', text="[0.0;0.0;0.0]", font=font.Font(size=16))
+        self.label_estimated_viewing_dir_value.grid(column=1,row=1, sticky='NEWS', padx=5)
+        self.label_true_viewing_dir = ttk.Label(self.panel_algo, anchor='w', text='"True" viewing dir: ', font=font.Font(size=14))
+        self.label_true_viewing_dir.grid(column=0,row=2, sticky='NEWS')
+        self.label_true_viewing_dir_value = ttk.Label(self.panel_algo, anchor='w', text="[0.0;0.0;0.0]", font=font.Font(size=16))
+        self.label_true_viewing_dir_value.grid(column=1,row=2, sticky='NEWS', padx=5)
+        self.label_error_viewing_dir = ttk.Label(self.panel_algo, anchor='w', text="Estimated error: ", font=font.Font(size=14))
+        self.label_error_viewing_dir.grid(column=0,row=3, sticky='NEWS')
+        self.label_error_viewing_dir_value = ttk.Label(self.panel_algo, anchor='w', text="0.0%", font=font.Font(size=16))
+        self.label_error_viewing_dir_value.grid(column=1,row=3, sticky='NEWS', padx=5)
+
+        # Output CSV file
+        self.label_output_csv = ttk.Label(self.panel_algo, anchor='w', text="Output CSV filename: ", font=font.Font(size=12))
+        self.label_output_csv.grid(column=0,row=4, sticky='NEWS')
+        self.textbox_output_csv = ttk.Entry(self.panel_algo, width=10)
+        self.textbox_output_csv.grid(column=1,row=4, sticky='W', padx=5)
+
+
 
     def init_sidebar_components(self):
         # Title
@@ -235,14 +266,10 @@ class myApp(tk.Frame):
         self.label_noise_pos.grid(column=0,row=1, sticky='NEWS')
         self.spinner_noise_pos = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_pos)
         self.spinner_noise_pos.grid(column=1, row=1, sticky='W', padx=5)
-        self.label_noise_orient = ttk.Label(self.pnael_noise, anchor='e', text="Dir: ", justify='right')
-        self.label_noise_orient.grid(column=2,row=1, sticky='NEWS')
-        self.spinner_noise_orient = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_orient)
-        self.spinner_noise_orient.grid(column=3, row=1, sticky='W', padx=5)
-        self.label_noise_heading = ttk.Label(self.pnael_noise, anchor='w', text="heading: ", justify='right')
-        self.label_noise_heading.grid(column=4,row=1, sticky='NEWS')
+        self.label_noise_heading = ttk.Label(self.pnael_noise, anchor='w', text="Dir (sensing cone): ", justify='right')
+        self.label_noise_heading.grid(column=2,row=1, sticky='NEWS')
         self.spinner_noise_heading = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_heading)
-        self.spinner_noise_heading.grid(column=5, row=1, sticky='W', padx=5)
+        self.spinner_noise_heading.grid(column=3, row=1, sticky='W', padx=5)
         
         # Target
         self.label_target = ttk.Label(self.panel_params, anchor='w', text="Target: ")
@@ -301,7 +328,6 @@ class myApp(tk.Frame):
     def _initialize_simulation(self):
         # Retrieve all necessary parameters from app widgets
         nb_drones = self.var_drone_count.get()
-        noise = {'type': self.listbox_noise_type.get(), 'param_pos': self.var_noise_pos.get(), 'param_heading': self.var_noise_orient.get()}
         if self.var_agent.get() == '':
             target = None
         else:
@@ -330,6 +356,8 @@ class myApp(tk.Frame):
             child.config(state='normal')
         self._update_neighbors_panel_components()
         self.noise_changed_callback()
+        self.swarm.set_viewing_algorithm(self.listbox_viewing_algo.get())
+        self.listbox_viewing_algo.configure(state='normal')
 
     def _set_swarm_algo_params(self, *args):
         if self.swarm is None:
@@ -399,16 +427,14 @@ class myApp(tk.Frame):
     def noise_changed_callback(self, *args):
         if self.listbox_noise_type.get() == 'None':
             self.spinner_noise_pos.config(state='disabled')
-            self.spinner_noise_orient.config(state='disabled')
             self.spinner_noise_heading.config(state='disabled')
         else:
             self.spinner_noise_pos.config(state='normal')
-            self.spinner_noise_orient.config(state='normal')
             self.spinner_noise_heading.config(state='normal')
         if self.swarm is None:
             return
         try:
-            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_pos.get(), self.var_noise_orient.get(), self.var_noise_heading.get())
+            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_pos.get(), self.var_noise_heading.get())
             print('Noise parameters changed: {0}'.format(self.swarm.get_noise()))
         except Exception as e:
             print("Error setting noise: {0}".format(e))
@@ -420,8 +446,13 @@ class myApp(tk.Frame):
         noise = self.swarm.get_noise()
         self.listbox_noise_type.set(noise.get('type', 'None'))
         self.var_noise_pos.set(noise.get('param_dist', self.app_config['noise'].get('param_dist', 0.05)))
-        self.var_noise_orient.set(noise.get('param_dir', self.app_config['noise'].get('param_dir', 0.05)))
-        self.var_noise_heading.set(noise.get('param_heading', self.app_config['noise'].get('param_heading', 0.0)))
+        self.var_noise_heading.set(noise.get('param_dir', self.app_config['noise'].get('param_dir', 0.05)))
+
+    def update_viewing_dir(self, viewing_dir, true_dir):
+        error = (1-np.arccos(np.dot(viewing_dir, true_dir)))* 50
+        self.label_estimated_viewing_dir_value.config(text=f'[{viewing_dir[0]:.3f};{viewing_dir[1]:.3f};{viewing_dir[2]:.3f}]')
+        self.label_true_viewing_dir_value.config(text=f'[{true_dir[0]:.3f};{true_dir[1]:.3f};{true_dir[2]:.3f}]')
+        self.label_error_viewing_dir_value.config(text=f'{error:.2f} %')
 
     def _button_reset_callback(self):
         self.renderer.reset()

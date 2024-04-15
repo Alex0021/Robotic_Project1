@@ -12,7 +12,8 @@ plt.rcParams['keymap.quit'] = 'ctrl+w'
 plt.rcParams['keymap.save'] = 'ctrl+s'
 
 PLOT_AXIS_MARGIN = 1.2
-CONVERSION_FACTOR = 2226.3210499
+CONVERSION_FACTOR = 35621.262462
+DEBUG_VLOS = True # Draw lines to all neighbors
 
 class RendererDara:
     axis_limits = np.array([[-5,5], [-5,5], [5,15]], dtype=np.float64)
@@ -86,9 +87,22 @@ class Renderer():
                 self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
                 # Plot the heading as arrows
                 self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
+                # Plot the desired viewing direction
+                id = self._swarm_ref.selected_drone
+                self.ax.quiver(self.data[id,0],self.data[id,1],self.data[id,2], self._swarm_ref.members[id].exact_viewing_dir[0], 
+                               self._swarm_ref.members[id].exact_viewing_dir[1], self._swarm_ref.members[id].exact_viewing_dir[2], 
+                               color='#55FF00FF', length=0.5, normalize=True)
                 # Plot the migration point
                 if self._swarm_ref.migration_point is not None:
                     self.ax.plot(self._swarm_ref.migration_point[0], self._swarm_ref.migration_point[1], self._swarm_ref.migration_point[2],'r', marker='x', markersize=20)
+                # VLOS DEBUG
+                if DEBUG_VLOS:
+                    index = self._swarm_ref.selected_drone
+                    for i in range(self._swarm_ref.count):
+                        self.ax.plot([self.data[i,0], self.data[index,0]], [self.data[i,1], self.data[index,1]], [self.data[i,2], self.data[index,2]], 'k--', alpha=0.5)
+
+                # Update in app viewing direction metrics (easier way to deal with realtime update)
+                self.master.update_viewing_dir(self._swarm_ref.members[id].exact_viewing_dir, self._swarm_ref.members[id].estimated_viewing_dir)
             except Exception as e:
                 print(e)
 
@@ -256,6 +270,13 @@ class Renderer2D():
             # Plot heading of the selected drone
             scale = self.viewing_radius / 5.0
             self.artists["arrow_single"] = self.ax[3].arrow(0, 0, swarm_states[selected_drone,-3], swarm_states[selected_drone,-2], width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='g', ec='g')
+            # Plot estimated and true viewing direction
+            self.artists["arrow_est"] = self.ax[3].arrow(0, 0, self._swarm_ref.members[selected_drone].estimated_viewing_dir[0], 
+                                                         self._swarm_ref.members[selected_drone].estimated_viewing_dir[1], 
+                                                         width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='#00FF00A0', ec='#00FF00A0')
+            self.artists["arrow_true"] = self.ax[3].arrow(0, 0, self._swarm_ref.members[selected_drone].exact_viewing_dir[0], 
+                                                          self._swarm_ref.members[selected_drone].exact_viewing_dir[1], 
+                                                          width=scale*0.025, head_width=scale*0.3, head_length=scale*0.25, ec='k', fc='#000000A0', linestyle=':', linewidth=1.5)
             # Plot swarm
             self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone], sizes=sizes[:-1])
         except Exception as e:
