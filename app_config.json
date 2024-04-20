@@ -1,5 +1,5 @@
 {
-    "spawn_box": [0.0,0.0,10.0,5.0,5.0,0.0],
+    "spawn_box": [0.0,0.0,10.0,5.0,5.0,5.0],
     "drone_count": 10,
     "swarm_spread": 1.50,
     "noise_pos": 0.025,
@@ -32,6 +32,6 @@
         "param_heading": 0.0
     },
     "viewing_metric": {
-        "algorithm": "outter"
+        "algorithm": "average"
     }
 }

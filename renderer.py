@@ -6,6 +6,7 @@ from matplotlib.animation import FuncAnimation
 from swarm import Swarm
 from collections import OrderedDict
 from matplotlib.widgets import Slider
+import helper_functions
 
 # Set the default keymap to close the window to ctrl+w
 plt.rcParams['keymap.quit'] = 'ctrl+w'
