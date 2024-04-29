@@ -1,7 +1,8 @@
 import numpy as np
+from scipy.spatial import ConvexHull
 
 
-def get_viewing_dir(drone, neighbors, algo: str):
+def get_viewing_dir(drone, neighbors, algo: str, **params):
     """
     Compute the viewing direction of the drone based on the neighbors
     with the selected algorithm.
@@ -11,10 +12,10 @@ def get_viewing_dir(drone, neighbors, algo: str):
         neighbors (list[DroneNeighbor]): The neighbors of the drone
         algo (str): The algorithm to use to compute the viewing direction
     """
-    assert algo in ["average", "outter", "tangent_plane"], "Algorithm {0} not supported".format(algo)
-    return eval(algo)(drone, neighbors)
+    assert algo in ["average", "outter", "tangent_plane", "convex_hull"], "Algorithm {0} not supported".format(algo)
+    return eval(algo)(drone, neighbors, params)
 
-def average(drone, neighbors):
+def average(drone, neighbors, params):
     """
     Compute the desired viewing direction based on the centroid of the neighbors.
 
@@ -25,13 +26,17 @@ def average(drone, neighbors):
     Args:
         drone (Drone): The selected drone
         neighbors (list[DroneNeighbor]): The neighbors of the drone
+        params (dict): {'in_2d': True or False}
     """
     centroid = np.mean([n.get_abs_pos() for n in neighbors], axis=0)
     vec_to_centroid = centroid - drone.pos
     viewing_dir = -vec_to_centroid / np.linalg.norm(vec_to_centroid)
+    # If 2D, set z component to zero
+    if params.get('in_2d', False):
+        viewing_dir[2] = 0
     return viewing_dir
 
-def outter(drone, neighbors):
+def outter(drone, neighbors, params):
     """
     Compute the desired viewing direction based on the outter product of the neighbors.
 
@@ -42,24 +47,80 @@ def outter(drone, neighbors):
     Args:
         drone (Drone): The selected drone
         neighbors (list[DroneNeighbor]): The neighbors of the drone
+        params (dict): {'n_points': int}
     """
-    # Testing first with 2D case
-    neighbors_pos = np.array([n.get_abs_pos() for n in neighbors])
-    dists = neighbors_pos - drone.pos
-    # Compute dot product between all combination of neighbors
-    smaller = np.inf
-    smaller_indices = (0, 0)
-    for i in range(len(neighbors)):
-        for j in range(i+1, len(neighbors)):
-            d = np.dot(dists[i], dists[j])
-            if d < smaller:
-                smaller = d
-                smaller_indices = (i, j)
-    viewing_dir = (dists[smaller_indices[0]] + dists[smaller_indices[1]]) / 2
+    # Get number of points to compute estimate
+    n_points = params.get('n_points', 2)
+    in_2d = params.get('in_2d', False)
+    if n_points < 2:
+        raise ValueError("n_points must be greater than 1")
+    else:
+        if n_points > len(neighbors)+1:
+            print("WARNING :: n_points must be less or equal to the number of neighbors+1")
+            return drone.get_heading()
+        
+    match n_points:
+        case 2: # 2D case: Max angle
+            neighbors_pos = np.array([n.get_abs_pos() for n in neighbors])
+            dists = neighbors_pos - drone.pos
+            if in_2d:
+                dists = dists[:, :2]
+            # Compute dot product between all combination of neighbors
+            smaller = np.inf
+            smaller_indices = (0, 0)
+            for i in range(len(neighbors)):
+                for j in range(i+1, len(neighbors)):
+                    d = np.dot(dists[i], dists[j])
+                    if d < smaller:
+                        smaller = d
+                        smaller_indices = (i, j)
+            viewing_dir = (dists[smaller_indices[0]] + dists[smaller_indices[1]]) / 2
+        case 3: # 3D case w/ triangles: Find max area
+            neighbors_pos = np.array([n.get_abs_pos() for n in neighbors])
+            dists = neighbors_pos - drone.pos
+            if in_2d:
+                dists = dists[:, :2]
+            # Compute dot product between all combination of neighbors
+            highest = -np.inf
+            highest_indices = (0, 0)
+            for i in range(len(neighbors)):
+                for j in range(i+1, len(neighbors)):
+                    # Check area
+                    a = np.linalg.norm(np.cross(dists[i], dists[j]))/2
+                    if a > highest:
+                        highest = a
+                        highest_indices = (i, j)
+            viewing_dir = (dists[highest_indices[0]] + dists[highest_indices[1]]) / 2
+        case _: # 3D case w/ convex hull: Find max volume
+            indices = combinations(len(neighbors), n_points-1)
+            points = np.array([n.get_abs_pos() for n in neighbors])
+            drone_pos = drone.pos.copy()
+            if in_2d:
+                points = points[:, :2]
+                drone_pos = drone_pos[:2]
+            highest_volume = 0
+            highest_indices = None
+            for idx in indices:
+                hull = ConvexHull(np.concatenate((points[idx], [drone_pos])))
+                if in_2d:
+                    if hull.area > highest_volume:
+                        highest_volume = hull.area
+                        highest_indices = idx
+                else:
+                    if hull.volume > highest_volume:
+                        highest_volume = hull.volume
+                        highest_indices = idx
+            # Compute viewing direction
+            centroid = np.mean(np.concatenate((points[highest_indices], [drone_pos])), axis=0)
+            viewing_dir = centroid - drone_pos
+
     viewing_dir = -viewing_dir / np.linalg.norm(viewing_dir)
+    if in_2d:
+        viewing_dir = np.hstack((viewing_dir, 0))
     return viewing_dir
 
-def tangent_plane(drone, neighbors):
+
+def tangent_plane(drone, neighbors, params):
     """
     Compute the desired viewing direction based on the tangent plane of the neighbors.
 
@@ -72,9 +133,10 @@ def tangent_plane(drone, neighbors):
     Args:
         drone (Drone): The selected drone
         neighbors (list[DroneNeighbor]): The neighbors of the drone
+        params (dict): {'in_2d': True or False}
     """
     neighbors_pos = np.array([n.get_abs_pos() for n in neighbors])
-    in_2d = np.std(neighbors_pos[:, 2]) < 0.01
+    in_2d = params.get('in_2d', False)
     if in_2d:
         neighbors_pos = neighbors_pos[:, :2]
     centroid = np.mean(neighbors_pos, axis=0)
@@ -82,9 +144,98 @@ def tangent_plane(drone, neighbors):
     cov = np.sum([np.outer(n, n) for n in neighbors_centered], axis=0)
     eig_val, eig_vectors = np.linalg.eig(cov)
     eig_val, eig_vectors = np.real(eig_val), np.real(eig_vectors)
-    normal = eig_vectors[np.argmin(eig_val)]
+    sorted_indices = np.argsort(eig_val)
+    normal = eig_vectors[sorted_indices[0]]
+    # Printing stuff
+    # print("Covariance matrix:")
+    # for i in range(3):
+    #     print(cov[i])
+    # print("Eigenvectors:")
+    # for i in range(3):
+    #     print(eig_vectors[i])
+    # Verify if eigenvalues are close to each other
+    if abs(eig_val[sorted_indices[1]] - eig_val[sorted_indices[0]]) < 0.01:
+        print("WARNING :: Eigenvalues are too close to each other, averaging the two smallest")
+        normal = np.mean(eig_vectors[sorted_indices[:2]], axis=0)
     if in_2d:
-        viewing_dir = np.hstack((-np.dot(normal, centroid-drone.pos[:2])*normal, 0))
+        viewing_dir = np.hstack((-np.sign(np.dot(normal, centroid-drone.pos[:2]))*normal, 0))
     else:
-        viewing_dir = -np.dot(normal, centroid-drone.pos)*normal
+        viewing_dir = -np.sign(np.dot(normal, centroid-drone.pos))*normal
     return viewing_dir
+
+def convex_hull(drone, neighbors, params):
+    """
+    Compute the desired viewing direction based on the convex hull of the neighbors.
+
+    1. Find the convex hull of the neighbors + the drone
+    2. Set the viewing direction either to the normal of the adjacent faces
+       or to the one of the visible faces
+    3. Don't forget to normalize the vector
+
+    Args:
+        drone (Drone): The selected drone
+        neighbors (list[DroneNeighbor]): The neighbors of the drone
+        params (dict): {'faces': 'adjacent' or 'visible', 'in_2d': True or False}
+    """
+    # Check if # neighbors is enough
+    if len(neighbors) < 3:
+        print("WARNING :: Not enough neighbors to compute convex hull")
+        return drone.get_heading()
+    in_2d = params.get('in_2d', False)
+    # Convex hull
+    points = np.array([n.get_abs_pos() for n in neighbors])
+    idx_drone = len(neighbors)
+    points = np.concatenate((points, [drone.pos]))
+    # Prepare standard options for qhull solver
+    qhull_options = 'Q' if in_2d else 'QtJ'
+    ndim = 2 if in_2d else 3
+    if in_2d:
+        points = points[:, :2]
+    if params.get('faces', 'adjacent') == 'adjacent':
+        hull = ConvexHull(points, qhull_options=qhull_options)
+        # Check if drone is in the convex hull
+        if idx_drone not in hull.vertices:
+            return drone.get_heading()
+        # Compute the normal of the adjacent faces
+        adj_idx = np.where(hull.simplices == idx_drone)[0]
+        normals = hull.equations[adj_idx, :ndim]
+        # Compute the viewing direction
+        viewing_dir = np.mean(normals, axis=0)
+    elif params.get('faces', 'adjacent') == 'visible':
+        # Edge case with 3 neighbors
+        if len(neighbors) == 3 and not in_2d:
+            centroid = np.mean(points[:3], axis=0)
+            normal = np.cross(points[1] - points[0], points[2] - points[0])
+            viewing_dir = -np.sign(np.dot(normal, centroid - points[-1]))*normal
+        else:
+            hull = ConvexHull(points, qhull_options=f'{qhull_options}G{idx_drone}')
+            # Compute the normal of the visible faces
+            visible_idx = np.where(hull.good)[0]
+            # If no visible faces, return drone heading (change nothing)
+            if len(visible_idx) == 0:
+                #print("WARNING :: No visible faces")
+                return drone.get_heading()
+            normals = hull.equations[visible_idx, :ndim]
+            # Compute the viewing direction
+            viewing_dir = np.mean(normals, axis=0)
+    else:
+        raise ValueError("Invalid value for 'faces' in params")
+    
+    # Add z component to zero if in 2D
+    if in_2d:
+        viewing_dir = np.hstack((viewing_dir, 0))
+    return viewing_dir / np.linalg.norm(viewing_dir)
+
+def combinations(n, k):
+   result = []
+
+   def backtrack(start, current_combination):
+      if len(current_combination) == k:
+         result.append(current_combination)
+         return
+
+      for i in range(start, n):
+         backtrack(i + 1, current_combination + [i])
+
+   backtrack(0, [])
+   return result

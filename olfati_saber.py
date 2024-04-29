@@ -91,6 +91,7 @@ def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, 
     c_pm_obs = params.get('c_pm_obs',4.3)
     c_vm_obs = params.get('c_vm_obs',0)
     gamma = params.get('gamma',1)
+    v_ref_target = params.get('v_ref_target',1.0)
     
     #count += 1
     drone_pos = drone_pose[0]
@@ -136,7 +137,7 @@ def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, 
         #acc_coh = rot_global2body(acc_coh, drone_pose[3])
     
     # Compute the migration force
-    acc_mig += get_migration_force(p_mig, drone_pos, v_ref_glob, drone_vel, gamma)
+    acc_mig += get_migration_force(p_mig, drone_pos, v_ref_target, drone_vel, gamma)
     #acc_mig = rot_global2body(acc_mig, drone_pose[3])
 
     # # Initialize the obstacle avoidance commands
@@ -172,7 +173,12 @@ def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, 
     # Remove the z component of the cohesion command
     #acc_coh[2] = 0        
     acc_command = acc_vel + acc_coh + acc_mig #+ acc_obs
-    acc_command = rot_global2body(acc_command, drone_pose[3])
+    # ======================
+    # !!! IMPORTANT !!!
+    # NOT CONVERTING TO BODY FRAME
+    # BECAUSE OF UNSTABILITY ISSUES
+    # KEEP IT GLBOAL FRAME FOR SWARM MEMBERS
+    #acc_command = rot_global2body(acc_command, drone_pose[3])
 
     return acc_command
 

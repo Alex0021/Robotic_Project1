@@ -5,6 +5,15 @@ import olfati_saber as olsab
 # Setting a common/uniform seed for testing
 np.random.seed(1)
 
+# Circle Trajectory
+NB_POINTS = 20
+TARGET_TOL = 0.15 # Tolerance before reaching the target
+CIRCLE_RADIUS = 3.0
+TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(np.linspace(0, 2*np.pi, NB_POINTS)), CIRCLE_RADIUS*np.sin(np.linspace(0, 2*np.pi, NB_POINTS)), 5.0*np.ones(NB_POINTS)]).T 
+
+MAX_ITER = 100 # Maximum number of iterations to find a valid position
+DEFAULT_COVERAGE_RADIUS = 2.5
+
 class Swarm():
     def __init__(self, count=1, box=[0.0]*6, **kwargs):
         self.members = list()
@@ -16,6 +25,11 @@ class Swarm():
         self.selected_drone = 0
         self.update_counter = 0
         self.member_size = 0.025
+        self.migration_mode = 'single' # ['single', 'trajectory']
+        self.trajectory_idx = 0
+        self.is_2D = abs(box[5]) < 0.01
+        self.viewing_dim = 2 if self.is_2D else 3
+        self.swarm_coverage = 0.0
         # Initialize drones within a given box (random)
         if count == 1:
             self.members.append(Drone(init_pos=box[0:3]))
@@ -25,6 +39,7 @@ class Swarm():
             for p in pos:
                 self.members.append(Drone(init_pos=p, init_angles=[0,0,0]))
         print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
+        self.swarm_center = self.get_swarm_center()
 
         # Intitialize optional parameters
         if 'migration_point' in kwargs:
@@ -33,21 +48,34 @@ class Swarm():
             self.algo_params = kwargs['algo_params']
         self.neighbors_params = kwargs.get('neighbors_metric', {'computation':'None', 'metric': 'Eucledian', 'sampling': 1})
         self.viewing_params = kwargs.get('viewing_metric', {'algorithm': 'None'})
+        self.viewing_params.update({'in_2d': self.is_2D})
+
+        # First trajectory point
+        if self.migration_mode == 'trajectory':
+            self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
         
     def update(self, dt, new_acc):
-        for m in self.members:
+        new_acc = np.zeros((self.count, 3))
+        for i in range(self.count):
+            m = self.members[i]
             # Get the neighbors of member m
             neighborhood = self.get_neighbors(m)
             # Compute drone acceleration based on olfati-saber step
-            neighbor_poses = [n.get_state() for n in neighborhood]
-            new_acc = olsab.olfati_saber_input(m.get_state(), neighbor_poses, [], self.migration_point, self.algo_params)
-            # Perform update step based on new acceleration
-            m.update(dt, new_acc, self.ang_rates)
+            neighbor_poses = np.array([n.get_state() for n in neighborhood])
+            new_acc[i,:] = olsab.olfati_saber_input(m.get_state(), neighbor_poses, [], self.migration_point, self.algo_params)
+        # Perform update step based on new acceleration
+        for i in range(self.count):
+            self.members[i].update(dt, new_acc[i], self.ang_rates)
         # Increment the update counter (used for different purposes, e.g. sampling the computation of the neighborhood metric)
         self.update_counter += 1
         # Compute each drone neighborhood
         if self.update_counter % self.neighbors_params.get('sampling', 1) == 0:
             self.compute_neighborhood()
+        # Check trajectory
+        if self.migration_mode == 'trajectory':
+            self.compute_next_target()
+
+        self.swarm_center = self.get_swarm_center()
 
     def set_cmd_velocity(self, v_ref):
         self.algo_params['v_ref'] = v_ref
@@ -69,8 +97,9 @@ class Swarm():
             #print("Setting angular rates to: {0}".format(rates))
             self.ang_rates = rates
 
-    def set_viewing_algorithm(self, algo):
+    def set_viewing_algorithm(self, algo, params=dict()):
         self.viewing_params['algorithm'] = algo
+        self.viewing_params.update(params)
 
     def set_noise(self, type: str, param_dist:float, param_dir:float, apply_all=False):
         """ Setting the noise to sample when estimating the neigborhood of each drone.
@@ -109,16 +138,57 @@ class Swarm():
             self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.neighbors_params)
             # Compute viewing direction
             if self.viewing_params.get('algorithm', 'None') != 'None':
-                self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params.get('algorithm', 'None'))
+                self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params)
+            # Compute coverage
+            self.compute_coverage(only_selected=True)
         elif computation_method == 'All':
             for m in self.members:
                 m.compute_neihgborhood(self.members, metric, self.neighbors_params)
                 if self.viewing_params.get('algorithm', 'None') != 'None':
-                    m.compute_viewing_dir(self.members, self.viewing_params.get('algorithm', 'None'))
+                    m.compute_viewing_dir(self.members, self.viewing_params)
+            # Compute coverage
+            self.compute_coverage(only_selected=False)
         else:
             # clear all neighbors
             for m in self.members:
                 m.neighbors = []
+
+    def compute_coverage(self, only_selected=False):
+        if self.is_2D:
+            # Compute the coverage of the swarm projected to a circle
+            if only_selected:
+                fov = self.members[self.selected_drone].fov
+                psi = self.members[self.selected_drone].angles[2]
+                if psi < 0:
+                    psi += 2*np.pi
+                coverage = [[psi - fov/2, psi + fov/2]]
+            else:
+                fov = self.members[0].fov
+                psi = self.members[0].angles[2]
+                if psi < 0:
+                    psi += 2*np.pi
+                coverage = [[psi - fov/2, psi + fov/2]]
+                for i in range(1, self.count):
+                    m = self.members[i]
+                    fov = m.fov
+                    psi = m.angles[2]
+                    if psi < 0:
+                        psi += 2*np.pi
+                    l_bound = psi - fov/2
+                    u_bound = psi + fov/2
+                    # Check bounds
+                    for v in coverage:
+                        if l_bound < v[1]:
+                            l_bound = v[1]
+                        if u_bound > v[0]:
+                            u_bound = v[0]
+                    coverage.append([l_bound, u_bound])
+        # Compute ratio
+        coverage_ratio = 0
+        for c in coverage:
+            coverage_ratio += c[1] - c[0]
+        self.swarm_coverage = coverage_ratio/(2*np.pi)
+
 
     def initialize_random_vel(self, bounds):
         for m in self.members:
@@ -138,3 +208,53 @@ class Swarm():
             states[i,:] = self.members[i].get_state().reshape(1,12)
             states[i,9:] = self.members[i].get_heading()
         return states
+    
+    def get_swarm_center(self):
+        return np.mean([m.pos for m in self.members], axis=0)
+    
+    def use_pd_smoothing(self, val):
+        for m in self.members:
+            m.use_pd_controller = val
+
+    def compute_next_target(self):
+        # Check if migration point is reached
+        if self.migration_point is not None:
+            if np.linalg.norm(self.swarm_center - self.migration_point) < TARGET_TOL:
+                self.trajectory_idx += 1
+                self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
+
+    def set_migration_mode(self, mode):
+        self.migration_mode = mode
+        if mode == 'trajectory':
+            self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
+
+    def set_count(self, count):
+        diff = count - self.count
+        if diff > 0:
+            # Adding drones - stay within the bounding box
+            # Shifted by the swarm center
+            for i in range(int(diff)):
+                pos_valid = False
+                iter = 0
+                while not pos_valid and iter < MAX_ITER:
+                    r = np.random.rand()*self.algo_params.get('d_ref', 1.0)*2
+                    theta = np.random.rand()*2*np.pi
+                    phi = np.random.rand()*2*np.pi if not self.is_2D else np.pi/2
+                    pos = self.swarm_center + np.array([r*np.cos(theta)*np.sin(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(phi)])
+                    pos_valid = np.all(np.linalg.norm(np.array([self.members[i].pos for i in range(self.count)]) - pos, axis=1) > 0.5*self.algo_params.get('d_ref', 1.0))
+                    iter += 1
+                if pos_valid:
+                    self.members.append(Drone(init_pos=pos)) 
+                    self.count = count
+                else:
+                    print("Could not find a valid position for the new drone!")   
+
+        elif diff < 0:
+            # Removing drones
+            nb = int(abs(diff))
+            choices = list(range(self.count))
+            choices.pop(self.selected_drone)
+            for i in np.random.choice(choices, nb, replace=False):
+                self.members.pop(i)
+            self.count = count
+            self.compute_neighborhood()

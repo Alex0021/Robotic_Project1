@@ -6,7 +6,6 @@ from matplotlib.animation import FuncAnimation
 from swarm import Swarm
 from collections import OrderedDict
 from matplotlib.widgets import Slider
-import helper_functions
 
 # Set the default keymap to close the window to ctrl+w
 plt.rcParams['keymap.quit'] = 'ctrl+w'
@@ -17,7 +16,7 @@ CONVERSION_FACTOR = 35621.262462
 DEBUG_VLOS = True # Draw lines to all neighbors
 
 class RendererDara:
-    axis_limits = np.array([[-5,5], [-5,5], [5,15]], dtype=np.float64)
+    axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)
     viewing_radius = 5
     axis_limits_single = np.array([[-viewing_radius,viewing_radius], [-viewing_radius,viewing_radius]], dtype=np.float64)
 
@@ -74,7 +73,7 @@ class Renderer():
     def render(self, i):
         if self._swarm_ref is not None:
             try:
-                self.data = self._swarm_ref.get_states()
+                self.data = self._swarm_ref.get_states().copy()
                 self.ax.clear()
                 self.configure_plot()
                 # Plot the drones as points
@@ -84,7 +83,8 @@ class Renderer():
                     neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
                     if len(neighbors_id) > 0:
                         colors[neighbors_id] = '#ff0000ff'
-                sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
+                #sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
+                sizes = [100]*self._swarm_ref.count
                 self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
                 # Plot the heading as arrows
                 self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
@@ -102,8 +102,6 @@ class Renderer():
                     for i in range(self._swarm_ref.count):
                         self.ax.plot([self.data[i,0], self.data[index,0]], [self.data[i,1], self.data[index,1]], [self.data[i,2], self.data[index,2]], 'k--', alpha=0.5)
 
-                # Update in app viewing direction metrics (easier way to deal with realtime update)
-                self.master.update_viewing_dir(self._swarm_ref.members[id].exact_viewing_dir, self._swarm_ref.members[id].estimated_viewing_dir)
             except Exception as e:
                 print(e)
 
@@ -168,6 +166,8 @@ class Renderer2D():
         )
         self.freq_slider.on_changed(self.update_viewing_radius)
         # Configuring necessary plots
+        self.ax[3].grid(True)
+        self.ax[3].set_aspect(1)
         self.artists = {
             "scatter_xy":self.ax[0].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True, picker=True),
             "scatter_xz":self.ax[1].scatter([],[],s=40, marker='o', c='b', cmap=None, animated=True, picker=True),
@@ -234,10 +234,16 @@ class Renderer2D():
             colors[selected_drone] = '#80ff00'
             for n in neighbors:
                     colors[n.drone_index] = '#ff0000ff'
-            sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
-            self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors, sizes=sizes)
-            self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors, sizes=sizes)
-            self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3], color=colors, sizes=sizes)
+            # Compute equivalent sizes
+            sizes = []
+            for i in range(len(self.ax)):
+                ppd=72./self.ax[i].figure.dpi
+                trans = self.ax[i].transData.transform
+                sizes.append(np.mean((trans((2*self._swarm_ref.member_size,2*self._swarm_ref.member_size))-trans((0,0)))*ppd)**2)
+
+            self.artists["scatter_xy"].set(offsets=swarm_states[:,:2], color=colors, sizes=sizes[0]*np.ones(self._swarm_ref.count))
+            self.artists["scatter_xz"].set(offsets=swarm_states[:,(0,2)], color=colors, sizes=sizes[1]*np.ones(self._swarm_ref.count))
+            self.artists["scatter_yz"].set(offsets=swarm_states[:,1:3], color=colors, sizes=sizes[2]*np.ones(self._swarm_ref.count))
             # Plot the heading as arrows
             if np.sum(np.abs(np.concatenate((swarm_states[:,-3], swarm_states[:,-2])))) > 0:
                 self.artists["quiver_xy"] = self.ax[0].quiver(swarm_states[:,0],swarm_states[:,1],swarm_states[:,-3],swarm_states[:,-2],width=0.005, animated=True)
@@ -257,13 +263,12 @@ class Renderer2D():
             self.artists["v_dashed"].set_data(r_points[0,2:4], r_points[1,2:4])
             colors = ['#FF0000A0']*(len(neighbors) + 1)
             colors[-1] = '#80ff00'
-            sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*(len(neighbors) + 1)
-            sizes[-1] = 150
             if len(neighbors) > 0:
                 n_data = np.vstack([n.get_state()[0,0:2] for n in neighbors])
             else:
                 n_data = np.array([0,0])
-            self.artists["scatter_single"].set(offsets=np.vstack((n_data, [0,0])), color=colors, sizes=sizes)
+
+            self.artists["scatter_single"].set(offsets=np.vstack((n_data, [0,0])), color=colors, sizes=sizes[3]*np.ones(len(colors)))
             # Plot heading of estimated neighbors
             if len(neighbors) > 0:
                 n_data2 = np.vstack([n.get_state()[3,0:2] for n in neighbors])
@@ -279,7 +284,12 @@ class Renderer2D():
                                                           self._swarm_ref.members[selected_drone].exact_viewing_dir[1], 
                                                           width=scale*0.025, head_width=scale*0.3, head_length=scale*0.25, ec='k', fc='#000000A0', linestyle=':', linewidth=1.5)
             # Plot swarm
-            self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone], sizes=sizes[:-1])
+            self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone], sizes=sizes[3]*np.ones(self._swarm_ref.count-1))
+            # VLOS DEBUG
+            if DEBUG_VLOS:
+                index = self._swarm_ref.selected_drone
+                for i in range(self._swarm_ref.count):
+                    self.artists[f'vlos_lines_{i}'], = self.ax[3].plot([0, swarm_states[i,0] - swarm_states[index,0]], [0, swarm_states[i,1] - swarm_states[index,1]], 'k--', alpha=0.5, animated=True)
         except Exception as e:
             print(e)
         return self.artists.values()

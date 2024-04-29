@@ -2,6 +2,12 @@ import numpy as np
 from mpl_toolkits.mplot3d import proj3d
 
 class scatter():
+    """
+    A class to create a scatter plot with markers sizes in data units.
+
+    (Solution found on StackOverflow:
+    https://stackoverflow.com/questions/48172928/scale-matplotlib-pyplot-axes-scatter-markersize-by-x-scale/48174228#48174228)
+    """
     def __init__(self,x,y,ax,radius=1,**kwargs):
         self.n = len(x)
         self.ax = ax
@@ -21,7 +27,7 @@ class scatter():
         s =  np.mean((trans((2*self.size_data,2*self.size_data))-trans((0,0)))*ppd)
         self.sc.set_sizes(s**2*np.ones(self.n))
         self.size = s
-        self._redraw_later()
+        #self._redraw_later()
 
     def _redraw_later(self):
         self.timer = self.ax.figure.canvas.new_timer(interval=10)

@@ -7,9 +7,11 @@ from algorithms import get_viewing_dir
 
 DEFAULT_RANGE_SENSING = 2.0
 DEFAULT_NB_NEIGHBORS = 3
+DEFAULT_FOV = 97.0 # degrees
 KP_GAIN = 2.0
 KD_GAIN = 0.1
 ANGULAR_RATE_LIMIT = 1.0
+USE_PD_CONTROLLER = False
 
 class Drone:
     '''
@@ -29,6 +31,9 @@ class Drone:
         self.exact_viewing_dir = np.array([1,0,0])
         self.yaw_controller = PdController(KP_GAIN, KD_GAIN, ANGULAR_RATE_LIMIT)
         self.pitch_controller = PdController(KP_GAIN, KD_GAIN, ANGULAR_RATE_LIMIT)
+        self.use_pd_controller = USE_PD_CONTROLLER
+        self.viewing_error = 0.0
+        self.fov = DEFAULT_FOV * np.pi / 180.0 # In radians
         
     def get_state(self):
         return np.vstack((self.pos, self.vel, self.acc, self.angles))
@@ -43,15 +48,21 @@ class Drone:
         self.noise.update({'type': type, 'param_dist': param_dist, 'param_dir': param_dir, 'param_heading': 0.0})
     
     def update(self, dt, new_acc, new_rates=np.zeros(3)):
-        self.acc = get_RB2W(self.angles[0], self.angles[1], self.angles[2]) @ new_acc
+        # COMMENTED because use directly global acceeleration update
+        # To avoid numerical issues while using rotation matrices
+        #self.acc = get_RB2W(self.angles[0], self.angles[1], self.angles[2]) @ new_acc.copy()
+        self.acc = new_acc.copy()
         self.rates = new_rates.copy()
 
-        if np.all(self.rates == 0):
+        if self.use_pd_controller and np.all(self.rates == 0):
             # Apply PD controller to the angles
             heading = self.get_heading()
             viewing_pitch = np.arccos(np.linalg.norm(self.estimated_viewing_dir[:2])/np.linalg.norm(self.estimated_viewing_dir))*-np.sign(self.estimated_viewing_dir[2])
             self.rates[1] = self.pitch_controller.get_control(viewing_pitch - self.angles[1], dt)
             self.rates[2] = self.yaw_controller.get_control_from_orientation(heading[:2], self.estimated_viewing_dir[:2], dt)
+        elif not self.use_pd_controller:
+            self.angles[1] = np.arccos(np.linalg.norm(self.estimated_viewing_dir[:2])/np.linalg.norm(self.estimated_viewing_dir))*-np.sign(self.estimated_viewing_dir[2])
+            self.angles[2] = np.arctan2(self.estimated_viewing_dir[1], self.estimated_viewing_dir[0])
         
         # Perform simple Euler forward integration
         self.vel += self.acc * dt
@@ -131,10 +142,20 @@ class Drone:
 
         return self.neighbors
     
-    def compute_viewing_dir(self, members: list["Drone"], algo):
-        self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo)
-        self.exact_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo)
-    
+    def compute_viewing_dir(self, members: list["Drone"], algo_dict):
+        algo = algo_dict.get('algorithm', 'None')
+        nb_points = algo_dict.get('nb_points', 2)
+        face_type = algo_dict.get('faces', 'adjacent')
+        in_2d = algo_dict.get('in_2d', False)
+        self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+        if algo == 'outter' and nb_points > 3:
+            # Use only the ground truth without noise to compute the exact viewing direction
+            self.exact_viewing_dir = np.zeros(3)
+        else:
+            self.exact_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+        # Compute error
+        self.viewing_error = np.arccos(np.clip(np.dot(self.estimated_viewing_dir, self.exact_viewing_dir),-1,1)) * 180 / np.pi
+
     def _apply_noise(self, value, noise, type, sampling=1):
         match noise['type']:
             case "None":
