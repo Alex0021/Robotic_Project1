@@ -11,7 +11,6 @@ class Simulator():
         self._running = False
         self._paused = False
         self._step = False
-        self.record_file = None
         self.record_data = False
         self.record_time = 0
         self._simulation_time = 0
@@ -52,38 +51,29 @@ class Simulator():
     def get_total_time(self):
         return self._simulation_time
 
-    def start_recording(self, output_file_path):
-        if self.record_file is None:
-            try:
-                self.record_file = open(output_file_path, 'w')
-                print("Recording data to file: {0}".format(output_file_path))
-                # Add header to file
-                self.record_file.write("sim_time,drone_count,selected_drone,noise_type,noise_dist,noise_cone,neighbor_metric,n_neighbor,dist_to_center,viewing_error,coverage\n")
-            except:
-                print("ERROR :: Could not open file for recording")
+    def start_recording(self, fixed_params=dict()):
+        self.record_dict = {"params": fixed_params, "selected_drone": self._swarm.selected_drone, "timesteps": [], "data": []}
+        self.recorded_timesteps = []
+        self.recorded_data = []
+        print("RECORD DATA: ON")
         self.record_data = True
-        self._dump_data_to_file()
 
-    def stop_recording(self):
+    def stop_recording(self, output_file_path):
         self.record_data = False
         self.record_time = 0
-        if self.record_file is not None:
-            self.record_file.close()
-            self.record_file = None
+        self.record_dict["timesteps"] = self.recorded_timesteps
+        self.record_dict["data"] = self.recorded_data
+        print("RECORD DATA: OFF ==> Output file: ", output_file_path + '.npy')
+        np.save(output_file_path + '.npy', self.record_dict)
 
     def _dump_data_to_file(self):
         if self.record_data:
-            data = [str(self._simulation_time)]
-            data.append(str(self._swarm.count))
-            data.append(str(self._swarm.selected_drone))
-            data.append(str(self._swarm.get_noise().get('type', '')))
-            data.append(str(self._swarm.get_noise().get('param_dist', '')))
-            data.append(str(self._swarm.get_noise().get('param_dir', '')))
-            data.append(str(self._swarm.get_neighbor_metric("metric", "")))
-            data.append(str(len(self._swarm.members[self._swarm.selected_drone].neighbors)))
-            dist_to_center = np.linalg.norm(self._swarm.get_swarm_center() - self._swarm.members[self._swarm.selected_drone].pos)
-            data.append(str(dist_to_center))
-            data.append(str(self._swarm.members[self._swarm.selected_drone].viewing_error))
-            data.append(str(self._swarm.swarm_coverage))
-            self.record_file.write(','.join(data) + '\n')
+            self.recorded_timesteps.append(self._simulation_time)
+            data = []
+            swarm_center = self._swarm.get_swarm_center()
+            for drone in self._swarm.members:
+                avg_neighbor_dst = np.mean([n.distance for n in drone.neighbors])
+                dist_to_center = np.linalg.norm(swarm_center - drone.pos)
+                data.append([len(drone.neighbors), avg_neighbor_dst, dist_to_center, drone.viewing_error, self._swarm.swarm_coverage])
+            self.recorded_data.append(data)
             self.record_time += self._dt

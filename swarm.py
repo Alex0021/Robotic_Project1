@@ -1,6 +1,7 @@
 import numpy as np
 from drone import *
 import olfati_saber as olsab
+from scipy.spatial import ConvexHull
 
 # Setting a common/uniform seed for testing
 np.random.seed(1)
@@ -12,7 +13,7 @@ CIRCLE_RADIUS = 3.0
 TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(np.linspace(0, 2*np.pi, NB_POINTS)), CIRCLE_RADIUS*np.sin(np.linspace(0, 2*np.pi, NB_POINTS)), 5.0*np.ones(NB_POINTS)]).T 
 
 MAX_ITER = 100 # Maximum number of iterations to find a valid position
-DEFAULT_COVERAGE_RADIUS = 2.5
+COVERAGE_RES = 0.01  # To discretize into cells for the coverage computation
 
 class Swarm():
     def __init__(self, count=1, box=[0.0]*6, **kwargs):
@@ -140,7 +141,7 @@ class Swarm():
             if self.viewing_params.get('algorithm', 'None') != 'None':
                 self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params)
             # Compute coverage
-            self.compute_coverage(only_selected=True)
+            self.compute_coverage(only_selected=False)
         elif computation_method == 'All':
             for m in self.members:
                 m.compute_neihgborhood(self.members, metric, self.neighbors_params)
@@ -154,40 +155,74 @@ class Swarm():
                 m.neighbors = []
 
     def compute_coverage(self, only_selected=False):
+        viewing_dir_2d = self.viewing_params.get('in_2d', False)
+        # Compute distances of each drones to the convex hull of the swarm
+        weights = np.ones(self.count)
         if self.is_2D:
+            points = np.array([m.pos[:2] for m in self.members])
+            hull = ConvexHull(points)
+            for i in range(self.count):
+                if i not in hull.vertices:
+                    # Find distance to closest edge
+                    dist = np.zeros(len(hull.simplices))
+                    for j in range(len(hull.simplices)):
+                        idx = hull.simplices[j][0]
+                        p = points[idx]
+                        dist[j] = np.dot(p-points[i], hull.equations[j][:2])
+                    idx_min = np.argmin(np.abs(dist))
+                    d_center = np.abs(np.dot(points[hull.simplices[idx_min][0]] - self.swarm_center[:2], hull.equations[idx_min][:2]))
+                    weights[i] = 1 - (dist[idx_min]/d_center)
+
+        if viewing_dir_2d:
             # Compute the coverage of the swarm projected to a circle
             if only_selected:
                 fov = self.members[self.selected_drone].fov
-                psi = self.members[self.selected_drone].angles[2]
-                if psi < 0:
-                    psi += 2*np.pi
-                coverage = [[psi - fov/2, psi + fov/2]]
+                coverage = fov
             else:
-                fov = self.members[0].fov
-                psi = self.members[0].angles[2]
-                if psi < 0:
-                    psi += 2*np.pi
-                coverage = [[psi - fov/2, psi + fov/2]]
-                for i in range(1, self.count):
-                    m = self.members[i]
+                nb_bins = int(2*np.pi/COVERAGE_RES) + 1
+                coverage = np.zeros(nb_bins)
+                for m, w in zip(self.members, weights):
                     fov = m.fov
                     psi = m.angles[2]
                     if psi < 0:
                         psi += 2*np.pi
-                    l_bound = psi - fov/2
-                    u_bound = psi + fov/2
-                    # Check bounds
-                    for v in coverage:
-                        if l_bound < v[1]:
-                            l_bound = v[1]
-                        if u_bound > v[0]:
-                            u_bound = v[0]
-                    coverage.append([l_bound, u_bound])
-        # Compute ratio
-        coverage_ratio = 0
-        for c in coverage:
-            coverage_ratio += c[1] - c[0]
-        self.swarm_coverage = coverage_ratio/(2*np.pi)
+                    if psi - fov/2 < 0:
+                        l_bound = psi - fov/2 + 2*np.pi
+                        u_bound = psi + fov/2
+                        coverage[int(l_bound/COVERAGE_RES):] += w
+                        coverage[:int(u_bound/COVERAGE_RES)] += w
+                    elif psi + fov/2 > 2*np.pi:
+                        l_bound = psi - fov/2
+                        u_bound = psi + fov/2 - 2*np.pi
+                        coverage[int(l_bound/COVERAGE_RES):] += w
+                        coverage[:int(u_bound/COVERAGE_RES)] += w
+                    else:
+                        coverage[int((psi - fov/2)/COVERAGE_RES):int((psi + fov/2)/COVERAGE_RES)] += w
+                coverage = len(np.where(coverage == 1)[0])*COVERAGE_RES
+                # coverage = []
+                # # Discretizing each fov
+                # for m in self.members:
+                #     fov = m.fov
+                #     psi = m.angles[2]
+                #     if psi < 0:
+                #         psi += 2*np.pi
+                #     if psi - fov/2 < 0:
+                #         l_bound = psi - fov/2 + 2*np.pi
+                #         u_bound = psi + fov/2
+                #         coverage.append(np.arange(l_bound, 2*np.pi, COVERAGE_RES))
+                #         coverage.append(np.arange(0, u_bound, COVERAGE_RES))
+                #     elif psi + fov/2 > 2*np.pi:
+                #         l_bound = psi - fov/2
+                #         u_bound = psi + fov/2 - 2*np.pi
+                #         coverage.append(np.arange(l_bound, 2*np.pi, COVERAGE_RES))
+                #         coverage.append(np.arange(0, u_bound, COVERAGE_RES))
+                #     else:
+                #         coverage.append(np.arange(psi - fov/2, psi + fov/2, COVERAGE_RES))
+                # # Compute ratio
+                # coverage = len(np.unique(np.concatenate(coverage).round(2)))*COVERAGE_RES
+        else:
+            coverage = 0
+        self.swarm_coverage = np.clip(coverage/(2*np.pi), 0, 1) # Because of rounding errors caused by discretization
 
 
     def initialize_random_vel(self, bounds):

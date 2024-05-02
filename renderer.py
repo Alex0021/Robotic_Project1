@@ -15,7 +15,7 @@ PLOT_AXIS_MARGIN = 1.2
 CONVERSION_FACTOR = 35621.262462
 DEBUG_VLOS = True # Draw lines to all neighbors
 
-class RendererDara:
+class RendererData:
     axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)
     viewing_radius = 5
     axis_limits_single = np.array([[-viewing_radius,viewing_radius], [-viewing_radius,viewing_radius]], dtype=np.float64)
@@ -48,9 +48,9 @@ class Renderer():
         self.ax.set_xlabel("x")
         self.ax.set_ylabel("y")
         self.ax.set_zlabel("z")
-        self.ax.set_xlim(RendererDara.axis_limits[0])
-        self.ax.set_ylim(RendererDara.axis_limits[1])
-        self.ax.set_zlim(RendererDara.axis_limits[2])
+        self.ax.set_xlim(RendererData.axis_limits[0])
+        self.ax.set_ylim(RendererData.axis_limits[1])
+        self.ax.set_zlim(RendererData.axis_limits[2])
 
     def center_plot_data(self):
         try:
@@ -63,11 +63,19 @@ class Renderer():
             center_z = (max_z + min_z) / 2
 
             max_diff = max(abs(max_x - center_x), abs(max_y - center_y), abs(max_z - center_z)) * PLOT_AXIS_MARGIN
-            RendererDara.axis_limits[0] = [center_x - max_diff,center_x + max_diff]
-            RendererDara.axis_limits[1] = [center_y - max_diff, center_y + max_diff]
-            RendererDara.axis_limits[2] = [center_z - max_diff, center_z + max_diff]
+            RendererData.axis_limits[0] = [center_x - max_diff,center_x + max_diff]
+            RendererData.axis_limits[1] = [center_y - max_diff, center_y + max_diff]
+            RendererData.axis_limits[2] = [center_z - max_diff, center_z + max_diff]
         except:
             return
+        
+    def reset_view(self):
+        RendererData.axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)
+
+    def disable_rendering(self):
+        self.ani.event_source.stop()
+        self.canvas.get_tk_widget().pack_forget()
+        self.toolbar.pack_forget()
 
     
     def render(self, i):
@@ -184,7 +192,7 @@ class Renderer2D():
 
     def update_viewing_radius(self, val):
         self.viewing_radius = val
-        RendererDara.axis_limits_single = np.array([[-self.viewing_radius,self.viewing_radius], [-self.viewing_radius,self.viewing_radius]])
+        RendererData.axis_limits_single = np.array([[-self.viewing_radius,self.viewing_radius], [-self.viewing_radius,self.viewing_radius]])
         self.init_plots()
 
     def init_plots(self):
@@ -192,26 +200,26 @@ class Renderer2D():
         #self.ax[0].clear()
         self.ax[0].set_xlabel("x")
         self.ax[0].set_ylabel("y")
-        self.ax[0].set_xlim(RendererDara.axis_limits[0])
-        self.ax[0].set_ylim(RendererDara.axis_limits[1])
+        self.ax[0].set_xlim(RendererData.axis_limits[0])
+        self.ax[0].set_ylim(RendererData.axis_limits[1])
         self.ax[0].set_title("TOP View")
         # XZ plot
         self.ax[1].set_xlabel("x")
         self.ax[1].set_ylabel("z")
-        self.ax[1].set_xlim(RendererDara.axis_limits[0])
-        self.ax[1].set_ylim(RendererDara.axis_limits[2])
+        self.ax[1].set_xlim(RendererData.axis_limits[0])
+        self.ax[1].set_ylim(RendererData.axis_limits[2])
         self.ax[1].set_title("SIDE View")
         # YZ plot
         self.ax[2].set_xlabel("y")
         self.ax[2].set_ylabel("z")
-        self.ax[2].set_xlim(RendererDara.axis_limits[1])
-        self.ax[2].set_ylim(RendererDara.axis_limits[2])
+        self.ax[2].set_xlim(RendererData.axis_limits[1])
+        self.ax[2].set_ylim(RendererData.axis_limits[2])
         self.ax[2].set_title("FRONT View")
         # Single plot
         self.ax[3].set_xlabel("x")
         self.ax[3].set_ylabel("y")
-        self.ax[3].set_xlim(RendererDara.axis_limits_single[0])
-        self.ax[3].set_ylim(RendererDara.axis_limits_single[1])
+        self.ax[3].set_xlim(RendererData.axis_limits_single[0])
+        self.ax[3].set_ylim(RendererData.axis_limits_single[1])
         self.ax[3].set_title("Single Drone View")
 
         return self.artists.values()

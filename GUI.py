@@ -16,6 +16,7 @@ import threading
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'app_config.json'
+DATA_OUTPUT_FOLDER = 'output'
 FRONTEND_UPDATE_INTERVAL = 0.1
 
 
@@ -66,7 +67,7 @@ class myApp(tk.Frame):
         self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
         self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
         self.var_outter_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outter_points', 2))
-        self.var_output_csv = tk.StringVar(value=self.app_config.get('output_csv', 'output.csv'))
+        self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
         self.render_env = self.app_config['simulation'].get('render', True)
         self.trajectory_mode_enabled = False
         self.var_viewing_dir_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
@@ -217,8 +218,8 @@ class myApp(tk.Frame):
         self.label_coverage_value.grid(column=1,row=7, sticky='NEWS', padx=5)
 
         # Output CSV file
-        self.label_output_csv = ttk.Label(self.panel_algo, anchor='w', text="Output CSV filename: ", font=font.Font(size=12))
-        self.label_output_csv.grid(column=0,row=8, sticky='NEWS')
+        self.label_output = ttk.Label(self.panel_algo, anchor='w', text="Output data filename: ", font=font.Font(size=12))
+        self.label_output.grid(column=0,row=8, sticky='NEWS')
         self.panel_output_file = tk.Frame(self.panel_algo)
         self.panel_output_file.grid_columnconfigure(0, weight=2)
         self.panel_output_file.grid_columnconfigure((1,2), weight=1)
@@ -361,7 +362,12 @@ class myApp(tk.Frame):
         self.btn_2D_view = ttk.Button(self.panel_sim, text="2D view", command=self.btn_2D_view_callback, state='disabled')
         self.btn_2D_view.grid(column=1, row=1, sticky='EW', padx=10, pady=5)
         self.btn_center = ttk.Button(self.panel_sim, text="Center plot data", command=self._btn_center_callback, state='disabled')
-        self.btn_center.grid(column=2, row=1, sticky='EW', padx=10, pady=5)
+        self.btn_center.grid(column=2, row=2, sticky='EW', padx=10, pady=5)
+        self.btn_reset_view = ttk.Button(self.panel_sim, text="Reset view", command=self._btn_reset_view_callback, state='disabled')
+        self.btn_reset_view.grid(column=1, row=2, sticky='EW', padx=10, pady=5)
+        text_btn_rendering = "Rendering: ON" if self.render_env else "Rendering: OFF"
+        self.btn_rendering = ttk.Button(self.panel_sim, text=text_btn_rendering, command=self._btn_rendering_callback)
+        self.btn_rendering.grid(column=2, row=1, sticky='EW', padx=10, pady=5)
 
         # Simulation timestep
         self.panel_sim_timestep = tk.Frame(self.panel_sim)
@@ -382,7 +388,7 @@ class myApp(tk.Frame):
         self.panel_sim_neighbors.grid_columnconfigure((0,1), weight=1)
         self.panel_sim_neighbors.grid_columnconfigure(2, weight=2)
         self.panel_sim_neighbors.grid_rowconfigure(0, weight=1)
-        self.panel_sim_neighbors.grid(row=2, column=1, columnspan=2, sticky='NWES')
+        self.panel_sim_neighbors.grid(row=3, column=1, columnspan=2, sticky='NWES')
         self.label_neighbor_sampling = ttk.Label(self.panel_sim_neighbors, text="Neighbor sampling: ", justify='right')
         self.label_neighbor_sampling.grid(column=0, row=0, sticky='E')
         self.spinner_neighbor_sampling = ttk.Spinbox(self.panel_sim_neighbors, increment=1, from_=1, to=100, textvariable=self.var_neighbor_sampling)
@@ -440,6 +446,7 @@ class myApp(tk.Frame):
         self.radio_2D_viewing.config(state='normal')
         self.radio_3D_viewing.config(state='normal')
         self.button_start_recording.config(state='normal')
+        self.btn_reset_view.config(state='normal')
         if self.swarm.is_2D:
             self.var_viewing_dir_dim.set(2)
             self.radio_3D_viewing.config(state='disabled')
@@ -562,7 +569,7 @@ class myApp(tk.Frame):
         dim = self.var_viewing_dir_dim.get()
         params = {'nb_points': self.var_outter_points.get(), 
                   "faces": self.listbox_convex_hull_faces.get(),
-                  "dim": dim}
+                  "in_2d": dim==2}
         self.swarm.set_viewing_algorithm(algo, params)
         if dim == 2:
             self.label_coverage['text'] = "Coverage (circle): "
@@ -606,6 +613,7 @@ class myApp(tk.Frame):
         self.radio_3D_viewing.config(state='disabled')
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='disabled')
+        self.btn_reset_view.config(state='disabled')
         self.update_frontend_running = False
         # Disable all components in the neighbors panel
         for child in self.panel_neighbors.winfo_children():
@@ -635,9 +643,26 @@ class myApp(tk.Frame):
         self.renderer.center_plot_data()
         #if self.renderer2D is not None:
             #self.renderer2D.init_plots()
+    
+    def _btn_reset_view_callback(self):
+        self.renderer.reset_view()
         
     def btn_step_callback(self):
         self.sim.step()
+
+    def _btn_rendering_callback(self):
+        if self.render_env:
+            self.render_env = False
+            self.btn_rendering.config(text="Rendering: OFF")
+            self.renderer.disable_rendering()
+            self.renderer = None
+            self.label_no_renderering.grid(column=0,row=0,sticky='NESW')
+        else:
+            self.render_env = True
+            self.btn_rendering.config(text="Rendering: ON")
+            self.label_no_renderering.grid_forget()
+            self.renderer = self.renderer = Renderer(self.panel_view, self.swarm)
+        
 
     def btn_2D_view_callback(self):
         # Initialize 2D view windows
@@ -673,12 +698,12 @@ class myApp(tk.Frame):
             self.swarm.set_migration_mode('trajectory')
 
     def start_recording_callback(self):
-        self.sim.start_recording(self.var_output_csv.get())
+        self.sim.start_recording(self.get_app_params_dict())
         self.button_stop_recording.config(state='normal')
         self.button_start_recording.config(state='disabled')
 
     def stop_recording_callback(self):
-        self.sim.stop_recording()
+        self.sim.stop_recording(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='normal')
     
@@ -743,7 +768,6 @@ class myApp(tk.Frame):
         if self.var_neighbor_count.get() >= self.var_drone_count.get():
             self.var_neighbor_count.set(self.var_drone_count.get()-1)
 
-
     def update_frontend(self):
         try:
             self.update_sim_data(self.sim.get_total_time())
@@ -751,6 +775,39 @@ class myApp(tk.Frame):
             pass
         if self.update_frontend_running:
             self.mainframe.after(int(FRONTEND_UPDATE_INTERVAL*1000), self.update_frontend)
+
+    def get_app_params_dict(self):
+        return {
+            "drone_count": self.var_drone_count.get(),
+            "swarm_spread": self.var_swarm_spread.get(),
+            "delta": self.var_delta.get(),
+            "r_coh": self.var_coh.get(),
+            "vref": self.var_vref.get(),
+            "a": self.var_a.get(),
+            "b": self.var_b.get(),
+            "target": self.textbox_target.get(),
+            "neighbors": {
+                "sampling": self.var_neighbor_sampling.get(),
+                "count": self.var_neighbor_count.get(),
+                "sensing_range": self.var_neighbor_radius.get(),
+                "r_agent": self.var_neighbor_r_agent.get(),
+                "metric": self.listbox_neighbors_algo.get(),
+                "computation": self.listbox_neighbors_select.get()
+            },
+            "noise": {
+                "type": self.listbox_noise_type.get(),
+                "param_dist": self.var_noise_pos.get(),
+                "param_dir" : self.var_noise_heading.get(),
+                "param_heading": 0.0
+            },
+            "viewing_metric": {
+                "algorithm": self.listbox_viewing_algo.get(),
+                "outter_points": self.var_outter_points.get(),
+                "faces": self.listbox_convex_hull_faces.get(),
+                "dim": self.var_viewing_dir_dim.get()
+            }
+        }
+
 
 if __name__ == "__main__":
     root = tk.Tk()
