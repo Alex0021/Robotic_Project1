@@ -2,6 +2,8 @@ import numpy as np
 from drone import *
 import olfati_saber as olsab
 from scipy.spatial import ConvexHull
+from contextlib import contextmanager
+from timeit import default_timer
 
 # Setting a common/uniform seed for testing
 np.random.seed(1)
@@ -31,6 +33,10 @@ class Swarm():
         self.is_2D = abs(box[5]) < 0.01
         self.viewing_dim = 2 if self.is_2D else 3
         self.swarm_coverage = 0.0
+        self.timing_neighborhood = 0.0
+        self.timing_viewing_dir = 0.0
+        self.timing_coverage = 0.0
+        self.circle_done = False
         # Initialize drones within a given box (random)
         if count == 1:
             self.members.append(Drone(init_pos=box[0:3]))
@@ -135,20 +141,33 @@ class Swarm():
     def compute_neighborhood(self):
         computation_method = self.neighbors_params.get('computation', 'None')
         metric = self.neighbors_params.get('metric', 'Eucledian')
-        if computation_method == 'Selected':
-            self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.neighbors_params)
-            # Compute viewing direction
-            if self.viewing_params.get('algorithm', 'None') != 'None':
-                self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params)
-            # Compute coverage
-            self.compute_coverage(only_selected=False)
-        elif computation_method == 'All':
-            for m in self.members:
-                m.compute_neihgborhood(self.members, metric, self.neighbors_params)
+        if computation_method == 'Selected' or computation_method == 'All':
+            if computation_method == 'Selected':
+                with self.elapsed_timer() as elapsed:
+                    self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.neighbors_params)
+                    self.timing_neighborhood = elapsed()
+                # Compute viewing direction
                 if self.viewing_params.get('algorithm', 'None') != 'None':
-                    m.compute_viewing_dir(self.members, self.viewing_params)
+                    with self.elapsed_timer() as elapsed:
+                        self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params)
+                        self.timing_viewing_dir = elapsed()
+                only_selected = True
+            elif computation_method == 'All':
+                with self.elapsed_timer() as elapsed:
+                    for m in self.members:
+                        m.compute_neihgborhood(self.members, metric, self.neighbors_params)
+                    self.timing_neighborhood = elapsed()
+                
+                with self.elapsed_timer() as elapsed:
+                    for m in self.members:
+                        if self.viewing_params.get('algorithm', 'None') != 'None':
+                            m.compute_viewing_dir(self.members, self.viewing_params)
+                    self.timing_viewing_dir = elapsed()
+                only_selected = False
             # Compute coverage
-            self.compute_coverage(only_selected=False)
+            with self.elapsed_timer() as elapsed:
+                self.compute_coverage(only_selected=only_selected)
+                self.timing_coverage = elapsed()
         else:
             # clear all neighbors
             for m in self.members:
@@ -159,19 +178,22 @@ class Swarm():
         # Compute distances of each drones to the convex hull of the swarm
         weights = np.ones(self.count)
         if self.is_2D:
-            points = np.array([m.pos[:2] for m in self.members])
-            hull = ConvexHull(points)
-            for i in range(self.count):
-                if i not in hull.vertices:
-                    # Find distance to closest edge
-                    dist = np.zeros(len(hull.simplices))
-                    for j in range(len(hull.simplices)):
-                        idx = hull.simplices[j][0]
-                        p = points[idx]
-                        dist[j] = np.dot(p-points[i], hull.equations[j][:2])
-                    idx_min = np.argmin(np.abs(dist))
-                    d_center = np.abs(np.dot(points[hull.simplices[idx_min][0]] - self.swarm_center[:2], hull.equations[idx_min][:2]))
-                    weights[i] = 1 - (dist[idx_min]/d_center)
+            p_dim = 2
+        else:
+            p_dim = 3
+        points = np.array([m.pos[:p_dim] for m in self.members])
+        hull = ConvexHull(points)
+        for i in range(self.count):
+            if i not in hull.vertices:
+                # Find distance to closest edge
+                dist = np.zeros(len(hull.simplices))
+                for j in range(len(hull.simplices)):
+                    idx = hull.simplices[j][0]
+                    p = points[idx]
+                    dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
+                idx_min = np.argmin(np.abs(dist))
+                d_center = np.abs(np.dot(points[hull.simplices[idx_min][0]] - self.swarm_center[:p_dim], hull.equations[idx_min][:p_dim]))
+                weights[i] = 1 - (dist[idx_min]/d_center)
 
         if viewing_dir_2d:
             # Compute the coverage of the swarm projected to a circle
@@ -198,31 +220,84 @@ class Swarm():
                         coverage[:int(u_bound/COVERAGE_RES)] += w
                     else:
                         coverage[int((psi - fov/2)/COVERAGE_RES):int((psi + fov/2)/COVERAGE_RES)] += w
-                coverage = len(np.where(coverage == 1)[0])*COVERAGE_RES
-                # coverage = []
-                # # Discretizing each fov
-                # for m in self.members:
-                #     fov = m.fov
-                #     psi = m.angles[2]
-                #     if psi < 0:
-                #         psi += 2*np.pi
-                #     if psi - fov/2 < 0:
-                #         l_bound = psi - fov/2 + 2*np.pi
-                #         u_bound = psi + fov/2
-                #         coverage.append(np.arange(l_bound, 2*np.pi, COVERAGE_RES))
-                #         coverage.append(np.arange(0, u_bound, COVERAGE_RES))
-                #     elif psi + fov/2 > 2*np.pi:
-                #         l_bound = psi - fov/2
-                #         u_bound = psi + fov/2 - 2*np.pi
-                #         coverage.append(np.arange(l_bound, 2*np.pi, COVERAGE_RES))
-                #         coverage.append(np.arange(0, u_bound, COVERAGE_RES))
-                #     else:
-                #         coverage.append(np.arange(psi - fov/2, psi + fov/2, COVERAGE_RES))
-                # # Compute ratio
-                # coverage = len(np.unique(np.concatenate(coverage).round(2)))*COVERAGE_RES
+                coverage = np.sum(np.clip(coverage, 0, 1))*COVERAGE_RES
+            self.swarm_coverage = min(coverage/(2*np.pi), 1) # Clipping to 1.0 because of rounding errors caused by discretization
         else:
-            coverage = 0
-        self.swarm_coverage = np.clip(coverage/(2*np.pi), 0, 1) # Because of rounding errors caused by discretization
+            # Compute the coverage of the swarm projected to a sphere
+            # Only selected drone
+            if only_selected:
+                m = self.members[self.selected_drone]
+                fov_psi = m.fov
+                fov_phi = m.fov * m.ASPECT_RATIO
+                coverage = fov_phi*fov_psi
+            else:
+                nb_bins_phi = int(np.pi/COVERAGE_RES) + 1
+                nb_bins_psi = int(2*np.pi/COVERAGE_RES) + 1
+                coverage = np.zeros((nb_bins_phi, nb_bins_psi))
+                for m, w in zip(self.members, weights):
+                    fov_psi = m.fov
+                    fov_phi = m.fov * m.ASPECT_RATIO
+                    psi = m.angles[2]
+                    phi = m.angles[1] + np.pi/2
+                    if psi < 0:
+                        psi += 2*np.pi
+                    if psi - fov_psi/2 < 0:
+                        l_bound_psi = psi - fov_psi/2 + 2*np.pi
+                        u_bound_psi = psi + fov_psi/2
+                        if phi - fov_phi/2 < 0:
+                            l_bound_phi = fov_phi/2 - phi
+                            u_bound_phi = phi + fov_phi/2
+                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
+                            coverage[:int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
+                            coverage[:int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
+                            coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):] += w
+                            coverage[:int(l_bound_phi/COVERAGE_RES), :int(u_bound_flipped/COVERAGE_RES)] += w
+                        elif phi + fov_phi/2 > np.pi:
+                            l_bound_phi = phi - fov_phi/2
+                            u_bound_phi = 2*np.pi-(phi + fov_phi/2)
+                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
+                            coverage[int(l_bound_phi/COVERAGE_RES):, int(l_bound_psi/COVERAGE_RES):] += w
+                            coverage[int(l_bound_phi/COVERAGE_RES):, :int(u_bound_psi/COVERAGE_RES)] += w
+                            coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):] += w
+                            coverage[int(u_bound_phi/COVERAGE_RES):, :int(u_bound_flipped/COVERAGE_RES)] += w
+                        else:
+                            l_bound_phi = phi - fov_phi/2
+                            u_bound_phi = phi + fov_phi/2
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
+
+                    elif psi + fov_psi/2 > 2*np.pi:
+                        l_bound_psi = psi - fov_psi/2
+                        u_bound_psi = psi + fov_psi/2 - 2*np.pi
+                        if phi - fov_phi/2 < 0:
+                            l_bound_phi = fov_phi/2 - phi
+                            u_bound_phi = phi + fov_phi/2
+                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
+                            coverage[:int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
+                            coverage[:int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
+                            coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):] += w
+                            coverage[:int(l_bound_phi/COVERAGE_RES), :int(u_bound_flipped/COVERAGE_RES)] += w
+                        elif phi + fov_phi/2 > np.pi:
+                            l_bound_phi = phi - fov_phi/2
+                            u_bound_phi = 2*np.pi-(phi + fov_phi/2)
+                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
+                            coverage[int(l_bound_phi/COVERAGE_RES):, int(l_bound_psi/COVERAGE_RES):] += w
+                            coverage[int(l_bound_phi/COVERAGE_RES):, :int(u_bound_psi/COVERAGE_RES)] += w
+                            coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):] += w
+                            coverage[int(u_bound_phi/COVERAGE_RES):, :int(u_bound_flipped/COVERAGE_RES)] += w
+                        else:
+                            l_bound_phi = phi - fov_phi/2
+                            u_bound_phi = phi + fov_phi/2
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
+                    else:
+                        coverage[int((phi-fov_phi/2)/COVERAGE_RES):int((phi+fov_phi/2)/COVERAGE_RES), int((psi - fov_psi/2)/COVERAGE_RES):int((psi + fov_psi/2)/COVERAGE_RES)] += w
+                coverage = np.sum(np.clip(coverage, 0, 1))*COVERAGE_RES*COVERAGE_RES
+            self.swarm_coverage = min(coverage/(2*np.pi*np.pi), 1)
 
 
     def initialize_random_vel(self, bounds):
@@ -256,6 +331,7 @@ class Swarm():
         if self.migration_point is not None:
             if np.linalg.norm(self.swarm_center - self.migration_point) < TARGET_TOL:
                 self.trajectory_idx += 1
+                self.circle_done = self.trajectory_idx % NB_POINTS == 0
                 self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
 
     def set_migration_mode(self, mode):
@@ -293,3 +369,11 @@ class Swarm():
                 self.members.pop(i)
             self.count = count
             self.compute_neighborhood()
+
+    @contextmanager
+    def elapsed_timer(self):
+        start = default_timer()
+        elapser = lambda: default_timer() - start
+        yield lambda: elapser()
+        end = default_timer()
+        elapser = lambda: end-start

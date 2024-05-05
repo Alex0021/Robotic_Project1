@@ -590,6 +590,9 @@ class myApp(tk.Frame):
         self.label_sim_total_time.configure(text=f'Simulation time: {sim_time:.3f} s')
         # Coverage
         self.label_coverage_value.config(text=f'{self.swarm.swarm_coverage*100:.2f}%')
+        # Check for complete circle by swarm
+        if self.swarm.circle_done:
+            self.sim.pause()
 
     def _update_swarm_count(self, *args):
         if self.swarm is not None:

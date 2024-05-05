@@ -52,7 +52,7 @@ class Simulator():
         return self._simulation_time
 
     def start_recording(self, fixed_params=dict()):
-        self.record_dict = {"params": fixed_params, "selected_drone": self._swarm.selected_drone, "timesteps": [], "data": []}
+        self.record_dict = {"params": fixed_params, "selected_drone": self._swarm.selected_drone, "timesteps": [], "drone_data": [], "swarm_center": [], "timings": []}
         self.recorded_timesteps = []
         self.recorded_data = []
         print("RECORD DATA: ON")
@@ -62,7 +62,7 @@ class Simulator():
         self.record_data = False
         self.record_time = 0
         self.record_dict["timesteps"] = self.recorded_timesteps
-        self.record_dict["data"] = self.recorded_data
+        self.record_dict["drone_data"] = self.recorded_data
         print("RECORD DATA: OFF ==> Output file: ", output_file_path + '.npy')
         np.save(output_file_path + '.npy', self.record_dict)
 
@@ -71,6 +71,8 @@ class Simulator():
             self.recorded_timesteps.append(self._simulation_time)
             data = []
             swarm_center = self._swarm.get_swarm_center()
+            self.record_dict["swarm_center"].append(swarm_center)
+            self.record_dict["timings"].append([self._swarm.timing_neighborhood, self._swarm.timing_viewing_dir, self._swarm.timing_coverage])
             for drone in self._swarm.members:
                 avg_neighbor_dst = np.mean([n.distance for n in drone.neighbors])
                 dist_to_center = np.linalg.norm(swarm_center - drone.pos)

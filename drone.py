@@ -12,6 +12,7 @@ KP_GAIN = 2.0
 KD_GAIN = 0.1
 ANGULAR_RATE_LIMIT = 1.0
 USE_PD_CONTROLLER = False
+FOV_ASPECT_RATIO = 1.0
 
 class Drone:
     '''
@@ -34,6 +35,7 @@ class Drone:
         self.use_pd_controller = USE_PD_CONTROLLER
         self.viewing_error = 0.0
         self.fov = DEFAULT_FOV * np.pi / 180.0 # In radians
+        self.ASPECT_RATIO = FOV_ASPECT_RATIO
         
     def get_state(self):
         return np.vstack((self.pos, self.vel, self.acc, self.angles))
