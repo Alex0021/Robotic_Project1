@@ -18,6 +18,7 @@ w,h = (1600,800)
 CONFIG_FILENAME = 'app_config.json'
 DATA_OUTPUT_FOLDER = 'output'
 FRONTEND_UPDATE_INTERVAL = 0.1
+TEST_COMPLETED_CHECK_INTERVAL = 0.5
 
 
 class myApp(tk.Frame):
@@ -71,6 +72,21 @@ class myApp(tk.Frame):
         self.render_env = self.app_config['simulation'].get('render', True)
         self.trajectory_mode_enabled = False
         self.var_viewing_dir_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
+
+        #=========================================#
+        # JSON CONFIG AUTORUN_SIM INITIALIZATION  #
+        #=========================================#
+        try:
+            with open('sim_autorun.json') as f:
+                self.autorun_config = json.load(f)
+        except FileNotFoundError:
+            self.autorun_config = {}
+
+        self.autorun_var_name = self.autorun_config.get('var', 'None')
+        self.autorun_from = self.autorun_config.get('from', 0)
+        self.autorun_to = self.autorun_config.get('to', 0)
+        self.autorun_steps = self.autorun_config.get('steps', 0)
+        self.autorun_filename = self.autorun_config.get('file_basename', 'unknown')
 
         #==================================#
         # APP VARIABLES TRACKING  #
@@ -129,8 +145,8 @@ class myApp(tk.Frame):
         # Panel alog params
         self.panel_algo = tk.Frame(self.mainframe, bg='lightgray')
         self.panel_algo.grid_columnconfigure((0,1,2),weight=1)
-        self.panel_algo.grid_rowconfigure(list(range(9)),weight=1)
-        self.panel_algo.grid_rowconfigure(9,weight=2)
+        self.panel_algo.grid_rowconfigure(list(range(10)),weight=1)
+        self.panel_algo.grid_rowconfigure(10,weight=2)
         self.tabbed_pane.add(self.panel_algo, text='Algo params')
 
         # Subpabels of sidebar
@@ -232,7 +248,14 @@ class myApp(tk.Frame):
         self.button_stop_recording = ttk.Button(self.panel_output_file, text="Stop", command=self.stop_recording_callback, state='disabled')
         self.button_stop_recording.grid(column=2,row=0, sticky='EW', padx=5)
 
-
+        # Autoun features
+        self.label_autorun_sim = ttk.Label(self.panel_algo, anchor='w', text="Autorun simulations: ", font=font.Font(size=14))
+        self.label_autorun_sim.grid(column=0,row=9, sticky='NEWS')
+        label_text = f'Testing on {self.autorun_var_name}: from {self.autorun_from} to {self.autorun_to} with {self.autorun_steps} increments'
+        self.label_info_autorun_sim = ttk.Label(self.panel_algo, anchor='w', text=label_text, font=font.Font(size=12))
+        self.label_info_autorun_sim.grid(column=1,row=9, sticky='NEWS', padx=0)
+        self.btn_autorun_sim = ttk.Button(self.panel_algo, text="RUN", command=self.start_autorun_sim, state='disabled')
+        self.btn_autorun_sim.grid(column=2,row=9, sticky='NEWS', padx=0)
 
     def init_sidebar_components(self):
         # Title
@@ -436,6 +459,7 @@ class myApp(tk.Frame):
             self.btn_center.config(state='normal')
         self.btn_simulate.config(state='normal')
         self.btn_trajectory_mode.config(state='normal')
+        self.btn_autorun_sim.config(state='normal')
         # Enable all components in the neighbors panel
         for child in self.panel_neighbors.winfo_children():
             child.config(state='normal')
@@ -590,9 +614,6 @@ class myApp(tk.Frame):
         self.label_sim_total_time.configure(text=f'Simulation time: {sim_time:.3f} s')
         # Coverage
         self.label_coverage_value.config(text=f'{self.swarm.swarm_coverage*100:.2f}%')
-        # Check for complete circle by swarm
-        if self.swarm.circle_done:
-            self.sim.pause()
 
     def _update_swarm_count(self, *args):
         if self.swarm is not None:
@@ -810,7 +831,41 @@ class myApp(tk.Frame):
                 "dim": self.var_viewing_dir_dim.get()
             }
         }
+    
+    def start_autorun_sim(self):
+        if self.autorun_var_name == 'None':
+            print("No valid test conifig found!")
+            return
+        if self.autorun_steps == 0:
+            print("No steps defined for autorun!")
+            return
+        match self.autorun_var_name:
+            case 'topological':
+                self.var_autosim = self.var_neighbor_count
+            case _:
+                print(f'Variable name not implemented: {self.autorun_var_name}')
+                return
+        self.var_output_csv.set(f'{self.autorun_filename}_{self.autorun_var_name}_{self.autorun_from}')
+        self.var_autosim.set(self.autorun_from)
+        self._btn_simulate_callback()
+        self.btn_trajectory_mode_callback()
+        self.start_recording_callback()
+        self.btn_autorun_sim.config(state='disabled')
+        print("Starting autorun simulation...")
+        self.swarm.callback_trajectory_done = self.autorun_step_finished
 
+    def autorun_step_finished(self):
+        if self.var_autosim.get() >= self.autorun_to:
+            self._btn_pause_callback()
+            self.stop_recording_callback()
+            print("Autorun simulation completed!")
+            return
+        completion = (self.var_autosim.get() - self.autorun_from + 1)/(self.autorun_steps*(self.autorun_to-self.autorun_from))*100
+        print("Autorun step completed: {0:.2f}%".format(completion))
+        self.stop_recording_callback()
+        self.var_autosim.set(self.var_autosim.get() + self.autorun_steps)
+        self.var_output_csv.set(f'{self.autorun_filename}_{self.autorun_var_name}_{self.var_autosim.get()}')
+        self.start_recording_callback()
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -10,7 +10,7 @@ np.random.seed(1)
 
 # Circle Trajectory
 NB_POINTS = 20
-TARGET_TOL = 0.15 # Tolerance before reaching the target
+TARGET_TOL = 0.2 # Tolerance before reaching the target
 CIRCLE_RADIUS = 3.0
 TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(np.linspace(0, 2*np.pi, NB_POINTS)), CIRCLE_RADIUS*np.sin(np.linspace(0, 2*np.pi, NB_POINTS)), 5.0*np.ones(NB_POINTS)]).T 
 
@@ -37,6 +37,7 @@ class Swarm():
         self.timing_viewing_dir = 0.0
         self.timing_coverage = 0.0
         self.circle_done = False
+        self.callback_trajectory_done = None
         # Initialize drones within a given box (random)
         if count == 1:
             self.members.append(Drone(init_pos=box[0:3]))
@@ -331,7 +332,10 @@ class Swarm():
         if self.migration_point is not None:
             if np.linalg.norm(self.swarm_center - self.migration_point) < TARGET_TOL:
                 self.trajectory_idx += 1
-                self.circle_done = self.trajectory_idx % NB_POINTS == 0
+                if self.trajectory_idx % NB_POINTS == 0:
+                    self.circle_done = True
+                    if self.callback_trajectory_done is not None:
+                        self.callback_trajectory_done()
                 self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
 
     def set_migration_mode(self, mode):

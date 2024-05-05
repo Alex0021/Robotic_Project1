@@ -68,7 +68,7 @@ class Simulator():
 
     def _dump_data_to_file(self):
         if self.record_data:
-            self.recorded_timesteps.append(self._simulation_time)
+            self.recorded_timesteps.append(self.record_time)
             data = []
             swarm_center = self._swarm.get_swarm_center()
             self.record_dict["swarm_center"].append(swarm_center)
