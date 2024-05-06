@@ -1,7 +1,29 @@
 {
-    "file_basename": "2D_outter3",
-    "var": "topological",
-    "from": 3,
-    "to": 9,
-    "steps": 1
+    "test1": {
+        "file_basename": "2D_outter6",
+        "metrics": ["viewing_metric_outter_points"],
+        "values": [6],
+        "var": "neighbors_count",
+        "from": 5,
+        "to": 7,
+        "steps": 1
+    },
+    "test2": {
+        "file_basename": "2D_convexhull_ajd",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_faces"],
+        "values": ["convex_hull", "adjacent"],
+        "var": "neighbors_count",
+        "from": 3,
+        "to": 9,
+        "steps": 1
+    },
+    "test3": {
+        "file_basename": "2D_convexhull_vis",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_faces"],
+        "values": ["convex_hull", "visible"],
+        "var": "neighbors_count",
+        "from": 3,
+        "to": 9,
+        "steps": 1
+    }
 }

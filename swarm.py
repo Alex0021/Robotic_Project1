@@ -46,7 +46,7 @@ class Swarm():
             pos = np.random.uniform(box[0:3] - box[3:6]/2, box[0:3] + box[3:6]/2, size=(count,3))
             for p in pos:
                 self.members.append(Drone(init_pos=p, init_angles=[0,0,0]))
-        print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
+        #print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
         self.swarm_center = self.get_swarm_center()
 
         # Intitialize optional parameters
@@ -334,8 +334,6 @@ class Swarm():
                 self.trajectory_idx += 1
                 if self.trajectory_idx % NB_POINTS == 0:
                     self.circle_done = True
-                    if self.callback_trajectory_done is not None:
-                        self.callback_trajectory_done()
                 self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
 
     def set_migration_mode(self, mode):

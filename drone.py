@@ -12,7 +12,7 @@ KP_GAIN = 2.0
 KD_GAIN = 0.1
 ANGULAR_RATE_LIMIT = 1.0
 USE_PD_CONTROLLER = False
-FOV_ASPECT_RATIO = 1.0
+FOV_ASPECT_RATIO = 3/5
 
 class Drone:
     '''
@@ -155,6 +155,7 @@ class Drone:
             self.exact_viewing_dir = np.zeros(3)
         else:
             self.exact_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+        # self.exact_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
         # Compute error
         self.viewing_error = np.arccos(np.clip(np.dot(self.estimated_viewing_dir, self.exact_viewing_dir),-1,1)) * 180 / np.pi
 

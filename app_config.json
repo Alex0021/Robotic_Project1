@@ -26,12 +26,13 @@
     },
     "viewing_metric": {
         "algorithm": "outter",
-        "outter_points": 3,
+        "outter_points": 4,
         "faces": "adjacent",
         "dim": 3
     },
     "simulation": {
         "render": true,
-        "use_pd_smoothing": false
+        "use_pd_smoothing": false,
+        "trajectory_mode": true
     }
 }
