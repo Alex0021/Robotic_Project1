@@ -1,6 +1,42 @@
 {
     "test1": {
-        "file_basename": "2D_outter6",
+        "file_basename": "3D_outter2",
+        "metrics": ["viewing_metric_outter_points"],
+        "values": [2],
+        "var": "neighbors_count",
+        "from": 2,
+        "to": 9,
+        "steps": 1
+    },
+    "test2": {
+        "file_basename": "3D_outter3",
+        "metrics": ["viewing_metric_outter_points"],
+        "values": [3],
+        "var": "neighbors_count",
+        "from": 3,
+        "to": 9,
+        "steps": 1
+    },
+    "test3": {
+        "file_basename": "3D_outter4",
+        "metrics": ["viewing_metric_outter_points"],
+        "values": [4],
+        "var": "neighbors_count",
+        "from": 4,
+        "to": 6,
+        "steps": 1
+    },
+    "test4": {
+        "file_basename": "3D_outter5",
+        "metrics": ["viewing_metric_outter_points"],
+        "values": [5],
+        "var": "neighbors_count",
+        "from": 5,
+        "to": 7,
+        "steps": 1
+    },
+    "test5": {
+        "file_basename": "3D_outter6",
         "metrics": ["viewing_metric_outter_points"],
         "values": [6],
         "var": "neighbors_count",
@@ -8,8 +44,8 @@
         "to": 7,
         "steps": 1
     },
-    "test2": {
-        "file_basename": "2D_convexhull_ajd",
+    "test6": {
+        "file_basename": "3D_convexhull_ajd",
         "metrics": ["viewing_metric_algorithm", "viewing_metric_faces"],
         "values": ["convex_hull", "adjacent"],
         "var": "neighbors_count",
@@ -17,8 +53,8 @@
         "to": 9,
         "steps": 1
     },
-    "test3": {
-        "file_basename": "2D_convexhull_vis",
+    "test7": {
+        "file_basename": "3D_convexhull_vis",
         "metrics": ["viewing_metric_algorithm", "viewing_metric_faces"],
         "values": ["convex_hull", "visible"],
         "var": "neighbors_count",

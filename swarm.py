@@ -37,7 +37,6 @@ class Swarm():
         self.timing_viewing_dir = 0.0
         self.timing_coverage = 0.0
         self.circle_done = False
-        self.callback_trajectory_done = None
         # Initialize drones within a given box (random)
         if count == 1:
             self.members.append(Drone(init_pos=box[0:3]))

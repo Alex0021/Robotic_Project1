@@ -13,6 +13,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Debug plots generator",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "generate_plots.py",
+            "console": "integratedTerminal",
+            "args": ["2D_outter4"]
+        },
+        {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
