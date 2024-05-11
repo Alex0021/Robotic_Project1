@@ -7,7 +7,7 @@ from algorithms import get_viewing_dir
 
 DEFAULT_RANGE_SENSING = 2.0
 DEFAULT_NB_NEIGHBORS = 3
-DEFAULT_FOV = 97.0 # degrees
+DEFAULT_FOV = 360.0/9 # degrees
 KP_GAIN = 2.0
 KD_GAIN = 0.1
 ANGULAR_RATE_LIMIT = 1.0

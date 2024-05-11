@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib as mpl
-from matplotlib.colors import Normalize
+from matplotlib.colors import Normalize, ListedColormap
 import sys, os
 
 ROOT_FOLDER = 'sim_results'
@@ -21,6 +21,12 @@ def generate_viewing_error_plot(all_drone_data, ax, x_range, y_range):
     zpos = np.zeros_like(xpos)
     # Find the average error for each drone
     errors = np.mean(all_drone_data[:, :, :, 3], axis=1)
+    dist_to_hull = np.mean(np.abs(all_drone_data[:, :, :, 2]), axis=1)
+    dist_sorted_indices = np.argsort(dist_to_hull, axis=1)
+    for idx, i in zip(dist_sorted_indices, range(len(dist_sorted_indices))):
+        errors[i,:] = errors[i, idx]
+        dist_to_hull[i,:] = dist_to_hull[i, idx]
+
 
     # Construct arrays with the dimensions for the bars.
     dx = 0.5 * np.ones_like(xpos)
@@ -28,16 +34,17 @@ def generate_viewing_error_plot(all_drone_data, ax, x_range, y_range):
     dz = errors.flatten()
 
     # Create color map with dist to center (on average)
-    colormap = mpl.colormaps['jet']
-    dist_to_center = np.mean(np.abs(all_drone_data[:, :, :, 2]), axis=1)
-    max_height = np.max(dist_to_center)
-    min_height = np.min(dist_to_center)
-    dist_to_center = dist_to_center.flatten()
-    colors = colormap((dist_to_center - min_height) / (max_height-min_height))
+    colormap = mpl.colormaps['viridis']
+    new_cm = ListedColormap(colormap(np.linspace(0.25, 0.75, 256)))
+    #max_height = np.max(dist_to_hull)
+    #min_height = np.min(dist_to_hull)
+    dist_to_hull = dist_to_hull.flatten()
+    #colors = new_cm((dist_to_hull - min_height) / (max_height-min_height))
+    colors = new_cm(dist_to_hull)
     ax.bar3d(xpos, ypos, zpos, dx, dy, dz, color=colors, zsort='average')
     #ax.set_box_aspect(aspect=None, zoom=0.95)
-    cbar = plt.colorbar(cm.ScalarMappable(Normalize(vmin=min_height, vmax=max_height), cmap=colormap), ax=ax, orientation='vertical')
-    cbar.set_label('Avg dist to swarm center')
+    cbar = plt.colorbar(cm.ScalarMappable(Normalize(vmin=0, vmax=1), cmap=new_cm), ax=ax, orientation='vertical', fraction=0.025, pad=0.04)
+    cbar.set_label('Distance to convex hull center')
 
     # Add average over all drones as 2d line
     avg_errors = np.mean(errors, axis=1)
@@ -144,7 +151,7 @@ if __name__ == '__main__':
         nb_drones = data[0]['params']['drone_count']
 
         # Create the plots
-        fig = plt.figure(figsize=(16, 12))
+        fig = plt.figure(figsize=(20, 12))
         elems_title = sim_files[0].split('_')
         fig.suptitle(f"Results for testing {' '.join(elems_title[:-1])} metric", fontsize=16)
         gs = fig.add_gridspec(3,5)

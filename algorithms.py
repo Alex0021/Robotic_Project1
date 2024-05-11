@@ -187,12 +187,12 @@ def convex_hull(drone, neighbors, params):
     idx_drone = len(neighbors)
     points = np.concatenate((points, [drone.pos]))
     # Prepare standard options for qhull solver
-    qhull_options = 'Q' if in_2d else 'QtJ'
+    qhull_options = '' if in_2d else 'tJ'
     ndim = 2 if in_2d else 3
     if in_2d:
         points = points[:, :2]
     if params.get('faces', 'adjacent') == 'adjacent':
-        hull = ConvexHull(points, qhull_options=qhull_options)
+        hull = ConvexHull(points, qhull_options=f'Q{qhull_options}')
         # Check if drone is in the convex hull
         if idx_drone not in hull.vertices:
             return drone.get_heading()
@@ -208,7 +208,7 @@ def convex_hull(drone, neighbors, params):
             normal = np.cross(points[1] - points[0], points[2] - points[0])
             viewing_dir = -np.sign(np.dot(normal, centroid - points[-1]))*normal
         else:
-            hull = ConvexHull(points, qhull_options=f'{qhull_options}G{idx_drone}')
+            hull = ConvexHull(points, qhull_options=f'QG{idx_drone}{qhull_options}')
             # Compute the normal of the visible faces
             visible_idx = np.where(hull.good)[0]
             # If no visible faces, return drone heading (change nothing)

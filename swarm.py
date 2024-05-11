@@ -12,7 +12,12 @@ np.random.seed(1)
 NB_POINTS = 20
 TARGET_TOL = 0.2 # Tolerance before reaching the target
 CIRCLE_RADIUS = 3.0
-TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(np.linspace(0, 2*np.pi, NB_POINTS)), CIRCLE_RADIUS*np.sin(np.linspace(0, 2*np.pi, NB_POINTS)), 5.0*np.ones(NB_POINTS)]).T 
+Z_HEIGHT = 5.0
+t = np.linspace(-np.pi/2, 3*np.pi/2, NB_POINTS)
+TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(t), CIRCLE_RADIUS*np.sin(t), Z_HEIGHT*np.ones(NB_POINTS)]).T 
+SCALE = 2
+TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*np.ones(NB_POINTS)]).T
+
 
 MAX_ITER = 100 # Maximum number of iterations to find a valid position
 COVERAGE_RES = 0.01  # To discretize into cells for the coverage computation
@@ -37,6 +42,7 @@ class Swarm():
         self.timing_viewing_dir = 0.0
         self.timing_coverage = 0.0
         self.circle_done = False
+        self.dist_weights = np.ones(self.count)
         # Initialize drones within a given box (random)
         if count == 1:
             self.members.append(Drone(init_pos=box[0:3]))
@@ -176,13 +182,13 @@ class Swarm():
     def compute_coverage(self, only_selected=False):
         viewing_dir_2d = self.viewing_params.get('in_2d', False)
         # Compute distances of each drones to the convex hull of the swarm
-        weights = np.ones(self.count)
         if self.is_2D:
             p_dim = 2
         else:
             p_dim = 3
         points = np.array([m.pos[:p_dim] for m in self.members])
         hull = ConvexHull(points)
+        hull_center = np.mean(points[hull.vertices], axis=0)
         for i in range(self.count):
             if i not in hull.vertices:
                 # Find distance to closest edge
@@ -192,8 +198,8 @@ class Swarm():
                     p = points[idx]
                     dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
                 idx_min = np.argmin(np.abs(dist))
-                d_center = np.abs(np.dot(points[hull.simplices[idx_min][0]] - self.swarm_center[:p_dim], hull.equations[idx_min][:p_dim]))
-                weights[i] = 1 - (dist[idx_min]/d_center)
+                d_center = np.abs(np.dot(points[hull.simplices[idx_min][0]] - hull_center, hull.equations[idx_min][:p_dim]))
+                self.dist_weights[i] = 1 - (dist[idx_min]/d_center)
 
         if viewing_dir_2d:
             # Compute the coverage of the swarm projected to a circle
@@ -203,7 +209,7 @@ class Swarm():
             else:
                 nb_bins = int(2*np.pi/COVERAGE_RES) + 1
                 coverage = np.zeros(nb_bins)
-                for m, w in zip(self.members, weights):
+                for m in self.members:
                     fov = m.fov
                     psi = m.angles[2]
                     if psi < 0:
@@ -211,15 +217,15 @@ class Swarm():
                     if psi - fov/2 < 0:
                         l_bound = psi - fov/2 + 2*np.pi
                         u_bound = psi + fov/2
-                        coverage[int(l_bound/COVERAGE_RES):] += w
-                        coverage[:int(u_bound/COVERAGE_RES)] += w
+                        coverage[int(l_bound/COVERAGE_RES):] += 1
+                        coverage[:int(u_bound/COVERAGE_RES)] += 1
                     elif psi + fov/2 > 2*np.pi:
                         l_bound = psi - fov/2
                         u_bound = psi + fov/2 - 2*np.pi
-                        coverage[int(l_bound/COVERAGE_RES):] += w
-                        coverage[:int(u_bound/COVERAGE_RES)] += w
+                        coverage[int(l_bound/COVERAGE_RES):] += 1
+                        coverage[:int(u_bound/COVERAGE_RES)] += 1
                     else:
-                        coverage[int((psi - fov/2)/COVERAGE_RES):int((psi + fov/2)/COVERAGE_RES)] += w
+                        coverage[int((psi - fov/2)/COVERAGE_RES):int((psi + fov/2)/COVERAGE_RES)] += 1
                 coverage = np.sum(np.clip(coverage, 0, 1))*COVERAGE_RES
             self.swarm_coverage = min(coverage/(2*np.pi), 1) # Clipping to 1.0 because of rounding errors caused by discretization
         else:
@@ -234,7 +240,7 @@ class Swarm():
                 nb_bins_phi = int(np.pi/COVERAGE_RES) + 1
                 nb_bins_psi = int(2*np.pi/COVERAGE_RES) + 1
                 coverage = np.zeros((nb_bins_phi, nb_bins_psi))
-                for m, w in zip(self.members, weights):
+                for m in self.members:
                     fov_psi = m.fov
                     fov_phi = m.fov * m.ASPECT_RATIO
                     psi = m.angles[2]
@@ -247,26 +253,24 @@ class Swarm():
                         if phi - fov_phi/2 < 0:
                             l_bound_phi = fov_phi/2 - phi
                             u_bound_phi = phi + fov_phi/2
-                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
-                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
-                            coverage[:int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
-                            coverage[:int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
-                            coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):] += w
-                            coverage[:int(l_bound_phi/COVERAGE_RES), :int(u_bound_flipped/COVERAGE_RES)] += w
+                            l_bound_flipped = (psi - fov_psi/2 + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_psi + np.pi) % (2*np.pi)
+                            coverage[:int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += 1
+                            coverage[:int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += 1
+                            coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):int(u_bound_flipped/COVERAGE_RES)] += 1
                         elif phi + fov_phi/2 > np.pi:
                             l_bound_phi = phi - fov_phi/2
                             u_bound_phi = 2*np.pi-(phi + fov_phi/2)
-                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
-                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
-                            coverage[int(l_bound_phi/COVERAGE_RES):, int(l_bound_psi/COVERAGE_RES):] += w
-                            coverage[int(l_bound_phi/COVERAGE_RES):, :int(u_bound_psi/COVERAGE_RES)] += w
-                            coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):] += w
-                            coverage[int(u_bound_phi/COVERAGE_RES):, :int(u_bound_flipped/COVERAGE_RES)] += w
+                            l_bound_flipped = (psi - fov_psi/2 + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_psi + np.pi) % (2*np.pi)
+                            coverage[int(l_bound_phi/COVERAGE_RES):, int(l_bound_psi/COVERAGE_RES):] += 1
+                            coverage[int(l_bound_phi/COVERAGE_RES):, :int(u_bound_psi/COVERAGE_RES)] += 1
+                            coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):int(u_bound_flipped/COVERAGE_RES)] += 1
                         else:
                             l_bound_phi = phi - fov_phi/2
                             u_bound_phi = phi + fov_phi/2
-                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
-                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += 1
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += 1
 
                     elif psi + fov_psi/2 > 2*np.pi:
                         l_bound_psi = psi - fov_psi/2
@@ -274,28 +278,53 @@ class Swarm():
                         if phi - fov_phi/2 < 0:
                             l_bound_phi = fov_phi/2 - phi
                             u_bound_phi = phi + fov_phi/2
-                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
-                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
-                            coverage[:int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
-                            coverage[:int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
-                            coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):] += w
-                            coverage[:int(l_bound_phi/COVERAGE_RES), :int(u_bound_flipped/COVERAGE_RES)] += w
+                            l_bound_flipped = (l_bound_psi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (psi + np.pi + fov_psi/2) % (2*np.pi)
+                            coverage[:int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += 1
+                            coverage[:int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += 1
+                            coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):int(u_bound_flipped/COVERAGE_RES)] += 1
                         elif phi + fov_phi/2 > np.pi:
                             l_bound_phi = phi - fov_phi/2
                             u_bound_phi = 2*np.pi-(phi + fov_phi/2)
-                            l_bound_flipped = (l_bound_phi + np.pi) % (2*np.pi)
-                            u_bound_flipped = (u_bound_phi + np.pi) % (2*np.pi)
-                            coverage[int(l_bound_phi/COVERAGE_RES):, int(l_bound_psi/COVERAGE_RES):] += w
-                            coverage[int(l_bound_phi/COVERAGE_RES):, :int(u_bound_psi/COVERAGE_RES)] += w
-                            coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):] += w
-                            coverage[int(u_bound_phi/COVERAGE_RES):, :int(u_bound_flipped/COVERAGE_RES)] += w
+                            l_bound_flipped = (l_bound_psi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (psi + np.pi + fov_psi/2) % (2*np.pi)
+                            coverage[int(l_bound_phi/COVERAGE_RES):, int(l_bound_psi/COVERAGE_RES):] += 1
+                            coverage[int(l_bound_phi/COVERAGE_RES):, :int(u_bound_psi/COVERAGE_RES)] += 1
+                            coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):int(u_bound_flipped/COVERAGE_RES)] += 1
                         else:
                             l_bound_phi = phi - fov_phi/2
                             u_bound_phi = phi + fov_phi/2
-                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += w
-                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += w
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):] += 1
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES), :int(u_bound_psi/COVERAGE_RES)] += 1
                     else:
-                        coverage[int((phi-fov_phi/2)/COVERAGE_RES):int((phi+fov_phi/2)/COVERAGE_RES), int((psi - fov_psi/2)/COVERAGE_RES):int((psi + fov_psi/2)/COVERAGE_RES)] += w
+                        l_bound_psi = psi - fov_psi/2
+                        u_bound_psi = psi + fov_psi/2
+                        if phi - fov_phi/2 < 0:
+                            l_bound_phi = fov_phi/2 - phi
+                            u_bound_phi = phi + fov_phi/2
+                            l_bound_flipped = (l_bound_psi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_psi + np.pi) % (2*np.pi)
+                            coverage[:int(u_bound_phi/COVERAGE_RES), int(l_bound_psi/COVERAGE_RES):int(u_bound_psi/COVERAGE_RES)+1] += 1
+                            if u_bound_flipped < l_bound_flipped:
+                                coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):] += 1
+                                coverage[:int(l_bound_phi/COVERAGE_RES), :int(u_bound_flipped/COVERAGE_RES)+1] += 1
+                            else:
+                                coverage[:int(l_bound_phi/COVERAGE_RES), int(l_bound_flipped/COVERAGE_RES):int(u_bound_flipped/COVERAGE_RES)+1] += 1
+                        elif phi + fov_phi/2 > np.pi:
+                            l_bound_phi = phi - fov_phi/2
+                            u_bound_phi = 2*np.pi-(phi + fov_phi/2)
+                            l_bound_flipped = (l_bound_psi + np.pi) % (2*np.pi)
+                            u_bound_flipped = (u_bound_psi + np.pi) % (2*np.pi)
+                            coverage[int(l_bound_phi/COVERAGE_RES):, int(l_bound_psi/COVERAGE_RES):int(u_bound_psi/COVERAGE_RES)+1] += 1
+                            if u_bound_flipped < l_bound_flipped:
+                                coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):] += 1
+                                coverage[int(u_bound_phi/COVERAGE_RES):, :int(u_bound_flipped/COVERAGE_RES)+1] += 1
+                            else:
+                                coverage[int(u_bound_phi/COVERAGE_RES):, int(l_bound_flipped/COVERAGE_RES):int(u_bound_flipped/COVERAGE_RES)+1] += 1
+                        else:
+                            l_bound_phi = phi - fov_phi/2
+                            u_bound_phi = phi + fov_phi/2
+                            coverage[int(l_bound_phi/COVERAGE_RES):int(u_bound_phi/COVERAGE_RES)+1, int(l_bound_psi/COVERAGE_RES):int(u_bound_psi/COVERAGE_RES)+1] += 1
                 coverage = np.sum(np.clip(coverage, 0, 1))*COVERAGE_RES*COVERAGE_RES
             self.swarm_coverage = min(coverage/(2*np.pi*np.pi), 1)
 
@@ -333,12 +362,12 @@ class Swarm():
                 self.trajectory_idx += 1
                 if self.trajectory_idx % NB_POINTS == 0:
                     self.circle_done = True
-                self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
+                self.migration_point = TRAJECTORY_INF_LOOP[self.trajectory_idx % NB_POINTS]
 
     def set_migration_mode(self, mode):
         self.migration_mode = mode
         if mode == 'trajectory':
-            self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
+            self.migration_point = TRAJECTORY_INF_LOOP[self.trajectory_idx]
 
     def set_count(self, count):
         diff = count - self.count
