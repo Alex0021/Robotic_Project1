@@ -2,22 +2,23 @@
 # THIS FILE CONTAINS THE GUI OF THE SIMULATOR
 # FOR MY SEMESTER PROJECT
 ####################################################
+import sys
+sys.path.insert(0, './src')
 
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import font
-import sys
-from swarm import *
-from renderer import *
-from simulator import Simulator
+from src.swarm import *
+from src.renderer import *
+from src.simulator import Simulator
 import json
 import time
 import threading
-from tester import AutorunSim
+from src.tester import AutorunSim
 
 w,h = (1600,800)
-CONFIG_FILENAME = 'app_config.json'
-AUTORUN_FILENAME = 'sim_autorun.json'
+CONFIG_FILENAME = 'config/app_config.json'
+AUTORUN_FILENAME = 'config/sim_autorun.json'
 DATA_OUTPUT_FOLDER = 'output'
 FRONTEND_UPDATE_INTERVAL = 0.1
 TEST_COMPLETED_CHECK_INTERVAL = 0.5
