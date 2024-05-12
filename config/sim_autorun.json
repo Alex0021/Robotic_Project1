@@ -1,8 +1,8 @@
 {
     "test1": {
         "file_basename": "3D_outter2",
-        "metrics": ["viewing_metric_outter_points"],
-        "values": [2],
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
+        "values": ["outter", 2],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -10,8 +10,8 @@
     },
     "test2": {
         "file_basename": "3D_outter3",
-        "metrics": ["viewing_metric_outter_points"],
-        "values": [3],
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
+        "values": ["outter", 3],
         "var": "neighbors_count",
         "from": 3,
         "to": 9,
@@ -19,8 +19,8 @@
     },
     "test3": {
         "file_basename": "3D_outter4",
-        "metrics": ["viewing_metric_outter_points"],
-        "values": [4],
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
+        "values": ["outter", 4],
         "var": "neighbors_count",
         "from": 4,
         "to": 6,
@@ -28,8 +28,8 @@
     },
     "test4": {
         "file_basename": "3D_outter5",
-        "metrics": ["viewing_metric_outter_points"],
-        "values": [5],
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
+        "values": ["outter", 5],
         "var": "neighbors_count",
         "from": 5,
         "to": 7,
@@ -37,8 +37,8 @@
     },
     "test5": {
         "file_basename": "3D_outter6",
-        "metrics": ["viewing_metric_outter_points"],
-        "values": [6],
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
+        "values": ["outter", 6],
         "var": "neighbors_count",
         "from": 5,
         "to": 7,

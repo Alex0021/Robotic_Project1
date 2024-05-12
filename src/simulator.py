@@ -73,8 +73,8 @@ class Simulator():
             swarm_center = self._swarm.get_swarm_center()
             self.record_dict["swarm_center"].append(swarm_center)
             self.record_dict["timings"].append([self._swarm.timing_neighborhood, self._swarm.timing_viewing_dir, self._swarm.timing_coverage])
-            for i in self._swarm.count:
-                drone = self._swarm.members[drone]
+            for i in range(self._swarm.count):
+                drone = self._swarm.members[i]
                 avg_neighbor_dst = np.mean([n.distance for n in drone.neighbors])
                 dist_weight = self._swarm.dist_weights[i]
                 data.append([len(drone.neighbors), avg_neighbor_dst, dist_weight, drone.viewing_error, self._swarm.swarm_coverage])
