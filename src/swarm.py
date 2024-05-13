@@ -166,7 +166,7 @@ class Swarm():
                 for m in self.members:
                     if self.viewing_params.get('algorithm', 'None') != 'None':
                         m.compute_viewing_dir(self.members, self.viewing_params)
-                    self.timing_viewing_dir += m.timing_viewing_dir
+                        self.timing_viewing_dir += m.timing_viewing_dir
                 only_selected = False
             # Compute coverage
             with elapsed_timer() as elapsed:
