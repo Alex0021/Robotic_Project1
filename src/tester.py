@@ -61,7 +61,7 @@ class AutorunSim:
         # Start simulation
         self._app._btn_simulate_callback()
         # Hide rendering
-        self._app._btn_rendering_callback()
+        self._app.set_rendering('off')
         print("Starting autorun simulation")
         self.var_autosim.set(self.autorun_from)
         self.running = True

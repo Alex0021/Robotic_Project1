@@ -679,16 +679,9 @@ class myApp(tk.Frame):
 
     def _btn_rendering_callback(self):
         if self.render_env:
-            self.render_env = False
-            self.btn_rendering.config(text="Rendering: OFF")
-            self.renderer.disable_rendering()
-            self.renderer = None
-            self.label_no_renderering.grid(column=0,row=0,sticky='NESW')
+            self.set_rendering('off')
         else:
-            self.render_env = True
-            self.btn_rendering.config(text="Rendering: ON")
-            self.label_no_renderering.grid_forget()
-            self.renderer = self.renderer = Renderer(self.panel_view, self.swarm)
+            self.set_rendering('on')
         
 
     def btn_2D_view_callback(self):
@@ -862,6 +855,19 @@ class myApp(tk.Frame):
             return getattr(self, param)
         except:
             print(f'Error getting value: {param}')
+
+    def set_rendering(self, val):
+        if val == "off":
+            self.render_env = False
+            self.btn_rendering.config(text="Rendering: OFF")
+            self.renderer.disable_rendering()
+            self.renderer = None
+            self.label_no_renderering.grid(column=0,row=0,sticky='NESW')
+        elif val == "on":
+            self.render_env = True
+            self.btn_rendering.config(text="Rendering: ON")
+            self.label_no_renderering.grid_forget()
+            self.renderer = self.renderer = Renderer(self.panel_view, self.swarm)
 
     
 
