@@ -50,7 +50,7 @@ class AutorunSim:
         self.autorun_to = test.get('to', 0)
         self.autorun_steps = test.get('steps', 0)
         self.var_autosim = self._app.get_var_ref(self.autorun_var_name)
-        self._app.var_output_csv.set(f'{self.autorun_filename}_{self.autorun_var_name}_{self.autorun_from}')
+        self._app.var_output_csv.set(f'{self.autorun_filename}/{self.autorun_filename}_{self.autorun_var_name}_{self.autorun_from}')
         # Start recording
         self._app.start_recording_callback()
         # Start simulation
@@ -71,7 +71,7 @@ class AutorunSim:
         print("Autorun step completed: {0:.2f}%".format(completion))
         self._app.stop_recording_callback()
         self.var_autosim.set(self.var_autosim.get() + self.autorun_steps)
-        self._app.var_output_csv.set(f'{self.autorun_filename}_{self.autorun_var_name}_{self.var_autosim.get()}')
+        self._app.var_output_csv.set(f'{self.autorun_filename}/{self.autorun_filename}_{self.autorun_var_name}_{self.var_autosim.get()}')
         # Reset simulation and re initialize
         self._app._button_reset_callback()
         self._app._initialize_simulation(verbose=False)
