@@ -2,8 +2,7 @@ import numpy as np
 from drone import *
 import olfati_saber as olsab
 from scipy.spatial import ConvexHull
-from contextlib import contextmanager
-from timeit import default_timer
+from helper_functions import elapsed_timer
 
 # Setting a common/uniform seed for testing
 np.random.seed(1)
@@ -149,29 +148,28 @@ class Swarm():
         metric = self.neighbors_params.get('metric', 'Eucledian')
         if computation_method == 'Selected' or computation_method == 'All':
             if computation_method == 'Selected':
-                with self.elapsed_timer() as elapsed:
+                with elapsed_timer() as elapsed:
                     self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.neighbors_params)
                     self.timing_neighborhood = elapsed()
                 # Compute viewing direction
                 if self.viewing_params.get('algorithm', 'None') != 'None':
-                    with self.elapsed_timer() as elapsed:
-                        self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params)
-                        self.timing_viewing_dir = elapsed()
+                    self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params)
+                    self.timing_viewing_dir = self.members[self.selected_drone].timing_viewing_dir
                 only_selected = True
             elif computation_method == 'All':
-                with self.elapsed_timer() as elapsed:
+                with elapsed_timer() as elapsed:
                     for m in self.members:
                         m.compute_neihgborhood(self.members, metric, self.neighbors_params)
                     self.timing_neighborhood = elapsed()
                 
-                with self.elapsed_timer() as elapsed:
-                    for m in self.members:
-                        if self.viewing_params.get('algorithm', 'None') != 'None':
-                            m.compute_viewing_dir(self.members, self.viewing_params)
-                    self.timing_viewing_dir = elapsed()
+                self.timing_viewing_dir = 0
+                for m in self.members:
+                    if self.viewing_params.get('algorithm', 'None') != 'None':
+                        m.compute_viewing_dir(self.members, self.viewing_params)
+                    self.timing_viewing_dir += m.timing_viewing_dir
                 only_selected = False
             # Compute coverage
-            with self.elapsed_timer() as elapsed:
+            with elapsed_timer() as elapsed:
                 self.compute_coverage(only_selected=only_selected)
                 self.timing_coverage = elapsed()
         else:
@@ -399,11 +397,3 @@ class Swarm():
                 self.members.pop(i)
             self.count = count
             self.compute_neighborhood()
-
-    @contextmanager
-    def elapsed_timer(self):
-        start = default_timer()
-        elapser = lambda: default_timer() - start
-        yield lambda: elapser()
-        end = default_timer()
-        elapser = lambda: end-start

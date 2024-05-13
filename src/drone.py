@@ -4,6 +4,7 @@ from olfati_saber import get_RB2W, get_W2B
 from scipy import spatial
 from controllers import PdController
 from algorithms import get_viewing_dir
+from helper_functions import elapsed_timer
 
 DEFAULT_RANGE_SENSING = 2.0
 DEFAULT_NB_NEIGHBORS = 3
@@ -36,6 +37,7 @@ class Drone:
         self.viewing_error = 0.0
         self.fov = DEFAULT_FOV * np.pi / 180.0 # In radians
         self.ASPECT_RATIO = FOV_ASPECT_RATIO
+        self.timing_viewing_dir = 0
         
     def get_state(self):
         return np.vstack((self.pos, self.vel, self.acc, self.angles))
@@ -149,7 +151,9 @@ class Drone:
         nb_points = algo_dict.get('nb_points', 2)
         face_type = algo_dict.get('faces', 'adjacent')
         in_2d = algo_dict.get('in_2d', False)
-        self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+        with elapsed_timer() as elapsed:
+            self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+            self.timing_viewing_dir = elapsed()
         if algo == 'outter' and nb_points > 3:
             # Use only the ground truth without noise to compute the exact viewing direction
             self.exact_viewing_dir = np.zeros(3)
