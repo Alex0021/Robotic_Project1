@@ -18,7 +18,7 @@
             "request": "launch",
             "program": "generate_plots.py",
             "console": "integratedTerminal",
-            "args": ["--visual", "2D_outter4"]
+            "args": ["--visual", "3D_outter4"]
         },
         {
             "name": "Python Debugger: Current File",

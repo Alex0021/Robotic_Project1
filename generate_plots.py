@@ -127,6 +127,7 @@ if __name__ == '__main__':
         subfolder = subfolders[i]
         print(f"Generating plots... {i+1}/{len(subfolders)}", end="\r")
         sim_files = os.listdir(os.path.join(ROOT_FOLDER, subfolder))
+        sim_files.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
         # Read data dict (either if visualizing or exporting)
         filepaths = [os.path.join(ROOT_FOLDER, subfolder, f) for f in sim_files]
         try:
