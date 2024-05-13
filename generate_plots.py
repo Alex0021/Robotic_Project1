@@ -74,12 +74,12 @@ def generate_timings_plot(timings, ax, x_range):
     ax.bar(x_range, timings_viewing, width=0.6, label='Viewing', bottom=timings_neighborhood)
     ax.bar(x_range, timings_coverage, width=0.6, label='Coverage', bottom=timings_neighborhood+timings_viewing)
     for i in range(to-from_+1):
-        value = round(timings_neighborhood[i]/timings_total[i] ,2)
-        ax.text(x_range[i], timings_neighborhood[i]/2, value, ha = 'center')
-        value = round(timings_viewing[i]/timings_total[i] ,2)
-        ax.text(x_range[i], timings_neighborhood[i]+timings_viewing[i]/2, value, ha = 'center')
-        value = round(timings_coverage[i]/timings_total[i] ,2)
-        ax.text(x_range[i], timings_neighborhood[i]+timings_viewing[i]+timings_coverage[i]/2, value, ha = 'center')
+        value_1 = round(timings_neighborhood[i]/timings_total[i] ,2)
+        ax.text(x_range[i], timings_neighborhood[i]/2, value_1, ha = 'center')
+        value_2 = round(timings_viewing[i]/timings_total[i] ,2)
+        ax.text(x_range[i], timings_neighborhood[i]+timings_viewing[i]/2, value_2, ha = 'center')
+        value_3 = round(1 - value_1 - value_2, 2)
+        ax.text(x_range[i], timings_neighborhood[i]+timings_viewing[i]+timings_coverage[i]/2, value_3, ha = 'center')
     ax.legend()
 
 def generate_swarm_center_plot(swarm_centers, ax):

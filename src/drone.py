@@ -8,12 +8,12 @@ from helper_functions import elapsed_timer
 
 DEFAULT_RANGE_SENSING = 2.0
 DEFAULT_NB_NEIGHBORS = 3
-DEFAULT_FOV = 360.0/9 # degrees
+DEFAULT_FOV = 97.0 # degrees
 KP_GAIN = 2.0
 KD_GAIN = 0.1
 ANGULAR_RATE_LIMIT = 1.0
 USE_PD_CONTROLLER = False
-FOV_ASPECT_RATIO = 3/5
+FOV_ASPECT_RATIO = 5/5
 
 class Drone:
     '''

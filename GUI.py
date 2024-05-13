@@ -13,7 +13,6 @@ from src.renderer import *
 from src.simulator import Simulator
 import json
 import time
-import threading
 from src.tester import AutorunSim
 
 w,h = (1600,800)
