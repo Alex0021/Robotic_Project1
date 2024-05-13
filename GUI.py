@@ -860,7 +860,8 @@ class myApp(tk.Frame):
         if val == "off":
             self.render_env = False
             self.btn_rendering.config(text="Rendering: OFF")
-            self.renderer.disable_rendering()
+            if self.renderer is not None:
+                self.renderer.disable_rendering()
             self.renderer = None
             self.label_no_renderering.grid(column=0,row=0,sticky='NESW')
         elif val == "on":
