@@ -33,13 +33,18 @@ class AutorunSim:
             print(f"Test {name} not found")
             return
         test = self._tests[name]
-        # Create output directory
-        self.autorun_filename = test.get('file_basename', 'unknown')
-        if not os.path.exists(f'output/{self.autorun_filename}'):
-            os.makedirs(f'output/{self.autorun_filename}')
         # Reset simulation and re initialize
         self._app._button_reset_callback()
         self._app._initialize_simulation(verbose=False)
+        # Create output directory
+        try:
+            dim_text = '2D_' if self._app.swarm.is_2D else '3D_'
+        except: 
+            dim_text = ''
+        self.autorun_filename = test.get('file_basename', 'unknown')
+        self.autorun_filename = dim_text + self.autorun_filename
+        if not os.path.exists(f'output/{self.autorun_filename}'):
+            os.makedirs(f'output/{self.autorun_filename}')
         # Apply all parameters to the app
         for param, value in zip(test.get('metrics', []), test.get('values', [])):
             print(f"Setting {param} to {value}")
