@@ -69,9 +69,9 @@ class AutorunSim:
 
 
     def end_test(self):
+        print("Autorun simulation completed!")
         self._app._btn_pause_callback()
         self._app.stop_recording_callback()
-        print("Autorun simulation completed!")
 
     def end_step(self):
         completion = (self.var_autosim.get() - self.autorun_from + 1)/(self.autorun_steps*(self.autorun_to-self.autorun_from + 1))*100
