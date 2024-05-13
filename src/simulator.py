@@ -29,12 +29,13 @@ class Simulator():
             time.sleep(self._dt)
 
     def start(self):
-        if self._paused:
-            self._paused = False
-        elif not self._running:
+        if not self._running:
             self._simulation_time = 0
             self._running = True
+            self._paused = False
             self.scheduler.start()
+        elif self._paused:
+            self._paused = False
 
     def stop(self):
         self._running = False

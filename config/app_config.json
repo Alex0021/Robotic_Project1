@@ -13,7 +13,7 @@
     "neighbors": {
         "sampling": 1,
         "count": 5,
-        "sensing_range": 2.0,
+        "sensing_range": 5.0,
         "r_agent": 0.138,
         "metric": "Topological",
         "computation": "All"

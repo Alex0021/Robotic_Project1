@@ -56,14 +56,14 @@ class AutorunSim:
         self.autorun_steps = test.get('steps', 0)
         self.var_autosim = self._app.get_var_ref(self.autorun_var_name)
         self._app.var_output_csv.set(f'{self.autorun_filename}/{self.autorun_filename}_{self.autorun_var_name}_{self.autorun_from}')
+        self.var_autosim.set(self.autorun_from)
+        # Hide rendering
+        self._app.set_rendering('off')
         # Start recording
         self._app.start_recording_callback()
         # Start simulation
         self._app._btn_simulate_callback()
-        # Hide rendering
-        self._app.set_rendering('off')
         print("Starting autorun simulation")
-        self.var_autosim.set(self.autorun_from)
         self.running = True
         self.running_step()
 
