@@ -258,7 +258,8 @@ class myApp(tk.Frame):
         # Drone number
         self.label_drone_nb = ttk.Label(self.panel_params, anchor='w', text="# drones: ")
         self.label_drone_nb.grid(column=0,row=0, sticky='NEWS')
-        self.spinner_drone_nb = ttk.Spinbox(self.panel_params, increment=1,from_=1, to=50, textvariable=self.var_drone_count, command=self._update_neighbors_spinbox)
+        self.spinner_drone_nb = ttk.Spinbox(self.panel_params, increment=1,from_=1, to=50)
+        self.spinner_drone_nb.bind("<Return>", lambda e: self._update_neighbors_spinbox())
         self.spinner_drone_nb.grid(row=0,column=1,sticky='w', padx=5)
 
         # Neighbors
@@ -798,7 +799,9 @@ class myApp(tk.Frame):
         self.renderer2D = None
 
     def _update_neighbors_spinbox(self):
+        self.var_drone_count.set(self.spinner_drone_nb.get())
         self.spinner_neighbors.config(to=self.var_drone_count.get()-1)
+        self.var_drone_count.set(self.var_drone_count.get()-1)
         if self.var_neighbors_count.get() >= self.var_drone_count.get():
             self.var_neighbors_count.set(self.var_drone_count.get()-1)
 

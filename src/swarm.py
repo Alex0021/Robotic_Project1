@@ -380,20 +380,22 @@ class Swarm():
                     theta = np.random.rand()*2*np.pi
                     phi = np.random.rand()*2*np.pi if not self.is_2D else np.pi/2
                     pos = self.swarm_center + np.array([r*np.cos(theta)*np.sin(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(phi)])
-                    pos_valid = np.all(np.linalg.norm(np.array([self.members[i].pos for i in range(self.count)]) - pos, axis=1) > 0.5*self.algo_params.get('d_ref', 1.0))
+                    pos_valid = np.all(np.linalg.norm(np.array([self.members[i].pos for i in range(self.count)]) - pos, axis=1) > self.algo_params.get('d_ref', 1.0))
                     iter += 1
                 if pos_valid:
                     self.members.append(Drone(init_pos=pos)) 
-                    self.count = count
                 else:
-                    print("Could not find a valid position for the new drone!")   
+                    print("Could not find a valid position for the new drone!")
+            self.count = count   
 
         elif diff < 0:
             # Removing drones
-            nb = int(abs(diff))
             choices = list(range(self.count))
             choices.pop(self.selected_drone)
-            for i in np.random.choice(choices, nb, replace=False):
-                self.members.pop(i)
+            to_keep = [self.members[self.selected_drone]]
+            for i in np.random.choice(choices, count-1, replace=False):
+                to_keep.append(self.members[i])
+            self.members = to_keep
+            self.selected_drone = 0
             self.count = count
             self.compute_neighborhood()
