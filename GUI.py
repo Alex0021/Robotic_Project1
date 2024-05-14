@@ -17,7 +17,7 @@ from src.tester import AutorunSim
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'config/app_config.json'
-AUTORUN_FILENAME = 'config/sim_autorun_nb_drones.json'
+AUTORUN_FILENAME = 'config/sim_autorun_noise.json'
 DATA_OUTPUT_FOLDER = 'sim_results'
 FRONTEND_UPDATE_INTERVAL = 0.1
 TEST_COMPLETED_CHECK_INTERVAL = 0.5
@@ -54,12 +54,14 @@ class myApp(tk.Frame):
             self.app_config = {}
         # Initialize app variables with json values or defaults
         self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', 10))
+        self.var_neighbors_metric = tk.StringVar(value=self.app_config['neighbors'].get('metric', 'Topological'))
         self.var_neighbors_count = tk.IntVar(value=self.app_config['neighbors'].get('count', 1))
         self.var_neighbors_sensing_range = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
         self.var_neighbors_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
         self.var_neighbors_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
         self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
         self.var_noise_param_dist = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
+        self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('type', 'None'))
         self.var_noise_param_dir = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
         self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
         self.var_r_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
@@ -82,6 +84,7 @@ class myApp(tk.Frame):
         #   APP VARIABLES TRACKING         #
         #==================================#
         self.var_drone_count.trace_add('write', self._update_swarm_count)
+        self.var_neighbors_metric.trace_add('write', self._update_neighbors_panel_components)
         self.var_neighbors_count.trace_add('write', self._set_neighbors_algo_params)
         self.var_swarm_spread.trace_add('write', self._set_swarm_algo_params)
         self.var_delta.trace_add('write', self._set_swarm_algo_params)
@@ -89,6 +92,7 @@ class myApp(tk.Frame):
         self.var_vref.trace_add('write', self._set_swarm_algo_params)
         self.var_a.trace_add('write', self._set_swarm_algo_params)
         self.var_b.trace_add('write', self._set_swarm_algo_params)
+        self.var_noise_type.trace_add('write', self.noise_changed_callback)
         self.var_noise_param_dist.trace_add('write', self.noise_changed_callback)
         self.var_noise_param_dir.trace_add('write', self.noise_changed_callback)
         self.var_neighbors_sampling.trace_add('write', self._set_neighbors_algo_params)
@@ -258,9 +262,10 @@ class myApp(tk.Frame):
         # Drone number
         self.label_drone_nb = ttk.Label(self.panel_params, anchor='w', text="# drones: ")
         self.label_drone_nb.grid(column=0,row=0, sticky='NEWS')
-        self.spinner_drone_nb = ttk.Spinbox(self.panel_params, increment=1,from_=1, to=50)
-        self.spinner_drone_nb.bind("<Return>", lambda e: self._update_neighbors_spinbox())
+        self.spinner_drone_nb = ttk.Spinbox(self.panel_params, increment=1,from_=1, to=50, command=lambda: self.var_drone_count.set(self.spinner_drone_nb.get()))
+        self.spinner_drone_nb.bind("<Return>", lambda e: self.var_drone_count.set(self.spinner_drone_nb.get()))
         self.spinner_drone_nb.grid(row=0,column=1,sticky='w', padx=5)
+        self.spinner_drone_nb.set(self.var_drone_count.get())
 
         # Neighbors
         self.panel_neighbors = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
@@ -272,7 +277,7 @@ class myApp(tk.Frame):
         self.listbox_neighbors_algo = ttk.Combobox(self.panel_neighbors, values=["Eucledian", "Topological", "Voronoi", "Visual LoS"])
         self.listbox_neighbors_algo.set(self.app_config['neighbors'].get('metric', 'Topological'))
         self.listbox_neighbors_algo.grid(row=0,column=1,sticky='we', padx=5)
-        self.listbox_neighbors_algo.bind("<<ComboboxSelected>>", lambda e: self._update_neighbors_panel_components())
+        self.listbox_neighbors_algo.bind("<<ComboboxSelected>>", lambda e: self.var_neighbors_metric.set(self.listbox_neighbors_algo.get()))
         self.label_neighbors_algo_param = ttk.Label(self.panel_neighbors, anchor='e', text="# ")
         self.label_neighbors_algo_param.grid(column=2,row=0,sticky='NEWS')
         self.spinner_neighbors = ttk.Spinbox(self.panel_neighbors, increment=1,from_=0, to=self.var_drone_count.get()-1, textvariable=self.var_neighbors_count)
@@ -339,7 +344,7 @@ class myApp(tk.Frame):
         self.listbox_noise_type = ttk.Combobox(self.pnael_noise, values=["None", "Uniform", "Gaussian"])
         self.listbox_noise_type.set(self.app_config['noise'].get('type', 'None'))
         self.listbox_noise_type.grid(column=1,row=0, sticky='we', padx=5)
-        self.listbox_noise_type.bind("<<ComboboxSelected>>", lambda e: self.noise_changed_callback())
+        self.listbox_noise_type.bind("<<ComboboxSelected>>", lambda e: self.var_noise_type.set(self.listbox_noise_type.get()))
         self.btn_apply_noise_all = ttk.Button(self.pnael_noise, text="Apply to all", command=self.btn_apply_all_callback)
         self.btn_apply_noise_all.grid(column=3,row=0, columnspan=2, sticky='NEWS', pady=10)
         self.label_noise_pos = ttk.Label(self.pnael_noise, anchor='e', text="Dist:", justify='right')
@@ -497,8 +502,8 @@ class myApp(tk.Frame):
         except ValueError as e:
             pass
 
-    def _update_neighbors_panel_components(self):
-        current_algo = self.listbox_neighbors_algo.get()
+    def _update_neighbors_panel_components(self, *args):
+        current_algo = self.var_neighbors_metric.get()
         self.spinner_neighbors.config(state='normal')
         if self.label_spinner_r_agent in self.panel_neighbors.winfo_children():
             self.label_spinner_r_agent.grid_forget()
@@ -547,7 +552,7 @@ class myApp(tk.Frame):
             print("Error setting neighbors algo params: {0}".format(e))
 
     def noise_changed_callback(self, verbose=True, *args):
-        if self.listbox_noise_type.get() == 'None':
+        if self.var_noise_type.get() == 'None':
             self.spinner_noise_pos.config(state='disabled')
             self.spinner_noise_heading.config(state='disabled')
         else:
@@ -616,6 +621,11 @@ class myApp(tk.Frame):
         self.label_coverage_value.config(text=f'{self.swarm.swarm_coverage*100:.2f}%')
 
     def _update_swarm_count(self, *args):
+        if self.spinner_drone_nb.get() != self.var_drone_count.get():
+            self.spinner_drone_nb.set(self.var_drone_count.get())
+        self.spinner_neighbors.config(to=self.var_drone_count.get()-1)
+        if self.var_neighbors_count.get() >= self.var_drone_count.get():
+            self.var_neighbors_count.set(self.var_drone_count.get()-1)
         if self.swarm is not None:
             if not self.sim.paused() and self.var_drone_count.get() < self.swarm.count:
                 # Pause simulation
@@ -797,13 +807,6 @@ class myApp(tk.Frame):
         self.window_2d = None
         self.renderer2D.stop()
         self.renderer2D = None
-
-    def _update_neighbors_spinbox(self):
-        self.var_drone_count.set(self.spinner_drone_nb.get())
-        self.spinner_neighbors.config(to=self.var_drone_count.get()-1)
-        self.var_drone_count.set(self.var_drone_count.get()-1)
-        if self.var_neighbors_count.get() >= self.var_drone_count.get():
-            self.var_neighbors_count.set(self.var_drone_count.get()-1)
 
     def update_frontend(self):
         try:
