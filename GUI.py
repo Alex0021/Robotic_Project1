@@ -17,7 +17,7 @@ from src.tester import AutorunSim
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'config/app_config.json'
-AUTORUN_FILENAME = 'config/sim_autorun_noise.json'
+AUTORUN_FILENAME = 'config/sim_autorun_nb_drones.json'
 DATA_OUTPUT_FOLDER = 'sim_results'
 FRONTEND_UPDATE_INTERVAL = 0.1
 TEST_COMPLETED_CHECK_INTERVAL = 0.5
