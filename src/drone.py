@@ -100,9 +100,9 @@ class Drone:
             case "Voronoi":
                 points = np.concatenate((noisy_poses, self.pos.reshape(1,3)))
                 indptr_neig, neighbors = spatial.Delaunay(points, qhull_options="QJ").vertex_neighbor_vertices
-                self.neighbors = [DroneNeighbor(j, np.linalg.norm(members[j].pos - self.pos), 
-                                                        self._apply_noise((members[j].pos - self.pos) / np.linalg.norm(members[j].pos - self.pos), self.noise, 'param_dir'), 
-                                                        self._apply_noise(members[j].angles, self.noise, 'param_heading'), self.pos) for j in neighbors[indptr_neig[i]:indptr_neig[i+1]]]
+                self.neighbors = [DroneNeighbor(j if j<index else j+1, np.linalg.norm(points[j] - self.pos), 
+                                                        (points[j] - self.pos) / np.linalg.norm(points[j] - self.pos), 
+                                                        self._apply_noise(members[j].angles, self.noise, 'param_heading'), self.pos) for j in neighbors[indptr_neig[-2]:indptr_neig[-1]]]
             case "Visual LoS":
                 sensing_range = metric_data.get('sensing_range', np.inf)
                 r_agent = metric_data.get('r_agent', 0.05)
