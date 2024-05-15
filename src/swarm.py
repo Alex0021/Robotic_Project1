@@ -49,7 +49,7 @@ class Swarm():
             box = np.array(box)
             pos = np.random.uniform(box[0:3] - box[3:6]/2, box[0:3] + box[3:6]/2, size=(count,3))
             for p in pos:
-                self.members.append(Drone(init_pos=p, init_angles=[0,0,0]))
+                self.members.append(Drone(init_pos=p, init_angles=[0,0,0], fov=360/count))
         #print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
         self.swarm_center = self.get_swarm_center()
 

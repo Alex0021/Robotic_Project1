@@ -20,7 +20,7 @@ class Drone:
     Class to represent a drone object. 
     Contains mainly drone state (pos,vel,acc,orientation)
     '''
-    def __init__(self, init_pos=[0.0]*3, init_vel=[0.0]*3,init_acc=[0.0]*3,init_angles=[0.0]*3):
+    def __init__(self, init_pos=[0.0]*3, init_vel=[0.0]*3,init_acc=[0.0]*3,init_angles=[0.0]*3, fov=DEFAULT_FOV):
         self.pos = np.array(init_pos, dtype=np.float64)
         self.vel = np.array(init_vel, dtype=np.float64)
         self.acc = np.array(init_acc, dtype=np.float64)
@@ -35,7 +35,7 @@ class Drone:
         self.pitch_controller = PdController(KP_GAIN, KD_GAIN, ANGULAR_RATE_LIMIT)
         self.use_pd_controller = USE_PD_CONTROLLER
         self.viewing_error = 0.0
-        self.fov = DEFAULT_FOV * np.pi / 180.0 # In radians
+        self.fov = fov * np.pi / 180.0 # In radians
         self.ASPECT_RATIO = FOV_ASPECT_RATIO
         self.timing_viewing_dir = 0
         
