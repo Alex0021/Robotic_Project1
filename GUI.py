@@ -552,6 +552,8 @@ class myApp(tk.Frame):
             print("Error setting neighbors algo params: {0}".format(e))
 
     def noise_changed_callback(self, verbose=True, *args):
+        if self.listbox_noise_type.get() != self.var_noise_type.get():
+            self.listbox_noise_type.set(self.var_noise_type.get())
         if self.var_noise_type.get() == 'None':
             self.spinner_noise_pos.config(state='disabled')
             self.spinner_noise_heading.config(state='disabled')

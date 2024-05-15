@@ -2,7 +2,7 @@
     "test1": {
         "file_basename": "L_noise_average",
         "metrics": ["viewing_metric_algorithm", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["average", "gaussian", 0.01, 0.01],
+        "values": ["average", "Gaussian", 0.01, 0.01],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -11,7 +11,7 @@
     "test2": {
         "file_basename": "M_noise_average",
         "metrics": ["viewing_metric_algorithm", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["average", "gaussian", 0.05, 0.025],
+        "values": ["average", "Gaussian", 0.05, 0.025],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -20,7 +20,7 @@
     "test3": {
         "file_basename": "H_noise_average",
         "metrics": ["viewing_metric_algorithm", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["average", "gaussian", 0.1, 0.05],
+        "values": ["average", "Gaussian", 0.1, 0.05],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -29,7 +29,7 @@
     "test4": {
         "file_basename": "L_noise_tangent_plane",
         "metrics": ["viewing_metric_algorithm", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["tangent_plane", "gaussian", 0.01, 0.01],
+        "values": ["tangent_plane", "Gaussian", 0.01, 0.01],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -38,7 +38,7 @@
     "test5": {
         "file_basename": "M_noise_tangent_plane",
         "metrics": ["viewing_metric_algorithm", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["tangent_plane", "gaussian", 0.05, 0.025],
+        "values": ["tangent_plane", "Gaussian", 0.05, 0.025],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -47,7 +47,7 @@
     "test6": {
         "file_basename": "H_noise_tangent_plane",
         "metrics": ["viewing_metric_algorithm", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["tangent_plane", "gaussian", 0.1, 0.05],
+        "values": ["tangent_plane", "Gaussian", 0.1, 0.05],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -56,7 +56,7 @@
     "test7": {
         "file_basename": "L_noise_CV_adj",
         "metrics": ["viewing_metric_algorithm", "viewing_metric_faces", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["convex_hull", "adjacent", "gaussian", 0.01, 0.01],
+        "values": ["convex_hull", "adjacent", "Gaussian", 0.01, 0.01],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -65,7 +65,7 @@
     "test8": {
         "file_basename": "M_noise_CV_adj",
         "metrics": ["viewing_metric_algorithm", "viewing_metric_faces", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["convex_hull", "adjacent", "gaussian", 0.05, 0.025],
+        "values": ["convex_hull", "adjacent", "Gaussian", 0.05, 0.025],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
@@ -74,7 +74,7 @@
     "test9": {
         "file_basename": "H_noise_CV_adj",
         "metrics": ["viewing_metric_algorithm", "viewing_metric_faces", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["convex_hull", "adjacent", "gaussian", 0.1, 0.05],
+        "values": ["convex_hull", "adjacent", "Gaussian", 0.1, 0.05],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
