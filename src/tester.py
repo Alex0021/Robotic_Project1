@@ -57,6 +57,8 @@ class AutorunSim:
         self.var_autosim = self._app.get_var_ref(self.autorun_var_name)
         self._app.var_output_csv.set(f'{self.autorun_filename}/{self.autorun_filename}_{self.autorun_var_name}_{self.autorun_from}')
         self.var_autosim.set(self.autorun_from)
+        self.nb_runs = (self.autorun_to-self.autorun_from)//self.autorun_steps + 1
+        self.run_count = 0
         # Hide rendering
         self._app.set_rendering('off')
         # Start recording
@@ -74,8 +76,8 @@ class AutorunSim:
         self._app.stop_recording_callback()
 
     def end_step(self):
-        completion = (self.var_autosim.get() - self.autorun_from + 1)/(self.autorun_steps*(self.autorun_to-self.autorun_from + 1))*100
-        print("Autorun step completed: {0:.2f}%".format(completion))
+        self.run_count += 1
+        print("Autorun step completed: {0:.2f}%".format(self.run_count/self.nb_runs*100))
         self._app.stop_recording_callback()
         self.var_autosim.set(self.var_autosim.get() + self.autorun_steps)
         self._app.var_output_csv.set(f'{self.autorun_filename}/{self.autorun_filename}_{self.autorun_var_name}_{self.var_autosim.get()}')
