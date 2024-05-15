@@ -208,7 +208,7 @@ def convex_hull(drone, neighbors, params):
         if in_2d:
             points = points[:, :2]
         if params.get('faces', 'adjacent') == 'adjacent':
-            points = np.concatenate((points, [drone.pos]))
+            points = np.concatenate((points, [drone.pos[:ndim]]))
             hull = ConvexHull(points, qhull_options=f'Q{qhull_options}')
             # Check if drone is in the convex hull
             if idx_drone not in hull.vertices:
