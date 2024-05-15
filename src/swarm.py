@@ -18,7 +18,7 @@ SCALE = 2
 TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*np.ones(NB_POINTS)]).T
 
 
-MAX_ITER = 100 # Maximum number of iterations to find a valid position
+MAX_ITER = 500 # Maximum number of iterations to find a valid position
 COVERAGE_RES = 0.01  # To discretize into cells for the coverage computation
 
 class Swarm():
@@ -187,6 +187,7 @@ class Swarm():
         points = np.array([m.pos[:p_dim] for m in self.members])
         hull = ConvexHull(points)
         hull_center = np.mean(points[hull.vertices], axis=0)
+        self.dist_weights = np.zeros(self.count)
         for i in range(self.count):
             if i not in hull.vertices:
                 # Find distance to closest edge
@@ -367,6 +368,10 @@ class Swarm():
         if mode == 'trajectory':
             self.migration_point = TRAJECTORY_INF_LOOP[self.trajectory_idx]
 
+    def update_drones_FOV(self, fov):
+        for m in self.members:
+            m.set_fov(fov)
+
     def set_count(self, count):
         diff = count - self.count
         if diff > 0:
@@ -376,7 +381,7 @@ class Swarm():
                 pos_valid = False
                 iter = 0
                 while not pos_valid and iter < MAX_ITER:
-                    r = np.random.rand()*self.algo_params.get('d_ref', 1.0)*2
+                    r = np.random.rand()*self.algo_params.get('d_ref', 1.0)*3
                     theta = np.random.rand()*2*np.pi
                     phi = np.random.rand()*2*np.pi if not self.is_2D else np.pi/2
                     pos = self.swarm_center + np.array([r*np.cos(theta)*np.sin(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(phi)])
@@ -386,16 +391,21 @@ class Swarm():
                     self.members.append(Drone(init_pos=pos)) 
                 else:
                     print("Could not find a valid position for the new drone!")
-            self.count = count   
+            self.count = len(self.members)
+               
 
         elif diff < 0:
             # Removing drones
             choices = list(range(self.count))
-            choices.pop(self.selected_drone)
+            choices.remove(self.selected_drone)
             to_keep = [self.members[self.selected_drone]]
             for i in np.random.choice(choices, count-1, replace=False):
                 to_keep.append(self.members[i])
             self.members = to_keep
             self.selected_drone = 0
             self.count = count
-            self.compute_neighborhood()
+        
+        self.update_drones_FOV(360/self.count)
+        self.compute_neighborhood()
+
+        

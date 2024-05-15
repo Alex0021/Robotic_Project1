@@ -187,6 +187,9 @@ class Drone:
     def get_abs_pos(self):
         return self.pos
     
+    def set_fov(self, fov):
+        self.fov = fov * np.pi / 180.0
+    
 
 class DroneNeighbor:
     def __init__(self, drone_index:int, distance:float, dir:np.array, angles:np.array, origin:np.array):
