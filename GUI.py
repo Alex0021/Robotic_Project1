@@ -504,6 +504,8 @@ class myApp(tk.Frame):
 
     def _update_neighbors_panel_components(self, *args):
         current_algo = self.var_neighbors_metric.get()
+        if self.listbox_neighbors_algo.get() != current_algo:
+            self.listbox_neighbors_algo.set(current_algo)
         self.spinner_neighbors.config(state='normal')
         if self.label_spinner_r_agent in self.panel_neighbors.winfo_children():
             self.label_spinner_r_agent.grid_forget()
