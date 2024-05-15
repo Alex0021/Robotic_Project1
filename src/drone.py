@@ -168,9 +168,9 @@ class Drone:
             case "None":
                 return value
             case "Gaussian":
-                return value + np.mean(np.random.normal(0, noise[type], (len(value), sampling)), axis=1)
+                return np.multiply(value, np.ones_like(value) + np.mean(np.random.normal(0, noise[type], (len(value), sampling)), axis=1))
             case "Uniform":
-                return value + np.mean(np.random.uniform(-noise[type], noise[type], (len(value), sampling)))
+                return np.multiply(value, np.ones_like(value) + np.mean(np.random.uniform(-noise[type], noise[type], (len(value), sampling))))
             case _:
                 return value
             
