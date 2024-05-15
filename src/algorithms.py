@@ -202,13 +202,13 @@ def convex_hull(drone, neighbors, params):
         # Convex hull
         points = np.array([n.get_abs_pos() for n in neighbors])
         idx_drone = len(neighbors)
-        points = np.concatenate((points, [drone.pos]))
         # Prepare standard options for qhull solver
         qhull_options = '' if in_2d else 'tJ'
         ndim = 2 if in_2d else 3
         if in_2d:
             points = points[:, :2]
         if params.get('faces', 'adjacent') == 'adjacent':
+            points = np.concatenate((points, [drone.pos]))
             hull = ConvexHull(points, qhull_options=f'Q{qhull_options}')
             # Check if drone is in the convex hull
             if idx_drone not in hull.vertices:
@@ -225,16 +225,18 @@ def convex_hull(drone, neighbors, params):
                 normal = np.cross(points[1] - points[0], points[2] - points[0])
                 viewing_dir = -np.sign(np.dot(normal, centroid - points[-1]))*normal
             else:
-                hull = ConvexHull(points, qhull_options=f'QG{idx_drone}{qhull_options}')
-                # Compute the normal of the visible faces
-                visible_idx = np.where(hull.good)[0]
-                # If no visible faces, return drone heading (change nothing)
-                if len(visible_idx) == 0:
-                    #print("WARNING :: No visible faces")
-                    return drone.get_heading()
-                normals = hull.equations[visible_idx, :ndim]
+                hull = ConvexHull(points, qhull_options=f'Q{qhull_options}')
+                # Compute the centroid of each face
+                hull_centroids = np.mean(points[hull.simplices], axis=1)
+                # Find closest to the drone
+                closest_idx = np.argmin(np.linalg.norm(hull_centroids - drone.pos[:ndim], axis=1))
+                closest_normal = hull.equations[closest_idx, :ndim]
+                visible_normals = []
+                for i in range(len(hull.equations)):
+                    if np.dot(hull.equations[i, :ndim], closest_normal) > 0:
+                        visible_normals.append(hull.equations[i, :ndim])
                 # Compute the viewing direction
-                viewing_dir = np.mean(normals, axis=0)
+                viewing_dir = np.mean(visible_normals, axis=0)
         else:
             raise ValueError("Invalid value for 'faces' in params")
     
