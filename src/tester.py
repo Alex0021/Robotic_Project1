@@ -59,6 +59,7 @@ class AutorunSim:
         self.var_autosim.set(self.autorun_from)
         self.nb_runs = (self.autorun_to-self.autorun_from)//self.autorun_steps + 1
         self.run_count = 0
+        self._app.sim.MAX_SPEED = True
         # Hide rendering
         self._app.set_rendering('off')
         # Start recording

@@ -14,6 +14,8 @@ class Simulator():
         self.record_data = False
         self.record_time = 0
         self._simulation_time = 0
+        self.last_time = 0
+        self.MAX_SPEED = False
 
     def step(self):
         '''
@@ -21,12 +23,15 @@ class Simulator():
         '''
         while(self._running):
             if (not self._paused) or self._step:
-                acc = np.zeros(3)
-                self._swarm.update(self._dt, acc)
-                self._step = False
-                self._dump_data_to_file()
-                self._simulation_time += self._dt
-            time.sleep(self._dt)
+                if self.MAX_SPEED or time.time() - self.last_time >= self._dt:
+                    acc = np.zeros(3)
+                    self._swarm.update(self._dt, acc)
+                    self._step = False
+                    self._dump_data_to_file()
+                    self._simulation_time += self._dt
+                    if not self.MAX_SPEED:
+                        self.last_time = time.time()
+            #time.sleep(self._dt)
 
     def start(self):
         if not self._running:
@@ -77,7 +82,12 @@ class Simulator():
             for i in range(self._swarm.count):
                 drone = self._swarm.members[i]
                 avg_neighbor_dst = np.mean([n.distance for n in drone.neighbors])
+                avg_neighbor_view_diff = 0
+                for n in drone.neighbors:
+                    diff = abs(n.angles[2] - drone.angles[2])
+                    avg_neighbor_view_diff += min(diff, 2*np.pi - diff)
+                avg_neighbor_view_diff /= len(drone.neighbors)
                 dist_weight = self._swarm.dist_weights[i]
-                data.append([len(drone.neighbors), avg_neighbor_dst, dist_weight, drone.viewing_error, self._swarm.swarm_coverage])
+                data.append([len(drone.neighbors), avg_neighbor_dst, dist_weight, drone.viewing_error, self._swarm.swarm_coverage, avg_neighbor_view_diff])
             self.recorded_data.append(data)
             self.record_time += self._dt

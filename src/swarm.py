@@ -187,7 +187,7 @@ class Swarm():
         points = np.array([m.pos[:p_dim] for m in self.members])
         hull = ConvexHull(points)
         hull_center = np.mean(points[hull.vertices], axis=0)
-        self.dist_weights = np.zeros(self.count)
+        self.dist_weights = np.ones(self.count)
         for i in range(self.count):
             if i not in hull.vertices:
                 # Find distance to closest edge
@@ -197,7 +197,7 @@ class Swarm():
                     p = points[idx]
                     dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
                 idx_min = np.argmin(np.abs(dist))
-                d_center = np.abs(np.dot(points[hull.simplices[idx_min][0]] - hull_center, hull.equations[idx_min][:p_dim]))
+                d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]], axis=1) - hull_center, hull.equations[idx_min][:p_dim]))
                 self.dist_weights[i] = 1 - (dist[idx_min]/d_center)
 
         if viewing_dir_2d:
