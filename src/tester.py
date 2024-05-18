@@ -85,6 +85,7 @@ class AutorunSim:
         # Reset simulation and re initialize
         self._app._button_reset_callback()
         self._app._initialize_simulation(verbose=False)
+        self._app.sim.MAX_SPEED = True
         self._app.start_recording_callback()
         self._app._btn_simulate_callback()
         self._app.swarm.circle_done = False

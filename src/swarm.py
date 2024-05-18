@@ -8,7 +8,7 @@ from helper_functions import elapsed_timer
 np.random.seed(1)
 
 # Circle Trajectory
-NB_POINTS = 20
+NB_POINTS = 30
 TARGET_TOL = 0.2 # Tolerance before reaching the target
 CIRCLE_RADIUS = 3.0
 Z_HEIGHT = 5.0
@@ -193,8 +193,8 @@ class Swarm():
                 # Find distance to closest edge
                 dist = np.zeros(len(hull.simplices))
                 for j in range(len(hull.simplices)):
-                    idx = hull.simplices[j][0]
-                    p = points[idx]
+                    idx = hull.simplices[j]
+                    p = np.mean(points[idx], axis=1)
                     dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
                 idx_min = np.argmin(np.abs(dist))
                 d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]], axis=1) - hull_center, hull.equations[idx_min][:p_dim]))
