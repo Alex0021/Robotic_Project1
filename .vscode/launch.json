@@ -16,9 +16,9 @@
             "name": "Debug plots generator",
             "type": "debugpy",
             "request": "launch",
-            "program": "generate_plots.py",
+            "program": "generate_plots_drone_count.py",
             "console": "integratedTerminal",
-            "args": ["--visual", "3D_outter4"]
+            "args": ["--visual", "2D_LoS_average"]
         },
         {
             "name": "Python Debugger: Current File",
