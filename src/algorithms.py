@@ -12,6 +12,8 @@ def get_viewing_dir(drone, neighbors, algo: str, **params):
         neighbors (list[DroneNeighbor]): The neighbors of the drone
         algo (str): The algorithm to use to compute the viewing direction
     """
+    if len(neighbors) == 0:
+        return drone.get_heading()
     assert algo in ["average", "outter", "tangent_plane", "convex_hull"], "Algorithm {0} not supported".format(algo)
     return eval(algo)(drone, neighbors, params)
 

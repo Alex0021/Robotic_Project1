@@ -13,7 +13,7 @@ plt.rcParams['keymap.save'] = 'ctrl+s'
 
 PLOT_AXIS_MARGIN = 1.2
 CONVERSION_FACTOR = 35621.262462
-DEBUG_VLOS = True # Draw lines to all neighbors
+DEBUG_VLOS = False # Draw lines to all neighbors
 
 class RendererData:
     axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)

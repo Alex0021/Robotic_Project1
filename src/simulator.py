@@ -81,12 +81,18 @@ class Simulator():
             self.record_dict["timings"].append([self._swarm.timing_neighborhood, self._swarm.timing_viewing_dir, self._swarm.timing_coverage])
             for i in range(self._swarm.count):
                 drone = self._swarm.members[i]
-                avg_neighbor_dst = np.mean([n.distance for n in drone.neighbors])
-                avg_neighbor_view_diff = 0
-                for n in drone.neighbors:
-                    diff = abs(n.angles[2] - drone.angles[2])
-                    avg_neighbor_view_diff += min(diff, 2*np.pi - diff)
-                avg_neighbor_view_diff /= len(drone.neighbors)
+                avg_neighbor_dst = 0
+                avg_neighbor_view_diff = 0                
+                if len(drone.neighbors) > 0:
+                    avg_neighbor_dst = np.mean([n.distance for n in drone.neighbors])
+                    min_angle = np.pi
+                    for n in drone.neighbors:
+                        diff = abs(n.angles[2] - drone.angles[2])
+                        diff = min(diff, 2*np.pi - diff)
+                        if diff < min_angle:
+                            min_angle = diff
+                    avg_neighbor_view_diff = min_angle
+                    #avg_neighbor_view_diff /= len(drone.neighbors)
                 dist_weight = self._swarm.dist_weights[i]
                 data.append([len(drone.neighbors), avg_neighbor_dst, dist_weight, drone.viewing_error, self._swarm.swarm_coverage, avg_neighbor_view_diff])
             self.recorded_data.append(data)
