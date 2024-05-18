@@ -5,7 +5,7 @@ import matplotlib as mpl
 from matplotlib.colors import Normalize, ListedColormap
 import sys, os
 
-# [# neighbors, avg neighbors dist, distance weight convex hull, viewing error, viewing coverage]
+# [# neighbors, avg neighbors dist, distance weight convex hull, viewing error, viewing coverage, angle diff]
 
 ROOT_FOLDER = 'sim_results'
 EXPORT_FOLDER =  'exported_plots'
@@ -63,7 +63,7 @@ def generate_viewing_error_plot(all_drone_data, ax, x_range, y_range):
     sorted_idx_pos = np.argsort(xpos_rnd)
     x = np.unique(xpos_rnd)
     avg_errors = []
-    for i in range(np.min(xpos_rnd), np.max(xpos_rnd)+1):
+    for i in x:
         idx = np.where(xpos_rnd[sorted_idx_pos] == i)
         avg_errors.append(np.mean(dz[sorted_idx_pos[idx]]))
     ax.plot(x, avg_errors, zs=y_range[-1], zdir='y', color='black', label='Avg error', linewidth=2)
@@ -71,12 +71,12 @@ def generate_viewing_error_plot(all_drone_data, ax, x_range, y_range):
 
 def generate_coverage_plot(all_drone_data, ax):
     ax.set_title('Mean and std of the coverage')
-    ax.set_xlabel('# neighbors')
+    ax.set_xlabel('drone count')
     ax.set_ylabel('Coverage %')
     # Find the average coverage for each drone
-    coverage_mean = np.mean(all_drone_data[:, :, 0, 4], axis=1)
-    coverage_std = np.std(all_drone_data[:, :, 0, 4], axis=1)
-    ax.errorbar(np.arange(from_, to+1), coverage_mean*100, yerr=[coverage_std*100, np.clip(coverage_std, 0, 1-coverage_mean)*100], fmt='k--', label='Coverage', markersize=10, marker='o', ecolor='red', capsize=5, capthick=2)
+    coverage_mean = np.array([np.mean(all_drone_data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
+    coverage_std = np.array([np.std(all_drone_data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
+    ax.errorbar(np.arange(from_, to+1, steps), coverage_mean*100, yerr=[coverage_std*100, np.clip(coverage_std, 0, 1-coverage_mean)*100], fmt='k--', label='Coverage', markersize=10, marker='o', ecolor='red', capsize=5, capthick=2)
     ax.legend()
 
 def generate_timings_plot(timings, ax, x_range):
@@ -100,15 +100,35 @@ def generate_timings_plot(timings, ax, x_range):
         ax.text(x_range[i], timings_neighborhood[i]+timings_viewing[i]+timings_coverage[i]/2, value_3, ha = 'center')
     ax.legend()
 
+def generate_angle_diff_plot(all_drone_data, ax):
+    ax.set_title('Difference from optimal viewing angle spread between all drones')
+    ax.set_xlabel('Drone index')
+    ax.set_ylabel('Deviation from optimal angle')
+    # For every run
+    for i in range(NB_TESTS):
+        # Sort the drones by distance to the convex hull
+        dist_to_hull = np.mean(np.abs(all_drone_data[i][:, :, 2]), axis=0)
+        dist_sorted_indices = np.argsort(dist_to_hull, axis=0)
+        # Get the average angle difference for each drone
+        avg_angle_diff = np.mean(all_drone_data[i][:, :, 5], axis=0)
+        # Get deviation from optimal value
+        opt_val = 2*np.pi / all_drone_data[i].shape[1]
+        avg_angle_diff = np.abs(avg_angle_diff - opt_val)*180/np.pi
+        ax.plot(avg_angle_diff[dist_sorted_indices], label=f'Run {i+1}', marker='o')
+        # Find std of angle difference
+        #std_angle_diff = np.std(all_drone_data[i][:, :, 5], axis=0)
+        #ax.errorbar(np.arange(all_drone_data[i].shape[1]), avg_angle_diff[dist_sorted_indices], yerr=std_angle_diff[dist_sorted_indices], fmt='k--', label=f'Run {i+1}', markersize=10, marker='o', ecolor='red', capsize=5, capthick=2)
+    #ax.legend()
+
 def generate_swarm_center_plot(swarm_centers, ax):
     ax.set_title('Swarm center position')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     # Compute center x,y
-    center_x = swarm_centers[:, :, 0]
-    center_y = swarm_centers[:, :, 1]
-    for i in range(center_x.shape[0]):
-        ax.plot(center_x[i, :], center_y[i, :], label=f'Run {i+1}')
+    for i in range(len(swarm_centers)):
+        center_x = swarm_centers[i][:, 0]
+        center_y = swarm_centers[i][:, 1]
+        ax.plot(center_x, center_y, label=f'Run {i+1}')
     # ax.plot(center_x, center_y, 'b-', linewidth=2)
     ax.grid(True)
     ax.legend()
@@ -149,9 +169,9 @@ if __name__ == '__main__':
         # Read data dict (either if visualizing or exporting)
         filepaths = [os.path.join(ROOT_FOLDER, subfolder, f) for f in sim_files]
         try:
-            from_ = int(sim_files[0].strip('.npy')[-1])
-            to = int(sim_files[-1].strip('.npy')[-1])
-            steps = int(sim_files[1].strip('.npy')[-1]) - from_
+            from_ = int(sim_files[0].strip('.npy').split('_')[-1])
+            to = int(sim_files[-1].strip('.npy').split('_')[-1])
+            steps = int(sim_files[1].strip('.npy').split('_')[-1]) - from_
         except ValueError:
             print('Could not determine range of tests: see file names convention')
             sys.exit(1)
@@ -178,13 +198,14 @@ if __name__ == '__main__':
         ax2 = fig.add_subplot(gs[0,3:5])
         ax3 = fig.add_subplot(gs[1,3:5])
         ax4 = fig.add_subplot(gs[2,3:5])
-        x_range = np.arange(from_, to+1)
+        x_range = np.arange(from_, to+1, steps)
         y_range = np.arange(data[-1]['params']['drone_count'])
 
         generate_viewing_error_plot(all_drone_data, ax1, x_range, y_range)
-        # generate_coverage_plot(all_drone_data, ax2)
-        # generate_timings_plot(timings, ax3, x_range)
-        # generate_swarm_center_plot(swarm_centers, ax4)
+        generate_coverage_plot(all_drone_data, ax2)
+        #generate_timings_plot(timings, ax3, x_range)
+        generate_angle_diff_plot(all_drone_data, ax3)
+        generate_swarm_center_plot(swarm_centers, ax4)
 
         if not export_mode and nb_args == 3:
             # Create metrics summary
