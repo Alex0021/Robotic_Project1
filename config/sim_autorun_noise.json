@@ -1,57 +1,57 @@
 {
-    "noise_topo_average": {
-        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "noise_type", "noise_param_dir"],
-        "values": ["Topological", "average", "Gaussian", 0.025],
+    "NO_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.0, 0.0],
         "var": [
             {
-                "name": "neighbors_count",
-                "values": [2, 3, 4, 5, 6, 7, 8, 9]
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "tangent_plane", "convex_hull_adjacent", "convex_hull_visible"]
             },
-            {
-                "name": "noise_param_dist",
-                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
-            }
-        ]
-    },
-    "noise_topo_tangent_plane": {
-        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "noise_type", "noise_param_dir"],
-        "values": ["Topological", "tangent_plane", "Gaussian", 0.025],
-        "var": [
             {
                 "name": "neighbors_count",
                 "values": [2, 3, 4, 5, 6, 7, 8]
-            },
-            {
-                "name": "noise_param_dist",
-                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
             }
         ]
     },
-    "noise_topo_cv_adj": {
-        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "viewing_metric_faces", "noise_type", "noise_param_dir"],
-        "values": ["Topological", "convex_hull", "adjacent", "Gaussian", 0.025],
+    "L_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.05, 0.01],
         "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "tangent_plane", "convex_hull_adjacent", "convex_hull_visible"]
+            },
             {
                 "name": "neighbors_count",
                 "values": [2, 3, 4, 5, 6, 7, 8]
-            },
-            {
-                "name": "noise_param_dist",
-                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
             }
         ]
     },
-    "noise_topo_cv_vis": {
-        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "viewing_metric_faces", "noise_type", "noise_param_dir"],
-        "values": ["Topological", "convex_hull", "visible", "Gaussian", 0.025],
+    "M_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.1, 0.025],
         "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "tangent_plane", "convex_hull_adjacent", "convex_hull_visible"]
+            },
             {
                 "name": "neighbors_count",
                 "values": [2, 3, 4, 5, 6, 7, 8]
+            }
+        ]
+    },
+    "H_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.2, 0.05],
+        "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "tangent_plane", "convex_hull_adjacent", "convex_hull_visible"]
             },
             {
-                "name": "noise_param_dist",
-                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
+                "name": "neighbors_count",
+                "values": [2, 3, 4, 5, 6, 7, 8]
             }
         ]
     }

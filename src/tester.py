@@ -100,7 +100,12 @@ class AutorunSim:
         # Setting var values
         for param, value in params.items():
             print(f"Setting {param} to {value}")
-            self._app.set_var_value(param, value)
+            if param == ('viewing_metric_algorithm'):
+                if value.startswith('convex_hull'):
+                    self._app.set_var_value("viewing_metric_algorithm", "convex_hull")
+                    self._app.set_var_value("viewing_metric_faces", value.split('_')[-1])
+            else:
+                self._app.set_var_value(param, value)
         # Set output file name
         description = '_'.join([f"{k}_{v}" for k, v in params.items()])
         self._app.var_output_csv.set(f'{self.folder_name}/{description}')
