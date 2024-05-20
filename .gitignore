@@ -3,5 +3,6 @@ sim_results
 output
 exported_plots
 utils
-config
+config/app_config.json
+config/sim_autorun.json
 venv

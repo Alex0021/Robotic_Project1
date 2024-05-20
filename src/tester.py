@@ -3,12 +3,15 @@ import json
 import threading
 import time
 import os
+import numpy as np
 
 CHECK_INTERVAL = 0.1
 
 class AutorunSim:
     def __init__(self, app: tk.Tk, tests_file: str):
         self._app = app
+        self.run_count = 0
+        self.test_count = 0
         # Load the tests description file
         try:
             with open(tests_file, 'r') as f:
@@ -17,6 +20,7 @@ class AutorunSim:
             self._tests = {}
         
     def _thread_run_all(self):
+        self.nb_tests = len(self._tests)
         for name in self._tests.keys():
             self.run_test(name)
 
@@ -30,76 +34,84 @@ class AutorunSim:
         print(f"Preparing test: {name}")
         # Retrieve the test description
         if name not in self._tests:
-            print(f"Test {name} not found")
+            print(f"Test {self.name} not found")
             return
         test = self._tests[name]
+        # Determine the number of runs
+        self.nb_subtests = np.prod([len(v['values']) for v in test['var']])
         # Reset simulation and re initialize
         self._app._button_reset_callback()
         self._app._initialize_simulation(verbose=False)
         # Create output directory
         try:
-            dim_text = '2D_' if self._app.swarm.is_2D else '3D_'
+            dim_text = '2D' if self._app.swarm.is_2D else '3D'
         except: 
             dim_text = ''
-        self.autorun_filename = test.get('file_basename', 'unknown')
-        self.autorun_filename = dim_text + self.autorun_filename
-        if not os.path.exists(f'sim_results/{self.autorun_filename}'):
-            os.makedirs(f'sim_results/{self.autorun_filename}')
+        self.folder_name = f'{dim_text}_{name}'
+        if not os.path.exists(f'sim_results/{self.folder_name}'):
+            os.makedirs(f'sim_results/{self.folder_name}')
         # Apply all parameters to the app
         for param, value in zip(test.get('metrics', []), test.get('values', [])):
             print(f"Setting {param} to {value}")
             self._app.set_var_value(param, value)
-        # Retrieve varying param
-        self.autorun_var_name = test.get('var', 'None')
-        self.autorun_from = test.get('from', 0)
-        self.autorun_to = test.get('to', 0)
-        self.autorun_steps = test.get('steps', 0)
-        self.var_autosim = self._app.get_var_ref(self.autorun_var_name)
-        self._app.var_output_csv.set(f'{self.autorun_filename}/{self.autorun_filename}_{self.autorun_var_name}_{self.autorun_from}')
-        self.var_autosim.set(self.autorun_from)
-        self.nb_runs = (self.autorun_to-self.autorun_from)//self.autorun_steps + 1
-        self.run_count = 0
-        self._app.sim.MAX_SPEED = True
         # Hide rendering
         self._app.set_rendering('off')
-        # Start recording
-        self._app.start_recording_callback()
-        # Start simulation
-        self._app._btn_simulate_callback()
-        print("Starting autorun simulation")
-        self.running = True
-        self.running_step()
+        self._app.set_trajectory_mode('on')
+        print(f"|== Starting test: {name} ==|")
+        try:
+            self.run_subtests(0, test['var'],{})
+        except KeyError:
+            print(f"No variables defined for test {name}")
+        self.end_test()
 
+
+    def run_subtests(self, index: int, vars: list, params: dict):
+        var_name = vars[index]['name']
+        values = vars[index]['values']
+        if index == len(vars)-1:
+            # Run tests for last variable
+            for v in values:
+                new_params = params.copy()
+                new_params.update({var_name: v})
+                self.run_step(new_params)
+            return
+        else:
+            for v in values:
+                params.update({var_name: v})
+                self.run_subtests(index+1, vars, params)
 
     def end_test(self):
-        print("Autorun simulation completed!")
-        self._app._btn_pause_callback()
-        self._app.stop_recording_callback()
+        self.test_count += 1
+        print(f"!--> TEST COMPLETED: {self.test_count}/{self.nb_tests}")
 
     def end_step(self):
         self.run_count += 1
-        print("Autorun step completed: {0:.2f}%".format(self.run_count/self.nb_runs*100))
+        print("Autorun step completed: {0:.1f}%".format(self.run_count/self.nb_subtests*100))
         self._app.stop_recording_callback()
-        self.var_autosim.set(self.var_autosim.get() + self.autorun_steps)
-        self._app.var_output_csv.set(f'{self.autorun_filename}/{self.autorun_filename}_{self.autorun_var_name}_{self.var_autosim.get()}')
-        # Reset simulation and re initialize
+        # Reset simulation
         self._app._button_reset_callback()
-        self._app._initialize_simulation(verbose=False)
-        self._app.sim.MAX_SPEED = True
-        self._app.start_recording_callback()
-        self._app._btn_simulate_callback()
-        self._app.swarm.circle_done = False
 
     def stop(self):
         self.running = False
 
-    def running_step(self):
+    def run_step(self, params: dict):
+        # Initialize sim
+        self._app._initialize_simulation(verbose=False)
+        # Setting var values
+        for param, value in params.items():
+            print(f"Setting {param} to {value}")
+            self._app.set_var_value(param, value)
+        # Set output file name
+        description = '_'.join([f"{k}_{v}" for k, v in params.items()])
+        self._app.var_output_csv.set(f'{self.folder_name}/{description}')
+        self._app.sim.MAX_SPEED = True
+        self._app.start_recording_callback()
+        self._app._btn_simulate_callback()
+        self._app.swarm.circle_done = False
+        self.running = True
         while self.running:
             if self._app.swarm.circle_done:
-                if self.var_autosim.get() >= self.autorun_to:
-                    self.end_test()
                     self.running = False
-                else:
                     self.end_step()
             time.sleep(CHECK_INTERVAL)
 

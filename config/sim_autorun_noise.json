@@ -1,0 +1,58 @@
+{
+    "noise_topo_average": {
+        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "noise_type", "noise_param_dir"],
+        "values": ["Topological", "average", "Gaussian", 0.025],
+        "var": [
+            {
+                "name": "neighbors_count",
+                "values": [2, 3, 4, 5, 6, 7, 8, 9]
+            },
+            {
+                "name": "noise_param_dist",
+                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
+            }
+        ]
+    },
+    "noise_topo_tangent_plane": {
+        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "noise_type", "noise_param_dir"],
+        "values": ["Topological", "tangent_plane", "Gaussian", 0.025],
+        "var": [
+            {
+                "name": "neighbors_count",
+                "values": [2, 3, 4, 5, 6, 7, 8]
+            },
+            {
+                "name": "noise_param_dist",
+                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
+            }
+        ]
+    },
+    "noise_topo_cv_adj": {
+        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "viewing_metric_faces", "noise_type", "noise_param_dir"],
+        "values": ["Topological", "convex_hull", "adjacent", "Gaussian", 0.025],
+        "var": [
+            {
+                "name": "neighbors_count",
+                "values": [2, 3, 4, 5, 6, 7, 8]
+            },
+            {
+                "name": "noise_param_dist",
+                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
+            }
+        ]
+    },
+    "noise_topo_cv_vis": {
+        "metrics": ["neighbors_metric", "viewing_metric_algorithm", "viewing_metric_faces", "noise_type", "noise_param_dir"],
+        "values": ["Topological", "convex_hull", "visible", "Gaussian", 0.025],
+        "var": [
+            {
+                "name": "neighbors_count",
+                "values": [2, 3, 4, 5, 6, 7, 8]
+            },
+            {
+                "name": "noise_param_dist",
+                "values": [0.00, 0.05, 0.10, 0.15, 0.20]
+            }
+        ]
+    }
+}

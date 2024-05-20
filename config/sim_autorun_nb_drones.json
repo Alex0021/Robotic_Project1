@@ -1,0 +1,74 @@
+{
+    "test5": {
+        "file_basename": "LoS_average",
+        "metrics": ["viewing_metric_algorithm", "neighbors_metric"],
+        "values": ["average", "Visual_LoS"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    },
+    "test6": {
+        "file_basename": "LoS_tangeant",
+        "metrics": ["viewing_metric_algorithm", "neighbors_metric"],
+        "values": ["tangent_plane", "Visual_LoS"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    },
+    "test7": {
+        "file_basename": "LoS_CV_adj",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_faces", "neighbors_metric"],
+        "values": ["convex_hull", "adjacent", "Visual_LoS"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    },
+    "test8": {
+        "file_basename": "LoS_CV_vis",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_faces", "neighbors_metric"],
+        "values": ["convex_hull", "visible", "Visual_LoS"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    },
+    "test9": {
+        "file_basename": "Voronoi_average",
+        "metrics": ["viewing_metric_algorithm", "neighbors_metric"],
+        "values": ["average", "Voronoi"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    },
+    "test10": {
+        "file_basename": "Voronoi_tangeant",
+        "metrics": ["viewing_metric_algorithm", "neighbors_metric"],
+        "values": ["tangent_plane", "Voronoi"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    },
+    "test11": {
+        "file_basename": "Voronoi_CV_adj",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_faces", "neighbors_metric"],
+        "values": ["convex_hull", "adjacent", "Voronoi"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    },
+    "test12": {
+        "file_basename": "Vornoi_CV_vis",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_faces", "neighbors_metric"],
+        "values": ["convex_hull", "visible", "Voronoi"],
+        "var": "drone_count",
+        "from": 5,
+        "to": 30,
+        "steps": 5
+    }
+}

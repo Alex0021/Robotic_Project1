@@ -17,7 +17,7 @@ from src.tester import AutorunSim
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'config/app_config.json'
-AUTORUN_FILENAME = 'config/sim_autorun_nb_drones.json'
+AUTORUN_FILENAME = 'config/sim_autorun.json'
 DATA_OUTPUT_FOLDER = 'sim_results'
 FRONTEND_UPDATE_INTERVAL = 0.1
 TEST_COMPLETED_CHECK_INTERVAL = 0.5
@@ -722,15 +722,9 @@ class myApp(tk.Frame):
 
     def btn_trajectory_mode_callback(self):
         if self.trajectory_mode_enabled:
-            self.trajectory_mode_enabled = False
-            self.btn_trajectory_mode.config(text='Trajectory mode')
-            self.textbox_target.config(state='normal')
-            self.swarm.set_migration_mode('single')
+            self.set_trajectory_mode('off')
         else:
-            self.trajectory_mode_enabled = True
-            self.btn_trajectory_mode.config(text='Single mode')
-            self.textbox_target.config(state='disabled')
-            self.swarm.set_migration_mode('trajectory')
+            self.set_trajectory_mode('on')
 
     def start_recording_callback(self):
         self.sim.start_recording(self.get_app_params_dict())
@@ -880,6 +874,17 @@ class myApp(tk.Frame):
             self.label_no_renderering.grid_forget()
             self.renderer = self.renderer = Renderer(self.panel_view, self.swarm)
 
+    def set_trajectory_mode(self, val: str):
+        if val.upper() == "OFF":
+            self.trajectory_mode_enabled = False
+            self.btn_trajectory_mode.config(text='Trajectory mode')
+            self.textbox_target.config(state='normal')
+            self.swarm.set_migration_mode('single')
+        elif val.upper() == "ON":
+            self.trajectory_mode_enabled = True
+            self.btn_trajectory_mode.config(text='Single mode')
+            self.textbox_target.config(state='disabled')
+            self.swarm.set_migration_mode('trajectory')
     
 
 if __name__ == "__main__":
