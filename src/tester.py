@@ -57,6 +57,7 @@ class AutorunSim:
         # Hide rendering
         self._app.set_rendering('off')
         self._app.set_trajectory_mode('on')
+        self.run_count = 0
         print(f"|== Starting test: {name} ==|")
         try:
             self.run_subtests(0, test['var'],{})
