@@ -194,10 +194,10 @@ class Swarm():
                 dist = np.zeros(len(hull.simplices))
                 for j in range(len(hull.simplices)):
                     idx = hull.simplices[j]
-                    p = np.mean(points[idx], axis=1)
+                    p = np.mean(points[idx], axis=0)
                     dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
                 idx_min = np.argmin(np.abs(dist))
-                d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]], axis=1) - hull_center, hull.equations[idx_min][:p_dim]))
+                d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]], axis=0) - hull_center, hull.equations[idx_min][:p_dim]))
                 self.dist_weights[i] = 1 - (dist[idx_min]/d_center)
 
         if viewing_dir_2d:

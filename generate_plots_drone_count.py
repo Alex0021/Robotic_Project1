@@ -113,7 +113,7 @@ def generate_angle_diff_plot(all_drone_data, ax):
         avg_angle_diff = np.mean(all_drone_data[i][:, :, 5], axis=0)
         # Get deviation from optimal value
         opt_val = 2*np.pi / all_drone_data[i].shape[1]
-        avg_angle_diff = np.abs(avg_angle_diff - opt_val)*180/np.pi
+        avg_angle_diff = np.abs(avg_angle_diff - opt_val)/opt_val#*180/np.pi
         ax.plot(avg_angle_diff[dist_sorted_indices], label=f'Run {i+1}', marker='o')
         # Find std of angle difference
         #std_angle_diff = np.std(all_drone_data[i][:, :, 5], axis=0)
