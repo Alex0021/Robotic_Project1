@@ -60,7 +60,7 @@ def generate_viewing_error_plot(all_drone_data, ax):
         ax.bar3d(xpos, ypos, zpos, dx, dy, dz, color=colors, zsort='average', label=f'{key}', shade=False, edgecolor='black')
         # Add average over all drones as 2d line
         avg_errors = np.mean(errors, axis=1)
-        ax.plot(x_range, avg_errors, zs=nb_drones, zdir='y', label=f'Avg error {key}', linewidth=2, color=new_cm(255))
+        ax.plot(x_range, avg_errors, zs=nb_drones, zdir='y', label=f'Avg error {key}', linewidth=2, color=new_cm(175))
         ax.legend(fontsize='x-small', loc='best')
         #ax.set_box_aspect(aspect=None, zoom=0.95)
         if n == 0:
@@ -79,13 +79,13 @@ def generate_coverage_plot(all_drone_data, ax):
     ax.set_title('Mean and std of the coverage')
     ax.set_xlabel('drone count')
     ax.set_ylabel('Coverage %')
-    colors = ['purple', 'blue', 'green', 'orange']
+    colors = ['purple', 'blue', 'green', 'darkorange']
     for n, key in enumerate(all_drone_data.keys()):
         data = [np.array(all_drone_data[key][i]) for i in range(len(all_drone_data[key]))]
         # Find the average coverage for each drone
         coverage_mean = np.array([np.mean(data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
         coverage_std = np.array([np.std(data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
-        ax.errorbar(np.arange(from_, to+1, steps), coverage_mean*100, yerr=[coverage_std*100, np.clip(coverage_std, 0, 1-coverage_mean)*100], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], capsize=5, capthick=2)
+        ax.errorbar(np.arange(from_, to+1, steps), coverage_mean*100, yerr=[coverage_std*100, np.clip(coverage_std, 0, 1-coverage_mean)*100], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
     # Filter out error bars from legend
     handles, labels = ax.get_legend_handles_labels()
     handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
@@ -95,7 +95,7 @@ def generate_timing_viewing_plot(timing_data, ax, x_range):
     ax.set_title('Viewing computation time')
     ax.set_xlabel('# neighbors')
     ax.set_ylabel('Computation time (ms))')
-    colors = ['purple', 'blue', 'green', 'orange']
+    colors = ['purple', 'blue', 'green', 'darkorange']
     for n, key in enumerate(all_drone_data.keys()):
         data = timing_data[key]
         # Compute average timings
