@@ -15,7 +15,13 @@ def get_viewing_dir(drone, neighbors, algo: str, **params):
     if len(neighbors) == 0:
         return drone.get_heading()
     assert algo in ["average", "outter", "tangent_plane", "convex_hull"], "Algorithm {0} not supported".format(algo)
-    return eval(algo)(drone, neighbors, params)
+    vd = eval(algo)(drone, neighbors, params)
+    # Check valid vd and normalize
+    norm = np.linalg.norm(vd)
+    if norm > 0:
+        return vd / norm
+    else:
+        return drone.get_heading()
 
 def average(drone, neighbors, params):
     """
@@ -32,7 +38,7 @@ def average(drone, neighbors, params):
     """
     centroid = np.mean([n.get_abs_pos() for n in neighbors], axis=0)
     vec_to_centroid = centroid - drone.pos
-    viewing_dir = -vec_to_centroid / np.linalg.norm(vec_to_centroid)
+    viewing_dir = -vec_to_centroid
     # If 2D, set z component to zero
     if params.get('in_2d', False):
         viewing_dir[2] = 0
@@ -116,7 +122,7 @@ def outter(drone, neighbors, params):
             centroid = np.mean(np.concatenate((points[highest_indices], [drone_pos])), axis=0)
             viewing_dir = centroid - drone_pos
 
-    viewing_dir = -viewing_dir / np.linalg.norm(viewing_dir)
+    viewing_dir = -viewing_dir
     if in_2d:
         viewing_dir = np.hstack((viewing_dir, 0))
     return viewing_dir
@@ -245,7 +251,7 @@ def convex_hull(drone, neighbors, params):
     # Add z component to zero if in 2D
     if in_2d:
         viewing_dir = np.hstack((viewing_dir, 0))
-    return viewing_dir / np.linalg.norm(viewing_dir)
+    return viewing_dir
 
 def combinations(n, k):
    result = []

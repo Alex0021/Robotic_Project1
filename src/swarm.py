@@ -9,7 +9,7 @@ np.random.seed(1)
 
 # Circle Trajectory
 NB_POINTS = 30
-TARGET_TOL = 0.2 # Tolerance before reaching the target
+TARGET_TOL = 0.25 # Tolerance before reaching the target
 CIRCLE_RADIUS = 3.0
 Z_HEIGHT = 5.0
 t = np.linspace(-np.pi/2, 3*np.pi/2, NB_POINTS)
