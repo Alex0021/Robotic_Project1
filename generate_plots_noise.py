@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib as mpl
 from matplotlib.colors import Normalize, ListedColormap
+from matplotlib import container
 import sys, os
 
 ROOT_FOLDER = 'sim_results'
@@ -85,7 +86,10 @@ def generate_coverage_plot(all_drone_data, ax):
         coverage_mean = np.array([np.mean(data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
         coverage_std = np.array([np.std(data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
         ax.errorbar(np.arange(from_, to+1, steps), coverage_mean*100, yerr=[coverage_std*100, np.clip(coverage_std, 0, 1-coverage_mean)*100], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], capsize=5, capthick=2)
-    ax.legend(fontsize='small')
+    # Filter out error bars from legend
+    handles, labels = ax.get_legend_handles_labels()
+    handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
+    ax.legend(handles, labels, fontsize=7, draggable=True, markerscale=0.5, loc='best')
 
 def generate_timing_viewing_plot(timing_data, ax, x_range):
     ax.set_title('Viewing computation time')
