@@ -7,9 +7,8 @@ from helper_functions import elapsed_timer
 # Setting a common/uniform seed for testing
 np.random.seed(1)
 
-# Circle Trajectory
 NB_POINTS = 30
-TARGET_TOL = 0.2 # Tolerance before reaching the target
+TARGET_TOL = 0.25 # Tolerance before reaching the target
 CIRCLE_RADIUS = 3.0
 Z_HEIGHT = 5.0
 t = np.linspace(-np.pi/2, 3*np.pi/2, NB_POINTS)
@@ -41,6 +40,8 @@ class Swarm():
         self.timing_viewing_dir = 0.0
         self.timing_coverage = 0.0
         self.circle_done = False
+        self._stabilized = False
+        self._last_time_stab = 0
         self.dist_weights = np.ones(self.count)
         # Initialize drones within a given box (random)
         if count == 1:
