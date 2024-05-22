@@ -111,14 +111,18 @@ class AutorunSim:
         description = '_'.join([f"{k}_{v}" for k, v in params.items()])
         self._app.var_output_csv.set(f'{self.folder_name}/{description}')
         self._app.sim.MAX_SPEED = True
-        self._app.start_recording_callback()
+        #self._app.start_recording_callback()
         self._app._btn_simulate_callback()
         self._app.swarm.circle_done = False
         self.running = True
+        self.recording_started = False
         while self.running:
             if self._app.swarm.circle_done:
                     self.running = False
                     self.end_step()
+            if self._app.swarm._stabilized and not self.recording_started:
+                self._app.start_recording_callback()
+                self.recording_started = True
             time.sleep(CHECK_INTERVAL)
 
     

@@ -3,6 +3,7 @@ from drone import *
 import olfati_saber as olsab
 from scipy.spatial import ConvexHull
 from helper_functions import elapsed_timer
+import time
 
 # Setting a common/uniform seed for testing
 np.random.seed(1)
@@ -15,6 +16,7 @@ t = np.linspace(-np.pi/2, 3*np.pi/2, NB_POINTS)
 TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(t), CIRCLE_RADIUS*np.sin(t), Z_HEIGHT*np.ones(NB_POINTS)]).T 
 SCALE = 2
 TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*np.ones(NB_POINTS)]).T
+STABILIZING_TIME = 5 #In seconds
 
 
 MAX_ITER = 500 # Maximum number of iterations to find a valid position
@@ -41,7 +43,7 @@ class Swarm():
         self.timing_coverage = 0.0
         self.circle_done = False
         self._stabilized = False
-        self._last_time_stab = 0
+        self.sim_time = 0.0
         self.dist_weights = np.ones(self.count)
         # Initialize drones within a given box (random)
         if count == 1:
@@ -89,6 +91,7 @@ class Swarm():
             self.compute_next_target()
 
         self.swarm_center = self.get_swarm_center()
+        self.sim_time += dt
 
     def set_cmd_velocity(self, v_ref):
         self.algo_params['v_ref'] = v_ref
@@ -357,7 +360,10 @@ class Swarm():
 
     def compute_next_target(self):
         # Check if migration point is reached
-        if self.migration_point is not None:
+        if not self._stabilized:
+            if self.sim_time > STABILIZING_TIME:
+                self._stabilized = True
+        elif self.migration_point is not None:
             if np.linalg.norm(self.swarm_center - self.migration_point) < TARGET_TOL:
                 self.trajectory_idx += 1
                 if self.trajectory_idx % NB_POINTS == 0:
