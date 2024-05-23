@@ -274,7 +274,7 @@ class myApp(tk.Frame):
         self.panel_neighbors.grid_rowconfigure(0, weight=1)
         self.label_neighbors = ttk.Label(self.panel_neighbors, anchor='w', text="Neighbors: ")
         self.label_neighbors.grid(column=0,row=0, sticky='NEWS')
-        self.listbox_neighbors_algo = ttk.Combobox(self.panel_neighbors, values=["Eucledian", "Topological", "Voronoi", "Visual LoS"])
+        self.listbox_neighbors_algo = ttk.Combobox(self.panel_neighbors, values=["Eucledian", "Topological", "Voronoi", "VLOS"])
         self.listbox_neighbors_algo.set(self.app_config['neighbors'].get('metric', 'Topological'))
         self.listbox_neighbors_algo.grid(row=0,column=1,sticky='we', padx=5)
         self.listbox_neighbors_algo.bind("<<ComboboxSelected>>", lambda e: self.var_neighbors_metric.set(self.listbox_neighbors_algo.get()))
@@ -510,23 +510,23 @@ class myApp(tk.Frame):
         if self.label_spinner_r_agent in self.panel_neighbors.winfo_children():
             self.label_spinner_r_agent.grid_forget()
             self.spinner_r_agent.grid_forget()
-        match current_algo:
-            case 'Eucledian':
+        match current_algo.upper():
+            case 'EUCLEDIAN':
                 self.label_neighbors_algo_param.config(text="radius")
                 default_val = self.app_config['neighbors'].get('sensing_range', 1.0)
                 current_val = self.swarm.get_neighbor_metric('sensing_range', default_val)
                 self.var_neighbors_sensing_range.set(current_val)
                 self.spinner_neighbors.config(from_=0, to=100, increment=0.1, textvariable=self.var_neighbors_sensing_range)
-            case 'Topological':
+            case 'TOPOLOGICAL':
                 self.label_neighbors_algo_param.config(text="# ")
                 default_val = self.app_config['neighbors'].get('count', 1)
                 current_val = self.swarm.get_neighbor_metric('count', default_val)
                 self.var_neighbors_count.set(current_val)
                 self.spinner_neighbors.config(from_=0, to=self.var_drone_count.get()-1, increment=1, textvariable=self.var_neighbors_count)
-            case 'Voronoi':
+            case 'VORONOI':
                 self.label_neighbors_algo_param.config(text="")
                 self.spinner_neighbors.config(state='disabled')
-            case 'Visual LoS':
+            case 'VLOS':
                 self.label_neighbors_algo_param.config(text="radius ")
                 default_val = self.app_config['neighbors'].get('sensing_range', 1.0)
                 self.var_neighbors_sensing_range.set(self.swarm.get_neighbor_metric('sensing_range', default_val))
@@ -585,7 +585,7 @@ class myApp(tk.Frame):
         algo = self.var_viewing_metric_algorithm.get()
         self.listbox_viewing_algo.set(algo)
         self.listbox_convex_hull_faces.set(self.var_viewing_metric_faces.get())
-        if algo == 'outter':
+        if algo.upper() == 'OUTTER':
             self.panel_algo_params_outter.grid(column=1, row=1, sticky='NWES', padx=5, pady=0)
             # if self.swarm is not None:
             #     if self.swarm.is_2D:
@@ -594,7 +594,7 @@ class myApp(tk.Frame):
             #         self.spinner_algo_param_outter_points.config(from_=2, to=self.swarm.count)
         else:
             self.panel_algo_params_outter.grid_forget()
-        if algo == 'convex_hull':
+        if algo.upper() == 'CONVEX_HULL':
             self.panel_algo_params_convex_hull.grid(column=1, row=1, sticky='NWES', padx=5, pady=0)
         else:
             self.panel_algo_params_convex_hull.grid_forget()
@@ -861,14 +861,14 @@ class myApp(tk.Frame):
             print(f'Error getting value: {param}')
 
     def set_rendering(self, val):
-        if val == "off":
+        if val.upper() == "OFF":
             self.render_env = False
             self.btn_rendering.config(text="Rendering: OFF")
             if self.renderer is not None:
                 self.renderer.disable_rendering()
             self.renderer = None
             self.label_no_renderering.grid(column=0,row=0,sticky='NESW')
-        elif val == "on":
+        elif val.upper() == "ON":
             self.render_env = True
             self.btn_rendering.config(text="Rendering: ON")
             self.label_no_renderering.grid_forget()

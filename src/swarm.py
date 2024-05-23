@@ -148,19 +148,19 @@ class Swarm():
                 return list()
     
     def compute_neighborhood(self):
-        computation_method = self.neighbors_params.get('computation', 'None')
+        computation_method = self.neighbors_params.get('computation', 'None').upper()
         metric = self.neighbors_params.get('metric', 'Eucledian')
-        if computation_method == 'Selected' or computation_method == 'All':
-            if computation_method == 'Selected':
+        if computation_method == 'SELECTED' or computation_method == 'ALL':
+            if computation_method == 'SELECTED':
                 with elapsed_timer() as elapsed:
                     self.members[self.selected_drone].compute_neihgborhood(self.members, metric, self.neighbors_params)
                     self.timing_neighborhood = elapsed()
                 # Compute viewing direction
-                if self.viewing_params.get('algorithm', 'None') != 'None':
+                if self.viewing_params.get('algorithm', 'None').upper() != 'NONE':
                     self.members[self.selected_drone].compute_viewing_dir(self.members, self.viewing_params)
                     self.timing_viewing_dir = self.members[self.selected_drone].timing_viewing_dir
                 only_selected = True
-            elif computation_method == 'All':
+            elif computation_method == 'ALL':
                 with elapsed_timer() as elapsed:
                     for m in self.members:
                         m.compute_neihgborhood(self.members, metric, self.neighbors_params)
@@ -168,7 +168,7 @@ class Swarm():
                 
                 self.timing_viewing_dir = 0
                 for m in self.members:
-                    if self.viewing_params.get('algorithm', 'None') != 'None':
+                    if self.viewing_params.get('algorithm', 'None').upper() != 'NONE':
                         m.compute_viewing_dir(self.members, self.viewing_params)
                         self.timing_viewing_dir += m.timing_viewing_dir
                 only_selected = False

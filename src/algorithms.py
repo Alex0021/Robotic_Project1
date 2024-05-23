@@ -14,6 +14,7 @@ def get_viewing_dir(drone, neighbors, algo: str, **params):
     """
     if len(neighbors) == 0:
         return drone.get_heading()
+    algo = algo.lower()
     assert algo in ["average", "outter", "tangent_plane", "convex_hull"], "Algorithm {0} not supported".format(algo)
     vd = eval(algo)(drone, neighbors, params)
     # Check valid vd and normalize

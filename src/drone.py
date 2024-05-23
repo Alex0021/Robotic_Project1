@@ -84,26 +84,26 @@ class Drone:
         poss_neighbors = np.array([i for i in range(len(members)) if i != index])
         sampling = metric_data.get('sampling', 1)
         noisy_poses = self._apply_sensing_noise([members[index] for index in poss_neighbors], sampling)
-        match metric:
-            case "Eucledian":
+        match metric.upper():
+            case "EUCLEDIAN":
                 sensing_range = metric_data.get('sensing_range', DEFAULT_RANGE_SENSING)
                 distances = np.linalg.norm(noisy_poses - self.pos, axis=1)
                 indices = np.nonzero(distances < sensing_range)[0]
                 self.neighbors = [DroneNeighbor(i, distances[j], (noisy_poses[j] - self.pos) / distances[j],
                                                 self._apply_noise(members[i].angles, self.noise, 'param_heading', sampling), self.pos) for i,j in zip(poss_neighbors[indices], indices)]
-            case "Topological":
+            case "TOPOLOGICAL":
                 nb = metric_data.get('count', DEFAULT_NB_NEIGHBORS)
                 distances = np.linalg.norm(noisy_poses - self.pos, axis=1)
                 indices = np.argsort(distances)[:nb]
                 self.neighbors = [DroneNeighbor(i, distances[j], (noisy_poses[j] - self.pos) / distances[j],
                                                 self._apply_noise(members[i].angles, self.noise, 'param_heading', sampling), self.pos) for i,j in zip(poss_neighbors[indices], indices)]
-            case "Voronoi":
+            case "VORONOI":
                 points = np.concatenate((noisy_poses, self.pos.reshape(1,3)))
                 indptr_neig, neighbors = spatial.Delaunay(points, qhull_options="QJ").vertex_neighbor_vertices
                 self.neighbors = [DroneNeighbor(j if j<index else j+1, np.linalg.norm(points[j] - self.pos), 
                                                         (points[j] - self.pos) / np.linalg.norm(points[j] - self.pos), 
                                                         self._apply_noise(members[j].angles, self.noise, 'param_heading'), self.pos) for j in neighbors[indptr_neig[-2]:indptr_neig[-1]]]
-            case "Visual LoS":
+            case "VLOS":
                 sensing_range = metric_data.get('sensing_range', np.inf)
                 r_agent = metric_data.get('r_agent', 0.05)
                 # Keep neighbors that are within the sensing range
@@ -133,14 +133,6 @@ class Drone:
                         if np.linalg.norm(u_ij-u_ik) < (r_ij + r_ik):
                             to_remove.append(i)
                     indices = np.delete(indices, to_remove)
-                
-            case "TEST":
-                indices = np.random.choice(poss_neighbors, np.random.randint(0, len(poss_neighbors)))
-                for i in indices:
-                    dist = self._apply_noise(np.linalg.norm(members[i].pos - self.pos), self.noise, 'param_dist', sampling)
-                    dir = self._apply_noise(((members[i].pos - self.pos) / dist), self.noise, 'param_dir', sampling)
-                    angles = self._apply_noise(members[i].angles, self.noise, 'param_heading', sampling)
-                    self.neighbors.append(DroneNeighbor(i, dist, dir, angles, self.pos))
             case _:
                 self.neighbors = []
 
@@ -154,7 +146,7 @@ class Drone:
         with elapsed_timer() as elapsed:
             self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
             self.timing_viewing_dir = elapsed()
-        if algo == 'outter' and nb_points > 3:
+        if algo.upper() == 'OUTTER' and nb_points > 3:
             # Use only the ground truth without noise to compute the exact viewing direction
             self.exact_viewing_dir = np.zeros(3)
         else:
@@ -164,12 +156,12 @@ class Drone:
         self.viewing_error = np.arccos(np.clip(np.dot(self.estimated_viewing_dir, self.exact_viewing_dir),-1,1)) * 180 / np.pi
 
     def _apply_noise(self, value, noise, type, sampling=1):
-        match noise['type']:
-            case "None":
+        match noise['type'].upper():
+            case "NONE":
                 return value
-            case "Gaussian":
+            case "GAUSSIAN":
                 return np.multiply(value, np.ones_like(value) + np.mean(np.random.normal(0, noise[type], (len(value), sampling)), axis=1))
-            case "Uniform":
+            case "UNIFORM":
                 return np.multiply(value, np.ones_like(value) + np.mean(np.random.uniform(-noise[type], noise[type], (len(value), sampling))))
             case _:
                 return value
