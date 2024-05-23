@@ -1,7 +1,7 @@
 {
     "NO_noise_topo": {
         "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
-        "values": ["Topological", "Gaussian", 0.0, 0.0],
+        "values": ["Topological", "None", 0.0, 0.0],
         "var": [
             {
                 "name": "viewing_metric_algorithm",
@@ -9,7 +9,7 @@
             },
             {
                 "name": "neighbors_count",
-                "values": [2, 3, 4, 5, 6, 7, 8]
+                "values": [3, 4, 5, 6, 7, 8]
             }
         ]
     },
@@ -23,7 +23,7 @@
             },
             {
                 "name": "neighbors_count",
-                "values": [2, 3, 4, 5, 6, 7, 8]
+                "values": [3, 4, 5, 6, 7, 8]
             }
         ]
     },
@@ -37,7 +37,7 @@
             },
             {
                 "name": "neighbors_count",
-                "values": [2, 3, 4, 5, 6, 7, 8]
+                "values": [3, 4, 5, 6, 7, 8]
             }
         ]
     },
@@ -51,7 +51,7 @@
             },
             {
                 "name": "neighbors_count",
-                "values": [2, 3, 4, 5, 6, 7, 8]
+                "values": [3, 4, 5, 6, 7, 8]
             }
         ]
     }

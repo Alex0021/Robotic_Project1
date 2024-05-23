@@ -6,7 +6,7 @@ from helper_functions import elapsed_timer
 import time
 
 # Setting a common/uniform seed for testing
-np.random.seed(1)
+#np.random.seed(1)
 
 NB_POINTS = 30
 TARGET_TOL = 0.25 # Tolerance before reaching the target
@@ -16,7 +16,7 @@ t = np.linspace(-np.pi/2, 3*np.pi/2, NB_POINTS)
 TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(t), CIRCLE_RADIUS*np.sin(t), Z_HEIGHT*np.ones(NB_POINTS)]).T 
 SCALE = 2
 TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*np.ones(NB_POINTS)]).T
-STABILIZING_TIME = 5 #In seconds
+STABILIZING_TIME = 10 #In seconds
 
 
 MAX_ITER = 500 # Maximum number of iterations to find a valid position
@@ -368,12 +368,12 @@ class Swarm():
                 self.trajectory_idx += 1
                 if self.trajectory_idx % NB_POINTS == 0:
                     self.circle_done = True
-                self.migration_point = TRAJECTORY_INF_LOOP[self.trajectory_idx % NB_POINTS]
+                self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
 
     def set_migration_mode(self, mode):
         self.migration_mode = mode
         if mode == 'trajectory':
-            self.migration_point = TRAJECTORY_INF_LOOP[self.trajectory_idx]
+            self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
 
     def update_drones_FOV(self, fov):
         for m in self.members:
