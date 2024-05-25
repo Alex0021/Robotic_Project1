@@ -587,11 +587,6 @@ class myApp(tk.Frame):
         self.listbox_convex_hull_faces.set(self.var_viewing_metric_faces.get())
         if algo.upper() == 'OUTTER':
             self.panel_algo_params_outter.grid(column=1, row=1, sticky='NWES', padx=5, pady=0)
-            # if self.swarm is not None:
-            #     if self.swarm.is_2D:
-            #         self.spinner_algo_param_outter_points.config(from_=2, to=3)
-            #     else:
-            #         self.spinner_algo_param_outter_points.config(from_=2, to=self.swarm.count)
         else:
             self.panel_algo_params_outter.grid_forget()
         if algo.upper() == 'CONVEX_HULL':
