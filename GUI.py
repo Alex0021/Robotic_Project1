@@ -69,7 +69,7 @@ class myApp(tk.Frame):
         self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
         self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
         self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
-        self.spawn_box = self.app_config.get('spawn_box', [0,0,10,5,5,5])
+        self.spawn_area = self.app_config.get('spawn_area', [0,0,10,5,5,5])
         self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
         self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
         self.var_viewing_metric_outter_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outter_points', 2))
@@ -114,6 +114,7 @@ class myApp(tk.Frame):
         # Check for target
         self.textbox_target.delete(0, tk.END)
         self.textbox_target.insert(0, self.app_config.get('target', ''))
+        self.swarm_2d = self.app_config.get('swarm_2d', True)
 
     def init_main_panels(self):
         self.panel_view = tk.Frame(self.mainframe)
@@ -436,13 +437,14 @@ class myApp(tk.Frame):
             target_numbers = target_text.split(';')
             target = np.asarray(target_numbers, dtype=float)
 
-        self.swarm = Swarm(count=nb_drones, box=self.spawn_box, migration_point=target)
+        self.swarm = Swarm(count=nb_drones, area=self.spawn_area, migration_point=target, in_2d=self.swarm_2d)
         dt = float(self.spinner_sim_dt.get())
         self.sim = Simulator(dt, self.swarm)
         self.swarm.use_pd_smoothing(self.app_config['simulation'].get('use_pd_smoothing', False))
         #self.swarm.initialize_random_vel([0.1, 0.5, -0.3, 0.3, 0, 0.2])
         self._set_neighbors_algo_params()
         self._set_swarm_algo_params()
+        self.swarm.initialize_members()
         self.swarm.compute_neighborhood()
         if verbose:
             print("Initializing swarm with parameters: ")

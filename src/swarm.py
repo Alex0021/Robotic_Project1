@@ -19,11 +19,11 @@ TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*n
 STABILIZING_TIME = 10 #In seconds
 
 
-MAX_ITER = 500 # Maximum number of iterations to find a valid position
+MAX_ITER = 10000 # Maximum number of iterations to find a valid position
 COVERAGE_RES = 0.01  # To discretize into cells for the coverage computation
 
 class Swarm():
-    def __init__(self, count=1, box=[0.0]*6, **kwargs):
+    def __init__(self, count=1, area=[0.0,0.0,0.0,1.0], **kwargs):
         self.members = list()
         self.count = count
         self.migration_point = None
@@ -35,7 +35,7 @@ class Swarm():
         self.member_size = 0.025
         self.migration_mode = 'single' # ['single', 'trajectory']
         self.trajectory_idx = 0
-        self.is_2D = abs(box[5]) < 0.01
+        self.is_2D = kwargs.get('is_2D', True)
         self.viewing_dim = 2 if self.is_2D else 3
         self.swarm_coverage = 0.0
         self.timing_neighborhood = 0.0
@@ -45,17 +45,7 @@ class Swarm():
         self._stabilized = False
         self.sim_time = 0.0
         self.dist_weights = np.ones(self.count)
-        # Initialize drones within a given box (random)
-        if count == 1:
-            self.members.append(Drone(init_pos=box[0:3]))
-        else:
-            box = np.array(box)
-            pos = np.random.uniform(box[0:3] - box[3:6]/2, box[0:3] + box[3:6]/2, size=(count,3))
-            for p in pos:
-                self.members.append(Drone(init_pos=p, init_angles=[0,0,0], fov=360/count))
-        #print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
-        self.swarm_center = self.get_swarm_center()
-
+        self.spawn_area = area
         # Intitialize optional parameters
         if 'migration_point' in kwargs:
             self.migration_point = kwargs['migration_point']
@@ -64,11 +54,42 @@ class Swarm():
         self.neighbors_params = kwargs.get('neighbors_metric', {'computation':'None', 'metric': 'Eucledian', 'sampling': 1})
         self.viewing_params = kwargs.get('viewing_metric', {'algorithm': 'None'})
         self.viewing_params.update({'in_2d': self.is_2D})
+        #print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
 
         # First trajectory point
         if self.migration_mode == 'trajectory':
             self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
         
+    def initialize_members(self):
+        rho = self.spawn_area[3]
+        if self.is_2D:
+            # Calculate the radius of the circle
+            r_max = np.sqrt(self.count/(np.pi*rho))
+        else:
+            # calculate the radius of the sphere
+            r_max = np.cbrt(3*self.count/(4*np.pi*rho))
+        pos_hist = []
+        for i in range(self.count):
+            pos_valid = False
+            iter = 0
+            while not pos_valid and iter < MAX_ITER:
+                r = r_max*np.random.rand()
+                theta = np.random.rand()*2*np.pi
+                phi = np.pi/2 if self.is_2D else np.random.rand()*np.pi
+                pos = np.array([r*np.cos(theta)*np.sin(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(phi)]) + np.array(self.spawn_area[0:3])
+                # First position is always valid
+                if i > 0:
+                    pos_valid = np.all(np.linalg.norm(np.array([pos_hist[j] for j in range(i)]) - pos, axis=1) > 2*self.neighbors_params.get('r_agent', 0.069))
+                else:
+                    pos_valid = True
+                iter += 1
+            if pos_valid:
+                pos_hist.append(pos)
+                self.members.append(Drone(init_pos=pos, fov=360/self.count))
+            else:
+                raise ValueError("Could not find a valid itnial position for all drones in the swarm!")
+        self.swarm_center = self.get_swarm_center()
+
     def update(self, dt, new_acc):
         new_acc = np.zeros((self.count, 3))
         for i in range(self.count):

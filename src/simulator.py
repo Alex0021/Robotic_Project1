@@ -23,14 +23,16 @@ class Simulator():
         '''
         while(self._running):
             if (not self._paused) or self._step:
-                if self.MAX_SPEED or time.time() - self.last_time >= self._dt:
-                    acc = np.zeros(3)
-                    self._swarm.update(self._dt, acc)
-                    self._step = False
-                    self._dump_data_to_file()
-                    self._simulation_time += self._dt
-                    if not self.MAX_SPEED:
-                        self.last_time = time.time()
+                self.last_time = time.time()
+                acc = np.zeros(3)
+                self._swarm.update(self._dt, acc)
+                self._step = False
+                self._dump_data_to_file()
+                self._simulation_time += self._dt
+                if not self.MAX_SPEED:
+                    if time.time() - self.last_time < self._dt:
+                        time.sleep(self._dt - (time.time() - self.last_time))
+                    
             #time.sleep(self._dt)
 
     def start(self):
