@@ -2,7 +2,7 @@
 # THIS FILE CONTAINS THE GUI OF THE SIMULATOR
 # FOR MY SEMESTER PROJECT
 ####################################################
-import sys
+import sys, os
 sys.path.insert(0, './src')
 
 import tkinter as tk
@@ -16,8 +16,8 @@ import time
 from src.tester import AutorunSim
 
 w,h = (1600,800)
-CONFIG_FILENAME = 'config/app_config.json'
-AUTORUN_FILENAME = 'config/sim_autorun.json'
+CONFIG_FILENAME = 'app_config.json'
+AUTORUN_FILENAME = 'sim_autorun.json'
 DATA_OUTPUT_FOLDER = 'sim_results'
 FRONTEND_UPDATE_INTERVAL = 0.1
 TEST_COMPLETED_CHECK_INTERVAL = 0.5
@@ -48,7 +48,7 @@ class myApp(tk.Frame):
         # JSON CONFIG FILE INITIALIZATION  #
         #==================================#
         try:
-            with open(CONFIG_FILENAME) as f:
+            with open(os.path.join('./config', CONFIG_FILENAME)) as f:
                 self.app_config = json.load(f)
         except FileNotFoundError:
             self.app_config = {}
@@ -69,7 +69,7 @@ class myApp(tk.Frame):
         self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
         self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
         self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
-        self.spawn_area = self.app_config.get('spawn_area', [0,0,10,5,5,5])
+        self.spawn_area = self.app_config.get('spawn_area', [0,0,0,1])
         self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
         self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
         self.var_viewing_metric_outter_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outter_points', 2))
@@ -79,6 +79,7 @@ class myApp(tk.Frame):
         self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
         self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
         self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
+        self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
 
         #==================================#
         #   APP VARIABLES TRACKING         #
@@ -248,9 +249,8 @@ class myApp(tk.Frame):
         # Autoun features
         self.label_autorun_sim = ttk.Label(self.panel_algo, anchor='w', text="Autorun simulations: ", font=font.Font(size=14))
         self.label_autorun_sim.grid(column=0,row=9, sticky='NEWS')
-        label_text = f'RUN ALL TESTS DESCRIBED IN JSON TEST FILE'
-        self.label_info_autorun_sim = ttk.Label(self.panel_algo, anchor='w', text=label_text, font=font.Font(size=12))
-        self.label_info_autorun_sim.grid(column=1,row=9, sticky='NEWS', padx=0)
+        self.textbox_autorun_filename = ttk.Entry(self.panel_algo, width=30, font=font.Font(size=12), textvariable=self.var_autorun_filename)
+        self.textbox_autorun_filename.grid(column=1,row=9, sticky='EW', padx=5)
         self.btn_autorun_sim = ttk.Button(self.panel_algo, text="RUN", command=self._btn_autorun_callback)
         self.btn_autorun_sim.grid(column=2,row=9, sticky='NEWS', padx=0)
 
@@ -634,6 +634,7 @@ class myApp(tk.Frame):
                 time.sleep(self.sim._dt)
             self.swarm.set_count(self.var_drone_count.get())
 
+
     #==================================#
     #          BUTTON CALLBACKS        #
     #==================================#
@@ -734,7 +735,8 @@ class myApp(tk.Frame):
         self.button_start_recording.config(state='normal')
 
     def _btn_autorun_callback(self):
-        self.autorun = AutorunSim(self, AUTORUN_FILENAME)
+        filepath = os.path.join('./config', self.var_autorun_filename.get())
+        self.autorun = AutorunSim(self, filepath)
         self.autorun.run_all()
 
     #==================================#

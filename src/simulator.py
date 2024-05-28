@@ -4,7 +4,7 @@ from threading import Thread
 import time
 
 class Simulator():
-    def __init__(self, dt, swarm, update_ui_fct=None):
+    def __init__(self, dt, swarm):
         self._dt = dt
         self.scheduler = Thread(target=self.step)
         self._swarm = swarm
@@ -30,8 +30,9 @@ class Simulator():
                 self._dump_data_to_file()
                 self._simulation_time += self._dt
                 if not self.MAX_SPEED:
-                    if time.time() - self.last_time < self._dt:
-                        time.sleep(self._dt - (time.time() - self.last_time))
+                    t = time.time() - self.last_time
+                    if t < self._dt:
+                        time.sleep(self._dt - t)
                     
             #time.sleep(self._dt)
 

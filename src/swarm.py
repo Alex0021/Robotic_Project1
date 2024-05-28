@@ -16,7 +16,7 @@ t = np.linspace(-np.pi/2, 3*np.pi/2, NB_POINTS)
 TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(t), CIRCLE_RADIUS*np.sin(t), Z_HEIGHT*np.ones(NB_POINTS)]).T 
 SCALE = 2
 TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*np.ones(NB_POINTS)]).T
-STABILIZING_TIME = 10 #In seconds
+STABILITY_SPEED_TOL = 0.01
 
 
 MAX_ITER = 10000 # Maximum number of iterations to find a valid position
@@ -374,6 +374,10 @@ class Swarm():
     
     def get_swarm_center(self):
         return np.mean([m.pos for m in self.members], axis=0)
+
+    def is_swarm_stabilized(self):
+        speeds = np.array([np.linalg.norm(m.vel) for m in self.members])
+        return np.all(speeds < STABILITY_SPEED_TOL)
     
     def use_pd_smoothing(self, val):
         for m in self.members:
@@ -382,8 +386,7 @@ class Swarm():
     def compute_next_target(self):
         # Check if migration point is reached
         if not self._stabilized:
-            if self.sim_time > STABILIZING_TIME:
-                self._stabilized = True
+                self._stabilized = self.is_swarm_stabilized()
         elif self.migration_point is not None:
             if np.linalg.norm(self.swarm_center - self.migration_point) < TARGET_TOL:
                 self.trajectory_idx += 1
