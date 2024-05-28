@@ -6,7 +6,7 @@ from helper_functions import elapsed_timer
 import time
 
 # Setting a common/uniform seed for testing
-np.random.seed(1)
+#np.random.seed(1)
 
 NB_POINTS = 30
 TARGET_TOL = 0.25 # Tolerance before reaching the target
@@ -368,12 +368,12 @@ class Swarm():
                 self.trajectory_idx += 1
                 if self.trajectory_idx % NB_POINTS == 0:
                     self.circle_done = True
-                self.migration_point = TRAJECTORY_INF_LOOP[self.trajectory_idx % NB_POINTS]
+                self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
 
     def set_migration_mode(self, mode):
         self.migration_mode = mode
         if mode == 'trajectory':
-            self.migration_point = TRAJECTORY_INF_LOOP[self.trajectory_idx]
+            self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
 
     def update_drones_FOV(self, fov):
         for m in self.members:

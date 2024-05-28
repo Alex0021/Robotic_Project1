@@ -6,3 +6,4 @@ utils
 config/app_config.json
 config/sim_autorun.json
 venv
+*.code-workspace
