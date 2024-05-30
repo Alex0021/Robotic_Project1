@@ -11,6 +11,7 @@ from tkinter import font
 from src.swarm import *
 from src.renderer import *
 from src.simulator import Simulator
+from src.recorder import SwarmRecorder
 import json
 import time
 from src.tester import AutorunSim
@@ -80,6 +81,7 @@ class myApp(tk.Frame):
         self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
         self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
         self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
+        self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
 
         #==================================#
         #   APP VARIABLES TRACKING         #
@@ -102,6 +104,7 @@ class myApp(tk.Frame):
         self.var_viewing_metric_outter_points.trace_add('write', self.viewing_metric_changed_callback)
         self.var_viewing_metric_algorithm.trace_add('write', self.viewing_metric_changed_callback)
         self.var_viewing_metric_faces.trace_add('write', self.viewing_metric_changed_callback)
+        self.var_sim_dt.trace_add('write', self._update_sim_dt)
         #==================================#
         #       APP INITIALIZATION         #
         #==================================#
@@ -116,6 +119,10 @@ class myApp(tk.Frame):
         self.textbox_target.delete(0, tk.END)
         self.textbox_target.insert(0, self.app_config.get('target', ''))
         self.swarm_2d = self.app_config.get('swarm_2d', True)
+        self._is_autorun = False
+        
+        # Create recorder object
+        self._recorder = SwarmRecorder(self.swarm, float(self.var_sim_dt.get()), verbose=True)
 
     def init_main_panels(self):
         self.panel_view = tk.Frame(self.mainframe)
@@ -400,8 +407,7 @@ class myApp(tk.Frame):
         self.panel_sim_timestep.grid_rowconfigure(0, weight=1)
         self.label_sim_dt = ttk.Label(self.panel_sim_timestep, text="dt: ", justify='right')
         self.label_sim_dt.grid(column=0, row=0, sticky='E')
-        self.spinner_sim_dt = ttk.Spinbox(self.panel_sim_timestep, increment=0.001, from_=0.001, to=1)
-        self.spinner_sim_dt.set(0.01)
+        self.spinner_sim_dt = ttk.Spinbox(self.panel_sim_timestep, increment=0.001, from_=0.001, to=1, textvariable=self.var_sim_dt, width=10)
         self.spinner_sim_dt.grid(column=1, row=0, sticky='W', padx=5)
         self.label_sim_total_time = ttk.Label(self.panel_sim, text='Simulation time: 0.000 s', justify='left', font=font.Font(size=10))
         self.label_sim_total_time.grid(column=0, row=3, columnspan=3, sticky='NEWS', padx=5)
@@ -438,13 +444,14 @@ class myApp(tk.Frame):
             target = np.asarray(target_numbers, dtype=float)
 
         self.swarm = Swarm(count=nb_drones, area=self.spawn_area, migration_point=target, in_2d=self.swarm_2d)
-        dt = float(self.spinner_sim_dt.get())
-        self.sim = Simulator(dt, self.swarm)
-        self.swarm.use_pd_smoothing(self.app_config['simulation'].get('use_pd_smoothing', False))
+        dt = float(self.var_sim_dt.get())
+        self._recorder._swarm = self.swarm
+        self.sim = Simulator(dt, self.swarm, self._recorder)
         #self.swarm.initialize_random_vel([0.1, 0.5, -0.3, 0.3, 0, 0.2])
         self._set_neighbors_algo_params()
         self._set_swarm_algo_params()
         self.swarm.initialize_members()
+        self.swarm.use_pd_smoothing(self.app_config['simulation'].get('use_pd_smoothing', False))
         self.swarm.compute_neighborhood()
         if verbose:
             print("Initializing swarm with parameters: ")
@@ -634,6 +641,14 @@ class myApp(tk.Frame):
                 time.sleep(self.sim._dt)
             self.swarm.set_count(self.var_drone_count.get())
 
+    def _update_sim_dt(self, *args):
+        if self.spinner_sim_dt.get() != self.var_sim_dt.get():
+            self.spinner_sim_dt.set(self.var_sim_dt.get())
+        if self.sim is not None:
+            self.sim._dt = float(self.var_sim_dt.get())
+        if self._recorder is not None:
+            self._recorder._dt = float(self.var_sim_dt.get())
+
 
     #==================================#
     #          BUTTON CALLBACKS        #
@@ -725,18 +740,23 @@ class myApp(tk.Frame):
             self.set_trajectory_mode('on')
 
     def start_recording_callback(self):
-        self.sim.start_recording(self.get_app_params_dict())
+        self._recorder.start(self.get_app_params_dict())
         self.button_stop_recording.config(state='normal')
         self.button_start_recording.config(state='disabled')
 
     def stop_recording_callback(self):
-        self.sim.stop_recording(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
+        if not self._is_autorun:
+            self._recorder.export(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
+        else:
+            self._recorder.stop()
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='normal')
+        
 
     def _btn_autorun_callback(self):
         filepath = os.path.join('./config', self.var_autorun_filename.get())
         self.autorun = AutorunSim(self, filepath)
+        self._is_autorun = True
         self.autorun.run_all()
 
     #==================================#
@@ -884,6 +904,10 @@ class myApp(tk.Frame):
             self.btn_trajectory_mode.config(text='Single mode')
             self.textbox_target.config(state='disabled')
             self.swarm.set_migration_mode('trajectory')
+
+    def save_recording(self):
+        self._recorder.export(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
+        self._recorder.clear()
     
 
 if __name__ == "__main__":

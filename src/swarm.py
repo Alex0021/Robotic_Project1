@@ -16,7 +16,8 @@ t = np.linspace(-np.pi/2, 3*np.pi/2, NB_POINTS)
 TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(t), CIRCLE_RADIUS*np.sin(t), Z_HEIGHT*np.ones(NB_POINTS)]).T 
 SCALE = 2
 TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*np.ones(NB_POINTS)]).T
-STABILITY_SPEED_TOL = 0.01
+STABILITY_SPEED_TOL = 0.015
+MIN_STABILITY_DELAY = 1.0 # In seconds
 
 
 MAX_ITER = 10000 # Maximum number of iterations to find a valid position
@@ -90,7 +91,7 @@ class Swarm():
                 raise ValueError("Could not find a valid itnial position for all drones in the swarm!")
         self.swarm_center = self.get_swarm_center()
 
-    def update(self, dt, new_acc):
+    def update(self, dt):
         new_acc = np.zeros((self.count, 3))
         for i in range(self.count):
             m = self.members[i]
@@ -377,7 +378,7 @@ class Swarm():
 
     def is_swarm_stabilized(self):
         speeds = np.array([np.linalg.norm(m.vel) for m in self.members])
-        return np.all(speeds < STABILITY_SPEED_TOL)
+        return np.all(speeds < STABILITY_SPEED_TOL) and self.sim_time > MIN_STABILITY_DELAY
     
     def use_pd_smoothing(self, val):
         for m in self.members:

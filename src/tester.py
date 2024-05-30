@@ -11,6 +11,7 @@ class AutorunSim:
     def __init__(self, app: tk.Tk, tests_file: str):
         self._app = app
         self.run_count = 0
+        self.subtest_count = 0
         self.test_count = 0
         # Load the tests description file
         try:
@@ -37,8 +38,10 @@ class AutorunSim:
             print(f"Test {self.name} not found")
             return
         test = self._tests[name]
-        # Determine the number of runs
+        # Determine the number of subtests
         self.nb_subtests = np.prod([len(v['values']) for v in test['var']])
+        # Determine the number of runs
+        self.nb_run = test.get('repeat', 1)
         # Reset simulation and re initialize
         self._app._button_reset_callback()
         self._app._initialize_simulation(verbose=False)
@@ -57,12 +60,13 @@ class AutorunSim:
         # Hide rendering
         self._app.set_rendering('off')
         self._app.set_trajectory_mode('on')
-        self.run_count = 0
+        self.subtest_count = 0
         print(f"|== Starting test: {name} ==|")
-        try:
-            self.run_subtests(0, test['var'],{})
-        except KeyError:
-            print(f"No variables defined for test {name}")
+        self.run_subtests(0, test['var'],{})
+        # try:
+        #     self.run_subtests(0, test['var'],{})
+        # except KeyError as e:
+        #     print("Value not found in test description")
         self.end_test()
 
 
@@ -85,31 +89,50 @@ class AutorunSim:
         self.test_count += 1
         print(f"!--> TEST COMPLETED: {self.test_count}/{self.nb_tests}")
 
-    def end_step(self):
-        self.run_count += 1
-        print("Autorun step completed: {0:.1f}%".format(self.run_count/self.nb_subtests*100))
+    def end_subtest(self):
+        self.subtest_count += 1
+        self.run_count = 0
+        print("Autorun step completed: {0:.1f}%".format(self.subtest_count/self.nb_subtests*100))
         self._app.stop_recording_callback()
         # Reset simulation
         self._app._button_reset_callback()
+        self._app.save_recording()
+
+    def end_step(self):
+        self.run_count += 1
+        if self.nb_run == 1:
+            self.end_subtest()
+        else:
+            print("Autorun run completed: {0:.1f}%".format(self.run_count/self.nb_run*100))
+            if self.run_count == self.nb_run:
+                self.end_subtest()
+            else:
+                self._app.stop_recording_callback()
+                # Reset simulation
+                self._app._button_reset_callback()
+                # Start next run
+                self.run_step()
+
 
     def stop(self):
         self.running = False
 
-    def run_step(self, params: dict):
+    def run_step(self, params: dict={}):
         # Initialize sim
         self._app._initialize_simulation(verbose=False)
-        # Setting var values
-        for param, value in params.items():
-            print(f"Setting {param} to {value}")
-            if param == ('viewing_metric_algorithm'):
-                if value.startswith('convex_hull'):
-                    self._app.set_var_value("viewing_metric_algorithm", "convex_hull")
-                    self._app.set_var_value("viewing_metric_faces", value.split('_')[-1])
-            else:
-                self._app.set_var_value(param, value)
-        # Set output file name
-        description = '_'.join([f"{k}_{v}" for k, v in params.items()])
-        self._app.var_output_csv.set(f'{self.folder_name}/{description}')
+        # Setting var values (if needed)
+        if len(params) > 0:
+            for param, value in params.items():
+                print(f"Setting {param} to {value}")
+                if param == ('viewing_metric_algorithm'):
+                    if value.startswith('convex_hull'):
+                        self._app.set_var_value("viewing_metric_algorithm", "convex_hull")
+                        self._app.set_var_value("viewing_metric_faces", value.split('_')[-1])
+                else:
+                    self._app.set_var_value(param, value)
+            # Set output file name
+            description = '_'.join([f"{k}_{v}" for k, v in params.items()])
+            self._app.var_output_csv.set(f'{self.folder_name}/{description}')
         self._app.sim.MAX_SPEED = True
         #self._app.start_recording_callback()
         self._app._btn_simulate_callback()
