@@ -140,18 +140,16 @@ def generate_swarm_center_plot(swarm_centers, ax):
     ax.grid(True)
     #ax.legend()
 
-def generate_trajectory_corverage(all_drone_data, swarm_centers, axs, fig):
+def generate_trajectory_corverage(swarm_data, axs, fig):
     # Loop for all tests with neighbors
-    cov_min = np.min([np.min(np.array(all_drone_data[i])[:, 0, 4]) for i in range(NB_TESTS)])
-    cov_max = np.max([np.max(np.array(all_drone_data[i])[:, 0, 4]) for i in range(NB_TESTS)])
+    cov_min = np.min([np.min(swarm_data[i]['viewing_coverage']) for i in range(NB_TESTS)])
+    cov_max = np.max([np.max(swarm_data[i]['viewing_coverage']) for i in range(NB_TESTS)])
     for i in range(NB_TESTS):
-        drone_data = np.array(all_drone_data[i])
-        swarm_data = np.array(swarm_centers[i])[:,:2]
+        coverage = swarm_data[i]['viewing_coverage']*100
+        center = swarm_data[i]['centers'][:,:2]
         axs[i].set_title(f'# Neighbors: {i+from_}')
-        # Retrieve coverage for timesteps
-        coverage = drone_data[:, 0, 4]*100
         # Create a mapping for colors
-        segments = np.array([[swarm_data[i], swarm_data[i+1]] for i in range(len(swarm_data)-1)])
+        segments = np.array([[center[i], center[i+1]] for i in range(len(center)-1)])
         norm = plt.Normalize(cov_min*100, cov_max*100)
         lc = LineCollection(segments, cmap='viridis', norm=norm)
         lc.set_array(coverage)
@@ -159,8 +157,8 @@ def generate_trajectory_corverage(all_drone_data, swarm_centers, axs, fig):
         axs[i].add_collection(lc)
         # axs[i].set_xlim(-5,5)
         # axs[i].set_ylim(-5,5)
-        axs[i].set_xlim(swarm_data[:, 0].min()*1.1, swarm_data[:, 0].max()*1.1)
-        axs[i].set_ylim(swarm_data[:, 1].min()*1.1, swarm_data[:, 1].max()*1.1)
+        axs[i].set_xlim(center[:, 0].min()*1.1, center[:, 0].max()*1.1)
+        axs[i].set_ylim(center[:, 1].min()*1.1, center[:, 1].max()*1.1)
         fig.colorbar(lc, ax=axs[i], label='Coverage %')
 
 if __name__ == '__main__':
@@ -208,7 +206,7 @@ if __name__ == '__main__':
         NB_TESTS = (to - from_)//steps + 1
         all_drone_data = dict()
         timing_data = dict()
-        swarm_centers = dict()
+        all_swarm_data = dict()
         params = {}
         try:
             for p, f in zip(filepaths, sim_files):
@@ -225,10 +223,10 @@ if __name__ == '__main__':
                 if wkey not in all_drone_data:
                     all_drone_data[wkey] = []
                     timing_data[wkey] = []
-                    swarm_centers[wkey] = []
+                    all_swarm_data[wkey] = []
                 all_drone_data[wkey].append(data['drone_data'])
                 timing_data[wkey].append(data['timings'])
-                swarm_centers[wkey].append(data['swarm_center'])
+                all_swarm_data[wkey].append(data['swarm_data'])
                 params.update({wkey: data['params']})
         except FileNotFoundError:
             print('File not found')
@@ -244,10 +242,10 @@ if __name__ == '__main__':
         ax4 = fig.add_subplot(gs[2,3:5])
         x_range = np.arange(from_, to+1)
 
-        generate_viewing_error_plot(all_drone_data, ax1)
-        generate_coverage_plot(all_drone_data, ax2)
-        generate_timing_viewing_plot(timing_data, ax3, x_range)
-        generate_swarm_center_plot(swarm_centers, ax4)
+        # generate_viewing_error_plot(all_drone_data, ax1)
+        # generate_coverage_plot(all_drone_data, ax2)
+        # generate_timing_viewing_plot(timing_data, ax3, x_range)
+        # generate_swarm_center_plot(swarm_centers, ax4)
 
         for k in all_drone_data.keys():
             fig2 = plt.figure(figsize=(12, 8))
@@ -255,7 +253,7 @@ if __name__ == '__main__':
             gs2 = fig2.add_gridspec(3,2)
             axs = [fig2.add_subplot(gs2[i, j]) for j in range(2) for i in range(3)]
 
-            generate_trajectory_corverage(all_drone_data[k], swarm_centers[k], axs, fig2)
+            generate_trajectory_corverage(all_swarm_data[k], axs, fig2)
             fig2.tight_layout()
         # if not export_mode and nb_args == 3:
         #     # Create metrics summary
