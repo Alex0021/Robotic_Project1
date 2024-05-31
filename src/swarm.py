@@ -191,6 +191,7 @@ class Swarm():
                 self.timing_viewing_dir = 0
                 for m in self.members:
                     if self.viewing_params.get('algorithm', 'None').upper() != 'NONE':
+                        self.compute_ground_truth_viewing_dir()
                         m.compute_viewing_dir(self.members, self.viewing_params)
                         self.timing_viewing_dir += m.timing_viewing_dir
                 only_selected = False
@@ -203,8 +204,10 @@ class Swarm():
             for m in self.members:
                 m.neighbors = []
 
-    def compute_coverage(self, only_selected=False):
-        viewing_dir_2d = self.viewing_params.get('in_2d', False)
+    def compute_ground_truth_viewing_dir(self):
+        """
+            Compute the "best" viewing direction based on convex hull of the swarm
+        """
         # Compute distances of each drones to the convex hull of the swarm
         if self.is_2D:
             p_dim = 2
@@ -214,17 +217,32 @@ class Swarm():
         hull = ConvexHull(points)
         hull_center = np.mean(points[hull.vertices], axis=0)
         self.dist_weights = np.ones(self.count)
-        for i in range(self.count):
-            if i not in hull.vertices:
-                # Find distance to closest edge
-                dist = np.zeros(len(hull.simplices))
-                for j in range(len(hull.simplices)):
-                    idx = hull.simplices[j]
-                    p = np.mean(points[idx], axis=0)
-                    dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
-                idx_min = np.argmin(np.abs(dist))
-                d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]], axis=0) - hull_center, hull.equations[idx_min][:p_dim]))
-                self.dist_weights[i] = 1 - (dist[idx_min]/d_center)
+        # Calculate first viewing dir on the convex hull
+        for i in hull.vertices:
+            # Drone is on the convex hull
+            # Use average normals of connected edges/faces
+            idx = np.where(hull.simplices == i)[0]
+            normals = np.zeros((len(idx), p_dim))
+            for j in range(len(idx)):
+                normals[j] = hull.equations[idx[j]][:p_dim]
+            vd = np.mean(normals, axis=0)
+            self.members[i].ground_truth_viewing_dir[:p_dim] = vd / np.linalg.norm(vd)
+        for i in np.setdiff1d(range(self.count), hull.vertices, assume_unique=True):
+            # Find distance to closest edge
+            dist = np.zeros(len(hull.simplices))
+            for j in range(len(hull.simplices)):
+                idx = hull.simplices[j]
+                p = np.mean(points[idx], axis=0)
+                dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
+            idx_min = np.argmin(np.abs(dist))
+            view_dir = np.mean([self.members[k].ground_truth_viewing_dir for k in hull.simplices[idx_min]], axis=0)
+            self.members[i].ground_truth_viewing_dir = view_dir / np.linalg.norm(view_dir)
+            d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]]) - hull_center, hull.equations[idx_min][:p_dim]))
+            self.dist_weights[i] = 1 - (dist[idx_min]/d_center)
+        
+
+    def compute_coverage(self, only_selected=False):
+        viewing_dir_2d = self.viewing_params.get('in_2d', False)
 
         if viewing_dir_2d:
             # Compute the coverage of the swarm projected to a circle

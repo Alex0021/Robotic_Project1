@@ -98,8 +98,8 @@ class Renderer():
                 self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
                 # Plot the desired viewing direction
                 id = self._swarm_ref.selected_drone
-                self.ax.quiver(self.data[id,0],self.data[id,1],self.data[id,2], self._swarm_ref.members[id].exact_viewing_dir[0], 
-                               self._swarm_ref.members[id].exact_viewing_dir[1], self._swarm_ref.members[id].exact_viewing_dir[2], 
+                self.ax.quiver(self.data[id,0],self.data[id,1],self.data[id,2], self._swarm_ref.members[id].ground_truth_viewing_dir[0], 
+                               self._swarm_ref.members[id].ground_truth_viewing_dir[1], self._swarm_ref.members[id].ground_truth_viewing_dir[2], 
                                color='#55FF00FF', length=0.5, normalize=True)
                 # Plot the migration point
                 if self._swarm_ref.migration_point is not None:
@@ -288,8 +288,8 @@ class Renderer2D():
             self.artists["arrow_est"] = self.ax[3].arrow(0, 0, self._swarm_ref.members[selected_drone].estimated_viewing_dir[0], 
                                                          self._swarm_ref.members[selected_drone].estimated_viewing_dir[1], 
                                                          width=scale*0.075, head_width=scale*0.3, head_length=scale*0.25, fc='#00FF00A0', ec='#00FF00A0')
-            self.artists["arrow_true"] = self.ax[3].arrow(0, 0, self._swarm_ref.members[selected_drone].exact_viewing_dir[0], 
-                                                          self._swarm_ref.members[selected_drone].exact_viewing_dir[1], 
+            self.artists["arrow_true"] = self.ax[3].arrow(0, 0, self._swarm_ref.members[selected_drone].ground_truth_viewing_dir[0], 
+                                                          self._swarm_ref.members[selected_drone].ground_truth_viewing_dir[1], 
                                                           width=scale*0.025, head_width=scale*0.3, head_length=scale*0.25, ec='k', fc='#000000A0', linestyle=':', linewidth=1.5)
             # Plot swarm
             self.artists["scatter_swarm"].set(offsets=[swarm_states[i,:2] - np.array([t_x,t_y]) for i in range(self._swarm_ref.count) if i != selected_drone], sizes=sizes[3]*np.ones(self._swarm_ref.count-1))

@@ -13,7 +13,7 @@ KP_GAIN = 2.0
 KD_GAIN = 0.1
 ANGULAR_RATE_LIMIT = 1.0
 USE_PD_CONTROLLER = False
-FOV_ASPECT_RATIO = 5/5
+FOV_ASPECT_RATIO = 3/5
 
 class Drone:
     '''
@@ -29,8 +29,8 @@ class Drone:
         self.mass = 1.0
         self.neighbors = list() # List of most recent neighbours (indices from swam.members list)
         self.noise = {'type': 'None'}
-        self.estimated_viewing_dir = np.array([1,0,0])
-        self.exact_viewing_dir = np.array([1,0,0])
+        self.estimated_viewing_dir = np.array([1,0,0], dtype=np.float64)
+        self.ground_truth_viewing_dir = np.array([1,0,0], dtype=np.float64)
         self.yaw_controller = PdController(KP_GAIN, KD_GAIN, ANGULAR_RATE_LIMIT)
         self.pitch_controller = PdController(KP_GAIN, KD_GAIN, ANGULAR_RATE_LIMIT)
         self.use_pd_controller = USE_PD_CONTROLLER
@@ -146,14 +146,14 @@ class Drone:
         with elapsed_timer() as elapsed:
             self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
             self.timing_viewing_dir = elapsed()
-        if algo.upper() == 'OUTTER' and nb_points > 3:
-            # Use only the ground truth without noise to compute the exact viewing direction
-            self.exact_viewing_dir = np.zeros(3)
-        else:
-            self.exact_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
-        # self.exact_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+        # if algo.upper() == 'OUTTER' and nb_points > 3:
+        #     # Use only the ground truth without noise to compute the exact viewing direction
+        #     self.ground_truth_viewing_dir = np.zeros(3)
+        # else:
+        #     self.ground_truth_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+        # self.ground_truth_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
         # Compute error
-        self.viewing_error = np.arccos(np.clip(np.dot(self.estimated_viewing_dir, self.exact_viewing_dir),-1,1)) * 180 / np.pi
+        self.viewing_error = np.arccos(np.clip(np.dot(self.estimated_viewing_dir, self.ground_truth_viewing_dir),-1,1)) * 180 / np.pi
 
     def _apply_noise(self, value, noise, type, sampling=1):
         match noise['type'].upper():

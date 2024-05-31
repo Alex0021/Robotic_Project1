@@ -17,11 +17,10 @@ import time
 from src.tester import AutorunSim
 
 w,h = (1600,800)
-CONFIG_FILENAME = 'app_config.json'
-AUTORUN_FILENAME = 'sim_autorun.json'
-DATA_OUTPUT_FOLDER = 'sim_results'
-FRONTEND_UPDATE_INTERVAL = 0.1
-TEST_COMPLETED_CHECK_INTERVAL = 0.5
+CONFIG_FILENAME = 'app_config.json'     # Default config filename
+AUTORUN_FILENAME = 'sim_autorun.json'   # Default auorun filename
+DATA_OUTPUT_FOLDER = 'sim_results'      # Output folder for .npy data files after recording
+FRONTEND_UPDATE_INTERVAL = 0.1          # To querry updates for the algo panel sidebar (viewing directions, coverage %)
 
 
 class myApp(tk.Frame):
@@ -263,7 +262,7 @@ class myApp(tk.Frame):
 
     def init_sidebar_components(self):
         # Title
-        self.label_title = ttk.Label(self.panel_title, anchor='center', text="DRONE SWARM BOUNDARIES \n&\n POSE ESTIMATION", justify='center',
+        self.label_title = ttk.Label(self.panel_title, anchor='center', text="DRONE SWARM BOUNDARIES DETECTION", justify='center',
                                      font=font.Font(name='Helvetica', weight='bold', size=16), foreground='white', background=self.panel_title['bg'])
         self.label_title.grid(column=0,row=0, sticky='NEWS')
 
@@ -617,7 +616,7 @@ class myApp(tk.Frame):
         # Viewing dir metrics
         selected_drone = self.swarm.selected_drone
         viewing_dir = self.swarm.members[selected_drone].estimated_viewing_dir
-        true_dir = self.swarm.members[selected_drone].exact_viewing_dir
+        true_dir = self.swarm.members[selected_drone].ground_truth_viewing_dir
         error = self.swarm.members[selected_drone].viewing_error
         self.label_estimated_viewing_dir_value.config(text=f'[{viewing_dir[0]:.3f};{viewing_dir[1]:.3f};{viewing_dir[2]:.3f}]')
         self.label_true_viewing_dir_value.config(text=f'[{true_dir[0]:.3f};{true_dir[1]:.3f};{true_dir[2]:.3f}]')
