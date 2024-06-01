@@ -7,8 +7,8 @@ from matplotlib.colors import Normalize, ListedColormap
 from matplotlib import container
 import sys, os
 
-ROOT_FOLDER = 'sim_results'
-EXPORT_FOLDER =  'exported_plots'
+ROOT_FOLDER = '../sim_results'
+EXPORT_FOLDER =  '../exported_plots'
 
 def generate_viewing_error_plot(all_drone_data, ax):
     WIDTH_X, WIDHT_Y = 0.1, 0.2
@@ -76,16 +76,15 @@ def generate_viewing_error_plot(all_drone_data, ax):
     #cbar.set_label('Normalized distance to convex hull center', fontsize='small')
 
 
-def generate_coverage_plot(all_drone_data, ax):
+def generate_coverage_plot(all_swarm_data, ax):
     ax.set_title('Mean and std of the coverage')
     ax.set_xlabel('drone count')
     ax.set_ylabel('Coverage %')
     colors = ['purple', 'blue', 'green', 'darkorange']
-    for n, key in enumerate(all_drone_data.keys()):
-        data = [np.array(all_drone_data[key][i]) for i in range(len(all_drone_data[key]))]
+    for n, key in enumerate(all_swarm_data.keys()):
         # Find the average coverage for each drone
-        coverage_mean = np.array([np.mean(data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
-        coverage_std = np.array([np.std(data[i][:, 0, 4], axis=0) for i in range(NB_TESTS)])
+        coverage_mean = np.array([np.mean(all_swarm_data[key][i]['viewing_coverage'], axis=0) for i in range(NB_TESTS)])
+        coverage_std = np.array([np.std(all_swarm_data[key][i]['viewing_coverage'], axis=0) for i in range(NB_TESTS)])
         ax.errorbar(np.arange(from_, to+1, steps), coverage_mean*100, yerr=[coverage_std*100, np.clip(coverage_std, 0, 1-coverage_mean)*100], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
     # Filter out error bars from legend
     handles, labels = ax.get_legend_handles_labels()
@@ -100,7 +99,7 @@ def generate_timing_viewing_plot(timing_data, ax, x_range):
     for n, key in enumerate(all_drone_data.keys()):
         data = timing_data[key]
         # Compute average timings
-        avg_timing = np.array([np.mean(np.array(data[i])[:, 1], axis=0) for i in range(NB_TESTS)])
+        avg_timing = np.array([np.mean(np.array(data[i])[:, 1], axis=0)*1000 for i in range(NB_TESTS)])
         ax.plot(x_range, avg_timing*1000, label=f"{key.replace('_', ' ')}", color=colors[n])
     ax.legend(fontsize='small')
 
@@ -125,12 +124,12 @@ def generate_timings_plot(timings, ax, x_range):
         ax.text(x_range[i], timings_neighborhood[i]+timings_viewing[i]+timings_coverage[i]/2, value_3, ha = 'center')
     ax.legend()
 
-def generate_swarm_center_plot(swarm_centers, ax):
+def generate_swarm_center_plot(swarm_data, ax):
     ax.set_title('Swarm center position')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     for n, key in enumerate(all_drone_data.keys()):
-        data = [np.array(swarm_centers[key][i]) for i in range(len(swarm_centers[key]))]
+        data = [np.array(swarm_data[key][i]['centers']) for i in range(len(swarm_data[key]))]
         # Compute center x,y
         for i in range(len(data)):
             center_x = data[i][:, 0]
@@ -242,10 +241,10 @@ if __name__ == '__main__':
         ax4 = fig.add_subplot(gs[2,3:5])
         x_range = np.arange(from_, to+1)
 
-        # generate_viewing_error_plot(all_drone_data, ax1)
-        # generate_coverage_plot(all_drone_data, ax2)
-        # generate_timing_viewing_plot(timing_data, ax3, x_range)
-        # generate_swarm_center_plot(swarm_centers, ax4)
+        generate_viewing_error_plot(all_drone_data, ax1)
+        generate_coverage_plot(all_swarm_data, ax2)
+        generate_timing_viewing_plot(timing_data, ax3, x_range)
+        generate_swarm_center_plot(all_swarm_data, ax4)
 
         for k in all_drone_data.keys():
             fig2 = plt.figure(figsize=(12, 8))
