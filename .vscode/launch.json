@@ -16,7 +16,7 @@
             "name": "Debug plots generator",
             "type": "debugpy",
             "request": "launch",
-            "program": "generate_plots_noise.py",
+            "program": "utils/generate_plots_noise.py",
             "console": "integratedTerminal",
             "args": ["--visual", "2D_test"]
         },

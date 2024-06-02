@@ -7,8 +7,8 @@ import sys, os
 
 # [# neighbors, avg neighbors dist, distance weight convex hull, viewing error, viewing coverage, angle diff]
 
-ROOT_FOLDER = 'sim_results'
-EXPORT_FOLDER =  'exported_plots'
+ROOT_FOLDER = '../sim_results'
+EXPORT_FOLDER =  '../exported_plots'
 
 def generate_viewing_error_plot(all_drone_data, ax, x_range, y_range):
     ax.set_title('Drones viewing direction error')

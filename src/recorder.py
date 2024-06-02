@@ -16,7 +16,7 @@ class SwarmRecorder():
         }
         drone_data: list of drone data for every timesteps for every drone 
 
-        --> [# neighbors, avg neighbors dist, distance weight convex hull, viewing error, min_viewing_diff]
+        --> [# neighbors, avg neighbors dist, distance weight convex hull, viewing error, min_viewing_diff, yaw]
 
         swarm_data: list of swarm center and viewing coverage for every timesteps
         
@@ -61,6 +61,7 @@ class SwarmRecorder():
         self._run_count += 1
         if self._run_count == 1:
             self._record_dict = self._current_run_dict
+            self.min_timesteps = self.buff_idx + 1
         else:
             # Verify the minimum length of the data
             if self.buff_idx + 1 < self.min_timesteps:
