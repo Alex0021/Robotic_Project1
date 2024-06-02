@@ -8,7 +8,7 @@ import time
 # Setting a common/uniform seed for testing
 #np.random.seed(1)
 
-NB_POINTS = 30
+NB_POINTS = 50
 TARGET_TOL = 0.25 # Tolerance before reaching the target
 CIRCLE_RADIUS = 3.0
 Z_HEIGHT = 5.0
@@ -57,9 +57,19 @@ class Swarm():
         self.viewing_params.update({'in_2d': self.is_2D})
         #print("INITIALIZING SWARM: {0} drones within {1} box".format(count, box))
 
+        # Initialize trajectory points
+        traj_type = kwargs.get('trajectory', 'circle')
+        match traj_type:
+            case 'circle':
+                self.trajectory_points = TRAJECTORY_CIRCLE
+            case 'inf_loop':
+                self.trajectory_points = TRAJECTORY_INF_LOOP
+            case _:
+                raise ValueError("Invalid trajectory type: {0}".format(traj_type))
+
         # First trajectory point
         if self.migration_mode == 'trajectory':
-            self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
+            self.migration_point = self.trajectory_points[self.trajectory_idx]
         
     def initialize_members(self):
         rho = self.spawn_area[3]
@@ -393,12 +403,12 @@ class Swarm():
                 self.trajectory_idx += 1
                 if self.trajectory_idx % NB_POINTS == 0:
                     self.circle_done = True
-                self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx % NB_POINTS]
+                self.migration_point = self.trajectory_points[self.trajectory_idx % NB_POINTS]
 
     def set_migration_mode(self, mode):
         self.migration_mode = mode
         if mode == 'trajectory':
-            self.migration_point = TRAJECTORY_CIRCLE[self.trajectory_idx]
+            self.migration_point = self.trajectory_points[self.trajectory_idx]
 
     def update_drones_FOV(self, fov):
         for m in self.members:

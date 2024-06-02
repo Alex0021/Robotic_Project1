@@ -7,8 +7,8 @@ from matplotlib.colors import Normalize, ListedColormap
 from matplotlib import container
 import sys, os
 
-ROOT_FOLDER = '../sim_results'
-EXPORT_FOLDER =  '../exported_plots'
+ROOT_FOLDER = './sim_results'
+EXPORT_FOLDER =  './exported_plots'
 
 def generate_viewing_error_plot(all_drone_data, ax):
     WIDTH_X, WIDHT_Y = 0.1, 0.2
