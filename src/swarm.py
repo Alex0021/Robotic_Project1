@@ -36,7 +36,7 @@ class Swarm():
         self.member_size = 0.025
         self.migration_mode = 'single' # ['single', 'trajectory']
         self.trajectory_idx = 0
-        self.is_2D = kwargs.get('is_2D', True)
+        self.is_2D = kwargs.get('is_2d', True)
         self.viewing_dim = 2 if self.is_2D else 3
         self.swarm_coverage = 0.0
         self.timing_neighborhood = 0.0
@@ -96,7 +96,7 @@ class Swarm():
                 iter += 1
             if pos_valid:
                 pos_hist.append(pos)
-                self.members.append(Drone(init_pos=pos, fov=360/self.count))
+                self.members.append(Drone(init_pos=pos, fov=360/self.count, swarm_2d=self.is_2D))
             else:
                 raise ValueError("Could not find a valid itnial position for all drones in the swarm!")
         self.swarm_center = self.get_swarm_center()
@@ -243,12 +243,14 @@ class Swarm():
             for j in range(len(hull.simplices)):
                 idx = hull.simplices[j]
                 p = np.mean(points[idx], axis=0)
-                dist[j] = np.dot(p-points[i], hull.equations[j][:p_dim])
+                eq_norm = hull.equations[j][:p_dim] / np.linalg.norm(hull.equations[j][:p_dim])
+                dist[j] = np.dot(p-points[i], eq_norm)
             idx_min = np.argmin(np.abs(dist))
             view_dir = np.mean([self.members[k].ground_truth_viewing_dir for k in hull.simplices[idx_min]], axis=0)
             self.members[i].ground_truth_viewing_dir = view_dir / np.linalg.norm(view_dir)
-            d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]]) - hull_center, hull.equations[idx_min][:p_dim]))
-            self.dist_weights[i] = 1 - (dist[idx_min]/d_center)
+            eq_norm = hull.equations[idx_min][:p_dim] / np.linalg.norm(hull.equations[idx_min][:p_dim])
+            d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]]) - hull_center, eq_norm))
+            self.dist_weights[i] = np.clip(1 - (dist[idx_min]/d_center), 0, 1)
         
 
     def compute_coverage(self, only_selected=False):

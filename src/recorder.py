@@ -61,11 +61,11 @@ class SwarmRecorder():
         self._run_count += 1
         if self._run_count == 1:
             self._record_dict = self._current_run_dict
-            self.min_timesteps = self.buff_idx + 1
+            self.min_timesteps = self.buff_idx
         else:
             # Verify the minimum length of the data
-            if self.buff_idx + 1 < self.min_timesteps:
-                self.min_timesteps = self.buff_idx + 1
+            if self.buff_idx < self.min_timesteps:
+                self.min_timesteps = self.buff_idx
             # Update the swarm data
             for k in self._record_dict['swarm_data'].keys():
                 self._record_dict['swarm_data'][k][:self.min_timesteps] = (self._record_dict['swarm_data'][k][:self.min_timesteps]*self._run_count + self._current_run_dict['swarm_data'][k][:self.min_timesteps])/(self._run_count+1)

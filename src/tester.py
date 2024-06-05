@@ -128,6 +128,14 @@ class AutorunSim:
                     if value.startswith('convex_hull'):
                         self._app.set_var_value("viewing_metric_algorithm", "convex_hull")
                         self._app.set_var_value("viewing_metric_faces", value.split('_')[-1])
+                    elif value.startswith('outter'):
+                        self._app.set_var_value("viewing_metric_algorithm", "outter")
+                        self._app.set_var_value("viewing_metric_outter_points", value.split('_')[-1])
+                    else:
+                        self._app.set_var_value("viewing_metric_algorithm", value)
+                elif param == "noise_params":
+                    self._app.set_var_value("noise_param_dist", value[0])
+                    self._app.set_var_value("noise_param_dir", value[1])
                 else:
                     self._app.set_var_value(param, value)
             # Set output file name

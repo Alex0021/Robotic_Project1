@@ -17,11 +17,11 @@ def generate_viewing_error_plot(all_drone_data, ax):
     ax.set_xlabel('# neighbors')
     ax.set_ylabel('Drone index')
     ax.set_zlabel('Error (°)', labelpad=-30)
-    cmaps = ['Purples', 'Blues', 'Greens', 'Oranges', 'Greys']
+    cmaps = ['Purples', 'Blues', 'Greens', 'Oranges']
     # Create the bins
     for n, key in enumerate(all_drone_data.keys()):
         nb_drones = len(all_drone_data[key][0][0])
-        x_range = np.array([i+(-2+n)*(WIDTH_X) for i in range(from_, to+1)])
+        x_range = np.array([i+(-2+n)*(WIDTH_X+0.07) for i in range(from_, to+1)])
         y_range = np.arange(nb_drones) - WIDHT_Y/2
         # Find the average error for each drone
         data = [np.array(all_drone_data[key][i]) for i in range(len(all_drone_data[key]))]
@@ -95,9 +95,9 @@ def generate_avg_viewing_error_plot(all_drone_data, ax):
 
 def generate_coverage_plot(all_swarm_data, ax):
     ax.set_title('Mean and std of the coverage')
-    ax.set_xlabel('# neighbors')
+    ax.set_xlabel('drone count')
     ax.set_ylabel('Coverage %')
-    colors = ['purple', 'blue', 'green', 'darkorange', 'black']
+    colors = ['purple', 'blue', 'green', 'darkorange']
     for n, key in enumerate(all_swarm_data.keys()):
         # Find the average coverage for each drone
         coverage_mean = np.array([np.mean(all_swarm_data[key][i]['viewing_coverage'], axis=0) for i in range(NB_TESTS)])
@@ -111,8 +111,8 @@ def generate_coverage_plot(all_swarm_data, ax):
 def generate_timing_viewing_plot(timing_data, ax, x_range):
     ax.set_title('Viewing computation time')
     ax.set_xlabel('# neighbors')
-    ax.set_ylabel('Computation time (ms)')
-    colors = ['purple', 'blue', 'green', 'darkorange', 'black']
+    ax.set_ylabel('Computation time (ms))')
+    colors = ['purple', 'blue', 'green', 'darkorange']
     for n, key in enumerate(all_drone_data.keys()):
         data = timing_data[key]
         # Compute average timings
@@ -215,7 +215,7 @@ if __name__ == '__main__':
         try:
             from_ = int(sim_files[0].strip('.npy')[-1])
             to = int(sim_files[-1].strip('.npy')[-1])
-            steps = int(sim_files[4].strip('.npy')[-1]) - from_
+            steps = int(sim_files[1].strip('.npy')[-1]) - from_
         except ValueError:
             print('Could not determine range of tests: see file names convention')
             sys.exit(1)

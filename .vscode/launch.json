@@ -16,9 +16,9 @@
             "name": "Debug plots generator",
             "type": "debugpy",
             "request": "launch",
-            "program": "utils/generate_plots_noise.py",
+            "program": "utils/generate_plots_drone_count.py",
             "console": "integratedTerminal",
-            "args": ["--visual", "2D_test"]
+            "args": ["--visual", "2D_num_drones_avg"]
         },
         {
             "name": "Python Debugger: Current File",
