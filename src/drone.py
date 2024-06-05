@@ -8,19 +8,19 @@ from helper_functions import elapsed_timer
 
 DEFAULT_RANGE_SENSING = 2.0
 DEFAULT_NB_NEIGHBORS = 3
-DEFAULT_FOV = 360/10 # degrees
+DEFAULT_FOV = 360/9 # degrees
 KP_GAIN = 2.0
 KD_GAIN = 0.1
 ANGULAR_RATE_LIMIT = 1.0
 USE_PD_CONTROLLER = False
-FOV_ASPECT_RATIO = 3/5
+FOV_ASPECT_RATIO = 9/2
 
 class Drone:
     '''
     Class to represent a drone object. 
     Contains mainly drone state (pos,vel,acc,orientation)
     '''
-    def __init__(self, init_pos=[0.0]*3, init_vel=[0.0]*3,init_acc=[0.0]*3,init_angles=[0.0]*3, fov=DEFAULT_FOV):
+    def __init__(self, init_pos=[0.0]*3, init_vel=[0.0]*3,init_acc=[0.0]*3,init_angles=[0.0]*3, fov=DEFAULT_FOV, swarm_2d=False):
         self.pos = np.array(init_pos, dtype=np.float64)
         self.vel = np.array(init_vel, dtype=np.float64)
         self.acc = np.array(init_acc, dtype=np.float64)
@@ -38,6 +38,7 @@ class Drone:
         self.fov = fov * np.pi / 180.0 # In radians
         self.ASPECT_RATIO = FOV_ASPECT_RATIO
         self.timing_viewing_dir = 0
+        self.swarm_2d = swarm_2d
         
     def get_state(self):
         return np.vstack((self.pos, self.vel, self.acc, self.angles))
@@ -98,10 +99,16 @@ class Drone:
                 self.neighbors = [DroneNeighbor(i, distances[j], (noisy_poses[j] - self.pos) / distances[j],
                                                 self._apply_noise(members[i].angles, self.noise, 'param_heading', sampling), self.pos) for i,j in zip(poss_neighbors[indices], indices)]
             case "VORONOI":
-                points = np.concatenate((noisy_poses, self.pos.reshape(1,3)))
-                indptr_neig, neighbors = spatial.Delaunay(points, qhull_options="QJ").vertex_neighbor_vertices
-                self.neighbors = [DroneNeighbor(j if j<index else j+1, np.linalg.norm(points[j] - self.pos), 
-                                                        (points[j] - self.pos) / np.linalg.norm(points[j] - self.pos), 
+                if self.swarm_2d:
+                    n_dim = 2
+                    q_hull_options = ""
+                else:
+                    n_dim = 3
+                    q_hull_options = "QJ"
+                points = np.concatenate((noisy_poses[:,:n_dim], self.pos[:n_dim].reshape(1,n_dim)))
+                indptr_neig, neighbors = spatial.Delaunay(points, qhull_options=q_hull_options).vertex_neighbor_vertices
+                self.neighbors = [DroneNeighbor(j if j<index else j+1, np.linalg.norm(noisy_poses[j] - self.pos), 
+                                                        (noisy_poses[j] - self.pos) / np.linalg.norm(noisy_poses[j] - self.pos), 
                                                         self._apply_noise(members[j].angles, self.noise, 'param_heading'), self.pos) for j in neighbors[indptr_neig[-2]:indptr_neig[-1]]]
             case "VLOS":
                 sensing_range = metric_data.get('sensing_range', np.inf)
@@ -153,7 +160,7 @@ class Drone:
         #     self.ground_truth_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
         # self.ground_truth_viewing_dir = get_viewing_dir(self, [m for m in members if m != self], algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
         # Compute error
-        self.viewing_error = np.arccos(np.clip(np.dot(self.estimated_viewing_dir, self.ground_truth_viewing_dir),-1,1)) * 180 / np.pi
+        self.viewing_error = np.arccos(np.clip(np.dot(self.get_heading(), self.ground_truth_viewing_dir),-1,1)) * 180 / np.pi
 
     def _apply_noise(self, value, noise, type, sampling=1):
         match noise['type'].upper():

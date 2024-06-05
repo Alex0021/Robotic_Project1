@@ -443,7 +443,7 @@ class myApp(tk.Frame):
             target_numbers = target_text.split(';')
             target = np.asarray(target_numbers, dtype=float)
 
-        self.swarm = Swarm(count=nb_drones, area=self.spawn_area, migration_point=target, in_2d=self.swarm_2d, trajectory=self.swarm_traj)
+        self.swarm = Swarm(count=nb_drones, area=self.spawn_area, migration_point=target, is_2d=self.swarm_2d, trajectory=self.swarm_traj)
         dt = float(self.var_sim_dt.get())
         self._recorder._swarm = self.swarm
         self.sim = Simulator(dt, self.swarm, self._recorder)
