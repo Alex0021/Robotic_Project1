@@ -154,7 +154,10 @@ def tangent_plane(drone, neighbors, params):
     eig_val, eig_vectors = np.linalg.eig(cov)
     eig_val, eig_vectors = np.real(eig_val), np.real(eig_vectors)
     sorted_indices = np.argsort(eig_val)
-    normal = eig_vectors[sorted_indices[0]]
+    if in_2d:
+        normal = np.mean(eig_vectors, axis=0)
+    else:
+        normal = eig_vectors[sorted_indices[0]]
     # Printing stuff
     # print("Covariance matrix:")
     # for i in range(3):
