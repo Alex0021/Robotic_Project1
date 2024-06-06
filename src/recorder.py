@@ -1,5 +1,6 @@
 import numpy as np
 from swarm import Swarm
+import copy
 
 class SwarmRecorder():
     """
@@ -47,7 +48,8 @@ class SwarmRecorder():
             "timesteps": np.zeros(self.MAX_BUFFER_SIZE, dtype=np.float32), 
             "drone_data": np.zeros((self.MAX_BUFFER_SIZE, NUM_DRONES, NUM_DRONE_PARAMS), dtype=np.float32),
             "swarm_data": { 'centers': np.zeros((self.MAX_BUFFER_SIZE, 3), dtype=np.float32), 
-                            'viewing_coverage': np.zeros(self.MAX_BUFFER_SIZE, dtype=np.float32) }, 
+                            'viewing_coverage': np.zeros(self.MAX_BUFFER_SIZE, dtype=np.float32),
+                             'viewing_overlap': np.zeros(self.MAX_BUFFER_SIZE, dtype=np.float32)}, 
             "timings": np.zeros((self.MAX_BUFFER_SIZE, NUM_TIMINGS_PARAMS), dtype=np.float32),
         }
         self._record = True
@@ -60,7 +62,7 @@ class SwarmRecorder():
         # Update record dict with running average
         self._run_count += 1
         if self._run_count == 1:
-            self._record_dict = self._current_run_dict
+            self._record_dict = copy.deepcopy(self._current_run_dict)
             self.min_timesteps = self.buff_idx
         else:
             # Verify the minimum length of the data
@@ -89,8 +91,10 @@ class SwarmRecorder():
             # Record swarm center
             swarm_center = self._swarm.get_swarm_center()
             swarm_viewing_coverage = self._swarm.swarm_coverage
+            swarm_viewing_overlap = self._swarm.swarm_overlap
             self._current_run_dict["swarm_data"]['centers'][self.buff_idx] = swarm_center
             self._current_run_dict["swarm_data"]['viewing_coverage'][self.buff_idx] = swarm_viewing_coverage
+            self._current_run_dict["swarm_data"]['viewing_overlap'][self.buff_idx] = swarm_viewing_overlap
             # Record the timings
             self._current_run_dict["timings"][self.buff_idx] = np.array([self._swarm.timing_neighborhood, 
                                                                         self._swarm.timing_viewing_dir, 
