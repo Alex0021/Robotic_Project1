@@ -17,6 +17,7 @@ TRAJECTORY_CIRCLE = np.array([CIRCLE_RADIUS*np.cos(t), CIRCLE_RADIUS*np.sin(t), 
 SCALE = 2
 TRAJECTORY_INF_LOOP = np.array([SCALE*np.cos(t), SCALE*np.sin(2*t)/2, Z_HEIGHT*np.ones(NB_POINTS)]).T
 STABILITY_SPEED_TOL = 0.015
+ANGLE_RATE_TOL = 0.01
 MIN_STABILITY_DELAY = 1.0 # In seconds
 
 
@@ -39,6 +40,7 @@ class Swarm():
         self.is_2D = kwargs.get('is_2d', True)
         self.viewing_dim = 2 if self.is_2D else 3
         self.swarm_coverage = 0.0
+        self.swarm_overlap = 0.0
         self.timing_neighborhood = 0.0
         self.timing_viewing_dir = 0.0
         self.timing_coverage = 0.0
@@ -261,14 +263,13 @@ class Swarm():
             if only_selected:
                 fov = self.members[self.selected_drone].fov
                 coverage = fov
+                self.swarm_overlap = 0
             else:
                 nb_bins = int(2*np.pi/COVERAGE_RES) + 1
                 coverage = np.zeros(nb_bins)
                 for m in self.members:
                     fov = m.fov
-                    psi = m.angles[2]
-                    if psi < 0:
-                        psi += 2*np.pi
+                    psi = m.angles[2] + np.pi
                     if psi - fov/2 < 0:
                         l_bound = psi - fov/2 + 2*np.pi
                         u_bound = psi + fov/2
@@ -281,6 +282,7 @@ class Swarm():
                         coverage[:int(u_bound/COVERAGE_RES)] += 1
                     else:
                         coverage[int((psi - fov/2)/COVERAGE_RES):int((psi + fov/2)/COVERAGE_RES)] += 1
+                self.swarm_overlap = np.sum(np.clip(coverage-1, 0, np.inf))*COVERAGE_RES
                 coverage = np.sum(np.clip(coverage, 0, 1))*COVERAGE_RES
             self.swarm_coverage = min(coverage/(2*np.pi), 1) # Clipping to 1.0 because of rounding errors caused by discretization
         else:
@@ -298,10 +300,8 @@ class Swarm():
                 for m in self.members:
                     fov_psi = m.fov
                     fov_phi = m.fov * m.ASPECT_RATIO
-                    psi = m.angles[2]
+                    psi = m.angles[2] + np.pi
                     phi = m.angles[1] + np.pi/2
-                    if psi < 0:
-                        psi += 2*np.pi
                     if psi - fov_psi/2 < 0:
                         l_bound_psi = psi - fov_psi/2 + 2*np.pi
                         u_bound_psi = psi + fov_psi/2
@@ -408,7 +408,8 @@ class Swarm():
 
     def is_swarm_stabilized(self):
         speeds = np.array([np.linalg.norm(m.vel) for m in self.members])
-        return np.all(speeds < STABILITY_SPEED_TOL) and self.sim_time > MIN_STABILITY_DELAY
+        angle_rates = np.array([np.linalg.norm(m.rates) for m in self.members])
+        return np.all(speeds < STABILITY_SPEED_TOL) and np.all(angle_rates < ANGLE_RATE_TOL) and self.sim_time > MIN_STABILITY_DELAY
     
     def use_pd_smoothing(self, val):
         for m in self.members:
