@@ -156,10 +156,7 @@ def tangent_plane(drone, neighbors, params):
     eig_val, eig_vectors = np.linalg.eig(cov)
     eig_val, eig_vectors = np.real(eig_val), np.real(eig_vectors)
     sorted_indices = np.argsort(eig_val)
-    if in_2d:
-        normal = np.mean(eig_vectors, axis=0)
-    else:
-        normal = eig_vectors[sorted_indices[0]]
+    normal = eig_vectors[:,sorted_indices[0]]
     # Printing stuff
     # print("Covariance matrix:")
     # for i in range(3):
@@ -170,7 +167,7 @@ def tangent_plane(drone, neighbors, params):
     # Verify if eigenvalues are close to each other
     if abs(eig_val[sorted_indices[1]] - eig_val[sorted_indices[0]]) < 0.01:
         print("WARNING :: Eigenvalues are too close to each other, averaging the two smallest")
-        normal = np.mean(eig_vectors[sorted_indices[:2]], axis=0)
+        normal = np.mean(eig_vectors[:,sorted_indices[:2]], axis=0)
     if in_2d:
         viewing_dir = np.hstack((-np.sign(np.dot(normal, centroid-drone.pos[:2]))*normal, 0))
     else:
