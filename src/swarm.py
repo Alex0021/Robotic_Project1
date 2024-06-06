@@ -409,7 +409,7 @@ class Swarm():
     def is_swarm_stabilized(self):
         speeds = np.array([np.linalg.norm(m.vel) for m in self.members])
         angle_rates = np.array([np.linalg.norm(m.rates) for m in self.members])
-        return np.all(speeds < STABILITY_SPEED_TOL) and np.all(angle_rates < ANGLE_RATE_TOL) and self.sim_time > MIN_STABILITY_DELAY
+        return np.all(speeds < STABILITY_SPEED_TOL) and self.sim_time > MIN_STABILITY_DELAY
     
     def use_pd_smoothing(self, val):
         for m in self.members:
