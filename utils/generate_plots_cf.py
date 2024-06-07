@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sys, os
-import time
 import cv2
 import datetime
 from tqdm import tqdm
@@ -14,6 +13,18 @@ takeoff_video = None
 takeoff_sim = None
 out = None
 last_plot_img = None
+
+PLOT_LIMITS = [[-2.5, 3.5], [1, 5.5]]
+PLOT_SIZE = [4, 4]
+PLOT_COLORS = {
+    'cf01': 'red',
+    'cf04': 'blue',
+    'cf05': 'green',
+    'cf06': 'orange',
+    'cf09': 'purple',
+    'cf10': 'brown',
+    'cf14': 'black'
+}
 
 if __name__ == "__main__":
     # Read arguments
@@ -28,11 +39,11 @@ if __name__ == "__main__":
     if nb_args == 3:
         folder = os.path.join(DATA_FILE_DIR, sys.argv[2])
     if cmd == '--visual':
-        print(f'Visualizing plots of folder "{folder}"')
+        print(f'Visualizing video of folder "{folder}"')
     elif cmd == '--export':
         export_mode = True
         os.makedirs(EXPORT_FOLDER, exist_ok=True)
-        print(f'Exporting plots of folder "{folder}" to "{EXPORT_FOLDER}"')
+        print(f'Exporting video of folder "{folder}" to "{EXPORT_FOLDER}"')
     else:
         print('Please provide a valid argument --> --visual or --export')
         sys.exit(1)
@@ -65,7 +76,7 @@ if __name__ == "__main__":
     fps = video_ss.get(cv2.CAP_PROP_FPS)
     duration = video_ss.get(cv2.CAP_PROP_FRAME_COUNT) / fps
     start_time = creation_date - datetime.timedelta(seconds=duration)
-    print("Video properties: ", fps, duration, start_time)
+    print(f'Video properties: FPS={fps:.1f}, Duration={duration:.2f}s, Start time={start_time}')
     #print("Video duration: ", duration, "s. Started on ", start_time)
 
     # Extract first data timestamp
@@ -92,7 +103,7 @@ if __name__ == "__main__":
 
     # Merge all dataframes into one
     resampling = int(1000000/fps)
-    print("Resampling: ", resampling)
+    print("Resampling @ ", resampling, " us")
     merged_data = pd.concat(dataframes.values(), axis=1)
     merged_data = merged_data.resample(f'{resampling}U').mean()
 
@@ -103,17 +114,8 @@ if __name__ == "__main__":
 
     # Create animation for all timestamps in dataframe
     #plt.ion()
-    fig, ax = plt.subplots(figsize=(4, 4))
-    fig.tight_layout()
-    colors = {
-        'cf01': 'red',
-        'cf04': 'blue',
-        'cf05': 'green',
-        'cf06': 'orange',
-        'cf09': 'purple',
-        'cf10': 'brown',
-        'cf14': 'black'
-    }
+    fig, ax = plt.subplots(figsize=(PLOT_SIZE[0], PLOT_SIZE[1]))
+    fig.tight_layout(pad=1.3)
     takeoff = False
     alive = {key: True for key in dataframes.keys()}
     if export_mode:
@@ -129,8 +131,8 @@ if __name__ == "__main__":
 
         ax.clear()
         ax.set_aspect('equal', adjustable='datalim')
-        ax.set_ylim(1, 5)
-        ax.set_xlim(-2.5, 2.5)
+        ax.set_ylim(PLOT_LIMITS[1])
+        ax.set_xlim(PLOT_LIMITS[0])
         ax.set_xlabel('Y')
         ax.set_ylabel('X')
         for axis in ['top','bottom','left','right']:
@@ -153,12 +155,9 @@ if __name__ == "__main__":
             if takeoff and z < 0.1:
                 alive[key] = False
             if alive[key] or not takeoff:
-                ax.plot(-y, x, 'o', label=key, c=colors[key], markersize=10)
+                ax.plot(-y, x, 'o', label=key, c=PLOT_COLORS[key], markersize=10)
                 # Add arrow for orientation
-                ax.arrow(-y, x, -0.2*np.sin(yaw), 0.2*np.cos(yaw), head_width=0.07, head_length=0.12, fc=colors[key], ec=colors[key])
-            # # Cross out fallen drones
-            # if z < 0.1:
-            #     ax.plot(x, y, 'x', c=colors[key])
+                ax.arrow(-y, x, -0.2*np.sin(yaw), 0.2*np.cos(yaw), head_width=0.07, head_length=0.12, fc=PLOT_COLORS[key], ec=PLOT_COLORS[key])
 
         # Convert plot to image
         fig.canvas.draw()
@@ -169,11 +168,7 @@ if __name__ == "__main__":
         else:
             last_plot_img = plot_img
 
-        # Resize plot image to match video frame height
-        #plot_img = cv2.resize(plot_img, (frame.shape[1], frame.shape[0]))
-
-        # Combine video frame and plot image side by side
-        #combined_img = np.hstack((frame, plot_img))
+        # Overlay plot on video frame
         frame[:plot_img.shape[0], :plot_img.shape[1]] = cv2.addWeighted(frame[:plot_img.shape[0], :plot_img.shape[1]], 0.3, plot_img, 0.7, 0)
 
         if export_mode:
@@ -188,12 +183,14 @@ if __name__ == "__main__":
 
             key = cv2.waitKey(1)
             if key == ord('q'):
+                print("GOODBYE!")
                 break
             elif key == ord('k'):
                 # Readjust video start time and export it
                 takeoff_video = t
                 print(f'Takeoff in video at {takeoff_video.strftime("%H:%M:%S.%f")[:-1]}')
             if takeoff_video is not None and takeoff_sim is not None:
+                # If video takeoff is before simulation takeoff, trim data
                 if (takeoff_video - takeoff_sim).total_seconds() < 0:
                     # Export df with truncated time
                     start = data_starttime  + (takeoff_sim - takeoff_video).total_seconds()
@@ -202,16 +199,19 @@ if __name__ == "__main__":
                     print('Data exported!')
                     break
                 else:
-                    # trim video
+                    # If video takeoff is after simulation takeoff, trim video
                     diff = (takeoff_video - takeoff_sim).total_seconds()
                     video_ss.set(cv2.CAP_PROP_POS_FRAMES, int(diff * fps))
                     print(f'Difference between takeoff: {diff:.2f}')
                     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-                    out = cv2.VideoWriter(os.path.join(EXPORT_FOLDER, f'video_trim.avi'), fourcc, fps, (frame.shape[1], frame.shape[0]))
-                    while True:
+                    out = cv2.VideoWriter(os.path.join(folder, f'video_trim.avi'), fourcc, fps, (frame.shape[1], frame.shape[0]))
+                    nb_frames = int((duration - diff) * fps)
+                    print("EXPORTING TRIMMED VIDEO...")
+                    # Add progress bar
+                    for _ in tqdm(range(nb_frames)):
                         ret, frame = video_ss.read()
                         if not ret:
-                            break
+                            raise Exception('Cannot read frame')
                         out.write(frame)
                     out.release()
                     print('Video exported!') 
@@ -222,5 +222,3 @@ if __name__ == "__main__":
         out.release()
         print("Video exported! --> ", os.path.join(os.path.join(folder, 'video_final.avi')))
 
-
-    # print('Data columns: ', merged_data)
