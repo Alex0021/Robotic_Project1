@@ -73,6 +73,8 @@ class Drone:
         self.vel += self.acc * dt
         self.pos += self.vel * dt
         self.angles += self.rates * dt
+        # Limit angles between -pi and pi
+        self.angles = np.mod(self.angles + np.pi, 2*np.pi) - np.pi
 
     def print_state(self):
         names = ["Pos: ", "Vel: ", "Acc: ", "Angles: "]

@@ -23,7 +23,7 @@ def generate_viewing_error_plot(all_drone_data, ax):
         data = [np.array(all_drone_data[key][i]) for i in range(len(all_drone_data[key]))]
         avg_errors = [np.mean(data[i][:,:,3], axis=(0,1)) for i in range(NB_TESTS)]
         std_errors = [np.std(data[i][:,:,3], axis=(0,1)) for i in range(NB_TESTS)]
-        ax.errorbar(x_range, avg_errors, yerr=std_errors, fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
+        ax.errorbar(x_range, avg_errors, yerr=[np.clip(std_errors,0, avg_errors), std_errors], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
         # Filter out error bars from legend
     handles, labels = ax.get_legend_handles_labels()
     handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
@@ -45,7 +45,7 @@ def generate_avg_num_neighbors_plot(all_drone_data, ax):
 
 def generate_coverage_plot(all_swarm_data, ax):
     x_range = np.array([5,10,15,20,25,30])
-    ax.set_title('Mean and std of the coverage')
+    ax.set_title('Mean and std of the coverage (w/ average)')
     ax.set_xlabel('Swarm count')
     ax.set_ylabel('Coverage %')
     colors = ['purple', 'blue', 'green', 'darkorange', 'black']
@@ -59,8 +59,25 @@ def generate_coverage_plot(all_swarm_data, ax):
     handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
     ax.legend(handles, labels, fontsize=7, draggable=True, markerscale=0.5, loc='best')
 
+def generate_overlap_plot(all_swarm_data, ax):
+    x_range = np.array([5,10,15,20,25,30])
+    ax.set_title('Mean and std of the overlap')
+    ax.set_xlabel('Swarm count')
+    ax.set_ylabel('Overlap %')
+    colors = ['purple', 'blue', 'green', 'darkorange', 'black']
+    for n, key in enumerate(all_swarm_data.keys()):
+        # Find the average coverage for each drone
+        overlap_mean = np.array([np.mean(all_swarm_data[key][i]['viewing_overlap']*180/np.pi, axis=0) for i in range(NB_TESTS)])
+        overlap_std = np.array([np.std(all_swarm_data[key][i]['viewing_overlap']*180/np.pi, axis=0) for i in range(NB_TESTS)])
+        ax.errorbar(x_range, overlap_mean, yerr=[np.clip(overlap_std, 0, overlap_mean), overlap_std], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
+    # Filter out error bars from legend
+    handles, labels = ax.get_legend_handles_labels()
+    handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
+    ax.legend(handles, labels, fontsize=7, draggable=True, markerscale=0.5, loc='best')
+
 def generate_timing_viewing_plot(timing_data, ax, x_range):
-    ax.set_title('Viewing computation time')
+    x_range = np.array([5,10,15,20,25,30])
+    ax.set_title('Viewing computation time (w/ average)')
     ax.set_xlabel('Swarm count')
     ax.set_ylabel('Computation time (ms)')
     colors = ['purple', 'blue', 'green', 'darkorange', 'black']
@@ -150,7 +167,7 @@ if __name__ == '__main__':
             print('Could not determine range of tests: see file names convention')
             sys.exit(1)
         NB_TESTS = (to - from_)//steps + 1
-        print("NB_TESTS: ", NB_TESTS)
+        # print("NB_TESTS: ", NB_TESTS)
         all_drone_data = dict()
         timing_data = dict()
         all_swarm_data = dict()
@@ -179,6 +196,8 @@ if __name__ == '__main__':
             print('File not found')
 
     if export_mode:
+        # Create export subfolder if needed
+        os.makedirs(os.path.join(EXPORT_FOLDER, subfolder), exist_ok=True)
         # Export each plot individually
         x_range = np.arange(from_, to+1)
         elems_title = subfolder.split('_')
@@ -191,9 +210,21 @@ if __name__ == '__main__':
 
         fig = plt.figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
+        generate_avg_num_neighbors_plot(all_drone_data, ax)
+        fig.tight_layout()
+        fig.savefig(os.path.join(EXPORT_FOLDER, subfolder, f"num_neighbors.png"))
+
+        fig = plt.figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
         generate_coverage_plot(all_swarm_data, ax)
         fig.tight_layout()
         fig.savefig(os.path.join(EXPORT_FOLDER, subfolder, f"coverage.png"))
+
+        fig = plt.figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+        generate_overlap_plot(all_swarm_data, ax)
+        fig.tight_layout()
+        fig.savefig(os.path.join(EXPORT_FOLDER, subfolder, f"overlap.png"))
 
         fig = plt.figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
@@ -228,48 +259,21 @@ if __name__ == '__main__':
         ax2 = fig.add_subplot(gs[0,1])
         ax3 = fig.add_subplot(gs[1,0])
         ax4 = fig.add_subplot(gs[1,1])
-        x_range = np.arange(from_, to+1)
+        x_range = np.arange(from_, to+1, steps)
 
-        # generate_viewing_error_plot(all_drone_data, ax1)
-        generate_avg_num_neighbors_plot(all_drone_data, ax1)
-        # generate_coverage_plot(all_swarm_data, ax3)
-        # generate_timing_viewing_plot(timing_data, ax4, x_range)
+        generate_viewing_error_plot(all_drone_data, ax1)
+        generate_avg_num_neighbors_plot(all_drone_data, ax2)
+        generate_coverage_plot(all_swarm_data, ax3)
+        generate_timing_viewing_plot(timing_data, ax4, x_range)
         # generate_swarm_center_plot(all_swarm_data, ax4)
 
         # for k in all_drone_data.keys():
         #     fig2 = plt.figure(figsize=(12, 8))
-        #     fig2.suptitle(f"Coverage during trajectory with viewing metric {' '.join(k.split('_'))}", fontsize=16)
+        #     fig2.suptitle(f"Overlap during trajectory with viewing metric {' '.join(k.split('_'))}", fontsize=16)
         #     gs2 = fig2.add_gridspec(3,2)
         #     axs = [fig2.add_subplot(gs2[i, j]) for j in range(2) for i in range(3)]
 
         #     generate_trajectory_corverage(all_swarm_data[k], axs, fig2)
-        #     fig2.tight_layout()
-        # if not export_mode and nb_args == 3:
-        #     # Create metrics summary
-        #     swarm_spread = data[0]['params']['swarm_spread']
-        #     r_coh = data[0]['params']['r_coh']
-        #     neighbors_metric = data[0]['params']['neighbors']['metric']
-        #     neighbors_count = data[0]['params']['neighbors']['count']
-        #     neighbors_range = data[0]['params']['neighbors']['sensing_range']
-        #     neighbors_r_agent = data[0]['params']['neighbors']['r_agent']
-        #     noise = data[0]['params']['noise']
-        #     viewing_dim = '2D' if data[0]['params']['viewing_metric']['dim'] == 2 else '3D'
-        #     fig2, ax = plt.subplots(1, 1)
-        #     ax.set_title('Metrics summary', fontweight='bold', fontstyle='oblique', fontsize=16)
-        #     ax.axis('off')
-        #     ax.text(0, 0.9, f'Number of drones: {nb_drones}', fontsize=12)
-        #     ax.text(0, 0.8, f'Swarm spread: {swarm_spread:.2f}', fontsize=12)
-        #     ax.text(0, 0.7, f'Cohesion radius: {r_coh:.2f}', fontsize=12)
-        #     ax.text(0, 0.6, f'Neighbors:  ', fontsize=12)
-        #     ax.text(0.25, 0.6, f'Metric: {neighbors_metric}', fontsize=12)
-        #     ax.text(0.25, 0.53, f'Count: {neighbors_count}', fontsize=12)
-        #     ax.text(0.25, 0.46, f'Sensing range: {neighbors_range:.2f}', fontsize=12)
-        #     ax.text(0.25, 0.39, f'Agent radius: {neighbors_r_agent:.3f}', fontsize=12)
-        #     ax.text(0, 0.3, f'Noise: ', fontsize=12)
-        #     ax.text(0.25, 0.3, f'type: {noise["type"]}', fontsize=12)
-        #     ax.text(0.25, 0.23, f'dist: {noise["param_dist"]:.2f}', fontsize=12)
-        #     ax.text(0.25, 0.16, f'cone: {noise["param_dir"]:.2f}', fontsize=12)
-        #     ax.text(0, 0.05, f'Viewing metric dim: {viewing_dim}', fontsize=12)
         #     fig2.tight_layout()
         
         fig.tight_layout()

@@ -58,5 +58,20 @@
             }
         ],
         "repeat": 1
+    },
+    "num_drones_outer3": {
+        "metrics": ["viewing_metric_algorithm", "outter_points", "neighbors_count"],
+        "values": ["outter", 3, 3],
+        "var": [
+            {
+                "name": "neighbors_metric",
+                "values": ["topological", "voronoi", "vlos"]
+            },
+            {
+                "name": "drone_count",
+                "values": [5, 10, 15, 20, 25, 30]
+            }
+        ],
+        "repeat": 1
     }
 }
