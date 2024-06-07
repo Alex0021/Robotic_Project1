@@ -90,8 +90,11 @@ def generate_avg_viewing_error_plot(all_drone_data, ax):
             dist_sorted_indices = np.argsort(dist, axis=0)
             errors.append(err[dist_sorted_indices])
         avg_errors = np.mean(np.array(errors)[:,1:], axis=1)
-        ax.errorbar(np.arange(from_, to+1, steps), avg_errors, fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', color=colors[n])
-    ax.legend(fontsize='small')
+        std_errors = np.std(np.array(errors)[:,1:], axis=1)
+        ax.errorbar(np.arange(from_, to+1, steps), avg_errors, yerr=[np.clip(std_errors, 0, avg_errors), std_errors], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
+    handles, labels = ax.get_legend_handles_labels()
+    handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
+    ax.legend(handles, labels, fontsize=7, draggable=True, markerscale=0.5, loc='best')
 
 def generate_coverage_plot(all_swarm_data, ax):
     ax.set_title('Mean and std of the coverage')
@@ -283,6 +286,12 @@ if __name__ == '__main__':
         generate_coverage_plot(all_swarm_data, ax)
         fig.tight_layout()
         fig.savefig(os.path.join(EXPORT_FOLDER, subfolder, f"coverage.png"))
+
+        fig = plt.figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+        generate_overlap_plot(all_swarm_data, ax)
+        fig.tight_layout()
+        fig.savefig(os.path.join(EXPORT_FOLDER, subfolder, f"overlap.png"))
 
         fig = plt.figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
