@@ -2,7 +2,6 @@ __pycache__
 sim_results
 output
 exported_plots
-config/app_config.json
 config/sim_autorun.json
 venv
 *.code-workspace
