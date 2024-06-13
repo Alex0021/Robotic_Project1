@@ -1,0 +1,92 @@
+{
+    "NO_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "None", 0.0, 0.0],
+        "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+            },
+            {
+                "name": "neighbors_count",
+                "values": [3, 4, 5, 6, 7, 8]
+            }
+        ],
+        "repeat": 10
+    },
+    "L_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.05, 0.01],
+        "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+            },
+            {
+                "name": "neighbors_count",
+                "values": [3, 4, 5, 6, 7, 8]
+            }
+        ],
+        "repeat": 10
+    },
+    "M_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.1, 0.025],
+        "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+            },
+            {
+                "name": "neighbors_count",
+                "values": [3, 4, 5, 6, 7, 8]
+            }
+        ],
+        "repeat": 10
+    },
+    "H_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dist", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.2, 0.05],
+        "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+            },
+            {
+                "name": "neighbors_count",
+                "values": [3, 4, 5, 6, 7, 8]
+            }
+        ],
+        "repeat": 10
+    },
+    "noise_vlos": {
+        "metrics": ["neighbors_metric", "noise_type"],
+        "values": ["vlos", "Gaussian"],
+        "var": [
+            {
+                "name": "noise_params",
+                "values": [[0.0,0.0], [0.05, 0.01], [0.1, 0.025], [0.2, 0.05]]
+            },
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+            }
+        ],
+        "repeat": 10
+    },
+    "noise_voronoi": {
+        "metrics": ["neighbors_metric", "noise_type"],
+        "values": ["voronoi", "Gaussian"],
+        "var": [
+            {
+                "name": "noise_params",
+                "values": [[0.0,0.0], [0.05, 0.01], [0.1, 0.025], [0.2, 0.05]]
+            },
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+            }
+        ],
+        "repeat": 10
+    }
+}
