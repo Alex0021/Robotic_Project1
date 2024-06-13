@@ -74,6 +74,8 @@ def outter(drone, neighbors, params):
         case 2: # 2D case: Max angle
             neighbors_pos = np.array([n.get_abs_pos() for n in neighbors])
             dists = neighbors_pos - drone.pos
+            # Normalize distances
+            dists = dists / np.linalg.norm(dists, axis=1)[:, np.newaxis]
             if in_2d:
                 dists = dists[:, :2]
             # Compute dot product between all combination of neighbors

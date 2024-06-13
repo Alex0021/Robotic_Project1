@@ -129,14 +129,19 @@ def generate_overlap_plot(all_swarm_data, ax):
 def generate_timing_viewing_plot(timing_data, ax, x_range):
     ax.set_title('Viewing computation time')
     ax.set_xlabel('# neighbors')
-    ax.set_ylabel('Computation time (ms)')
+    ax.set_ylabel('Average viewing computation time (ms))')
     colors = ['purple', 'blue', 'green', 'darkorange', 'black']
     for n, key in enumerate(all_drone_data.keys()):
         data = timing_data[key]
-        # Compute average timings
+        # Compute average timings with std
         avg_timing = np.array([np.mean(np.array(data[i])[:, 1], axis=0) for i in range(NB_TESTS)])
-        ax.plot(x_range, avg_timing*1000, label=f"{key.replace('_', ' ')}", color=colors[n], linestyle='--', marker='o', markersize=5)
-    ax.legend(fontsize='small')
+        std_timing = np.array([np.std(np.array(data[i])[:, 1], axis=0) for i in range(NB_TESTS)])
+        #ax.errorbar(x_range, avg_timing*1000, yerr=[np.clip(std_timing, 0, avg_timing)*1000, std_timing*1000], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
+        ax.plot(x_range, avg_timing*1000, label=f"{key.replace('_', ' ')}", markersize=5, marker='o', color=colors[n], linestyle='--')  
+    # Filter out error bars from legend
+    handles, labels = ax.get_legend_handles_labels()
+    handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
+    ax.legend(handles, labels, fontsize=7, draggable=True, markerscale=0.5, loc='best')
 
 def generate_timings_plot(timings, ax, x_range):
     ax.set_title('Timings')
@@ -295,6 +300,12 @@ if __name__ == '__main__':
 
         fig = plt.figure(figsize=(6, 4))
         ax = fig.add_subplot(111)
+        generate_swarm_center_plot(all_swarm_data, ax)
+        fig.tight_layout()
+        fig.savefig(os.path.join(EXPORT_FOLDER, subfolder, f"swarm_center.png"))
+
+        fig = plt.figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
         generate_timing_viewing_plot(timing_data, ax, x_range)
         fig.tight_layout()
         fig.savefig(os.path.join(EXPORT_FOLDER, subfolder, f"viewing_timings.png"))
@@ -336,8 +347,8 @@ if __name__ == '__main__':
 
         generate_viewing_error_plot(all_drone_data, ax1)
         generate_coverage_plot(all_swarm_data, ax2)
-        generate_overlap_plot(all_swarm_data, ax3)
-        # generate_timing_viewing_plot(timing_data, ax3, x_range)
+        # generate_overlap_plot(all_swarm_data, ax3)
+        generate_timing_viewing_plot(timing_data, ax3, x_range)
         # generate_swarm_center_plot(all_swarm_data, ax4)
         generate_avg_viewing_error_plot(all_drone_data, ax4)
 

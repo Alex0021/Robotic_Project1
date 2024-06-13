@@ -76,17 +76,20 @@ def generate_overlap_plot(all_swarm_data, ax):
     ax.legend(handles, labels, fontsize=7, draggable=True, markerscale=0.5, loc='best')
 
 def generate_timing_viewing_plot(timing_data, ax, x_range):
-    x_range = np.array([5,10,15,20,25,30])
-    ax.set_title('Viewing computation time (w/ average)')
+    ax.set_title('Viewing computation time')
     ax.set_xlabel('Swarm count')
-    ax.set_ylabel('Computation time (ms)')
-    colors = ['purple', 'blue', 'green', 'darkorange', 'black']
+    ax.set_ylabel('Computation time (ms))')
+    colors = ['purple', 'blue', 'green', 'darkorange']
     for n, key in enumerate(all_drone_data.keys()):
         data = timing_data[key]
-        # Compute average timings
+        # Compute average timings with std
         avg_timing = np.array([np.mean(np.array(data[i])[:, 1], axis=0) for i in range(NB_TESTS)])
-        ax.plot(x_range, avg_timing*1000, label=f"{key.replace('_', ' ')}", color=colors[n], linestyle='--', marker='o', markersize=5)
-    ax.legend(fontsize='small')
+        std_timing = np.array([np.std(np.array(data[i])[:, 1], axis=0) for i in range(NB_TESTS)])
+        ax.errorbar(x_range, avg_timing*1000, yerr=[np.clip(std_timing, 0, avg_timing)*1000, std_timing*1000], fmt='--', label=f"{key.replace('_', ' ')}", markersize=5, marker='o', ecolor=colors[n], color=colors[n], capsize=5, capthick=2)
+    # Filter out error bars from legend
+    handles, labels = ax.get_legend_handles_labels()
+    handles = [h[0] if isinstance(h, container.ErrorbarContainer) else h for h in handles]
+    ax.legend(handles, labels, fontsize=7, draggable=True, markerscale=0.5, loc='best')
 
 def generate_swarm_center_plot(swarm_data, ax):
     ax.set_title('Swarm center position')
