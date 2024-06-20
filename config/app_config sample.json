@@ -33,7 +33,12 @@
     },
     "simulation": {
         "render": true,
-        "use_pd_smoothing": false,
+        "pd_controller": {
+            "active": false,
+            "kp": 2.0,
+            "kd": 0.1,
+            "rate_limit": 1.0
+        },
         "trajectory_mode": false
     }
 }

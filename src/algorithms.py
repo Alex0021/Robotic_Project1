@@ -1,23 +1,28 @@
 import numpy as np
 from scipy.spatial import ConvexHull
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from drone import Drone, DroneNeighbor
 
 
-def get_viewing_dir(drone, neighbors, algo: str, **params):
+def get_viewing_dir(drone, neighbors: list['DroneNeighbor'], algo: str, **params):
     """
     Compute the viewing direction of the drone based on the neighbors
     with the selected algorithm.
 
     Args:
-        drone (Drone): The selected drone
-        neighbors (list[DroneNeighbor]): The neighbors of the drone
-        algo (str): The algorithm to use to compute the viewing direction
+        drone: The selected drone
+        neighbors: The neighbors of the drone
+        algo: The algorithm to use to compute the viewing direction
     """
     if len(neighbors) == 0:
         return drone.get_heading()
     algo = algo.lower()
-    assert algo.upper() in ["AVERAGE", "OUTTER", "TANGENT_PLANE", "CONVEX_HULL", "NONE"], "Algorithm {0} not supported".format(algo)
+    # If algo is NONE, return the current heading
     if algo.upper() == "NONE":
         return drone.get_heading()
+    assert algo.upper() in ["AVERAGE", "OUTER", "TANGENT_PLANE", "CONVEX_HULL"], "Algorithm {0} not supported".format(algo)
     vd = eval(algo)(drone, neighbors, params)
     # Check valid vd and normalize
     norm = np.linalg.norm(vd)
@@ -26,18 +31,17 @@ def get_viewing_dir(drone, neighbors, algo: str, **params):
     else:
         return drone.get_heading()
 
-def average(drone, neighbors, params):
+def average(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
     """
     Compute the desired viewing direction based on the centroid of the neighbors.
 
     1. Find the centroid (mean) of the neighbors
     2. Set the viewing direction to the opposite of the centroid
-    3. Don't forget to normalize the vector
 
     Args:
-        drone (Drone): The selected drone
-        neighbors (list[DroneNeighbor]): The neighbors of the drone
-        params (dict): {'in_2d': True or False}
+        drone: The selected drone
+        neighbors: The neighbors of the drone
+        params: {'in_2d': True or False}
     """
     centroid = np.mean([n.get_abs_pos() for n in neighbors], axis=0)
     vec_to_centroid = centroid - drone.pos
@@ -47,18 +51,18 @@ def average(drone, neighbors, params):
         viewing_dir[2] = 0
     return viewing_dir
 
-def outter(drone, neighbors, params):
+def outer(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
     """
-    Compute the desired viewing direction based on the outter product of the neighbors.
+    Compute the desired viewing direction based on the outer product of the neighbors.
 
-    1. Find the outter product of the neighbors
-    2. Set the viewing direction to the opposite of the outter product
-    3. Don't forget to normalize the vector
+    1. Find combinations of neighbors depending on n_points
+    2. Calculate pair that gives highest angle/area/volume
+    3. Set the viewing direction to the opposite of the average of the pair
 
     Args:
-        drone (Drone): The selected drone
-        neighbors (list[DroneNeighbor]): The neighbors of the drone
-        params (dict): {'n_points': int}
+        drone: The selected drone
+        neighbors: The neighbors of the drone
+        params: {'n_points': int}
     """
     # Get number of points to compute estimate
     n_points = params.get('n_points', 2)
@@ -93,7 +97,7 @@ def outter(drone, neighbors, params):
             dists = neighbors_pos - drone.pos
             if in_2d:
                 dists = dists[:, :2]
-            # Compute dot product between all combination of neighbors
+            # Calculate area of each triangle using the norm of the cross product
             highest = -np.inf
             highest_indices = (0, 0)
             for i in range(len(neighbors)):
@@ -133,20 +137,21 @@ def outter(drone, neighbors, params):
     return viewing_dir
 
 
-def tangent_plane(drone, neighbors, params):
+def tangent_plane(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
     """
-    Compute the desired viewing direction based on the tangent plane of the neighbors.
+    Compute the desired viewing direction based on the normal 
+    of a tangent plane minimizing the distance to every neighbors.
 
     1. Find the centroid (mean) of the neighbors
     2. Compute covariance matrix of the neighbors
     3. Apply PCA and keep the last eigenvector (with smallest eigenvalue)
-    4. This vector gives the normal to the tangent plane
+    4. This vector gives the normal to the tangent plane of the surface
     5. Set the viewing direction to the opposite of the normal
 
     Args:
-        drone (Drone): The selected drone
-        neighbors (list[DroneNeighbor]): The neighbors of the drone
-        params (dict): {'in_2d': True or False}
+        drone: The selected drone
+        neighbors: The neighbors of the drone
+        params: {'in_2d': True or False}
     """
     neighbors_pos = np.array([n.get_abs_pos() for n in neighbors])
     in_2d = params.get('in_2d', False)
@@ -159,14 +164,7 @@ def tangent_plane(drone, neighbors, params):
     eig_val, eig_vectors = np.real(eig_val), np.real(eig_vectors)
     sorted_indices = np.argsort(eig_val)
     normal = eig_vectors[:,sorted_indices[0]]
-    # Printing stuff
-    # print("Covariance matrix:")
-    # for i in range(3):
-    #     print(cov[i])
-    # print("Eigenvectors:")
-    # for i in range(3):
-    #     print(eig_vectors[i])
-    # Verify if eigenvalues are close to each other
+    # Verify if eigenvalues are close to each other (2 directions are good)
     if abs(eig_val[sorted_indices[1]] - eig_val[sorted_indices[0]]) < 0.01:
         print("WARNING :: Eigenvalues are too close to each other, averaging the two smallest")
         normal = np.mean(eig_vectors[:,sorted_indices[:2]], axis=0)
@@ -176,19 +174,18 @@ def tangent_plane(drone, neighbors, params):
         viewing_dir = -np.sign(np.dot(normal, centroid-drone.pos))*normal
     return viewing_dir
 
-def convex_hull(drone, neighbors, params):
+def convex_hull(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
     """
     Compute the desired viewing direction based on the convex hull of the neighbors.
 
     1. Find the convex hull of the neighbors + the drone
     2. Set the viewing direction either to the normal of the adjacent faces
        or to the one of the visible faces
-    3. Don't forget to normalize the vector
 
     Args:
-        drone (Drone): The selected drone
-        neighbors (list[DroneNeighbor]): The neighbors of the drone
-        params (dict): {'faces': 'adjacent' or 'visible', 'in_2d': True or False}
+        drone: The selected drone
+        neighbors: The neighbors of the drone
+        params: {'faces': 'adjacent' or 'visible', 'in_2d': True or False}
     """
     # Check if # neighbors is enough
     in_2d = params.get('in_2d', False)
@@ -196,21 +193,13 @@ def convex_hull(drone, neighbors, params):
         print("WARNING :: Not enough neighbors to compute convex hull")
         return drone.get_heading()
     elif len(neighbors) == 2:
-        # Do outter2 metric (max angle)
+        # Do outer2 metric (max angle)
         neighbors_pos = np.array([n.get_abs_pos() for n in neighbors])
         dists = neighbors_pos - drone.pos
         if in_2d:
             dists = dists[:, :2]
-        # Compute dot product between all combination of neighbors
-        smaller = np.inf
-        smaller_indices = (0, 0)
-        for i in range(len(neighbors)):
-            for j in range(i+1, len(neighbors)):
-                d = np.dot(dists[i], dists[j])
-                if d < smaller:
-                    smaller = d
-                    smaller_indices = (i, j)
-        viewing_dir = -(dists[smaller_indices[0]] + dists[smaller_indices[1]]) / 2
+        # Only 2 neighbors, so take average of the two
+        viewing_dir = -(dists[0] + dists[1]) / 2
     else:
         # Convex hull
         points = np.array([n.get_abs_pos() for n in neighbors])

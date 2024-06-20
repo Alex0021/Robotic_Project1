@@ -6,21 +6,127 @@ import numpy as np
     All rights reserved
 '''
 
+#===============================#
+#    Frame transformations      #
+#===============================#
+
+def get_RB2W(phi: float, theta: float, psi: float) -> np.ndarray:
+    """
+    Get the rotation matrix from the body frame to the world frame
+
+    Args:
+        phi (float): angle around the x-axis (roll)
+        theta (float):  angle around the y-axis (pitch)
+        psi (float): angle around the z-axis (yaw)
+
+    Returns:
+        np.ndarray: rotation matrix from the body frame to the world frame
+    """
+    R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
+    R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
+    R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
+    return R_psi @ R_theta @ R_phi
+
+def get_W2B(phi: float, theta: float, psi: float) -> np.ndarray:
+    """
+    Get the rotation matrix from the world frame to the body frame
+
+    Args:
+        phi (float): angle around the x-axis (roll)
+        theta (float):  angle around the y-axis (pitch)
+        psi (float): angle around the z-axis (yaw)
+
+    Returns:
+        np.ndarray: rotation matrix from the world frame to the body frame
+    """
+    R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
+    R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
+    R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
+    return np.transpose(R_phi @ R_theta @ R_psi)
+
+def rot_global2body(input: np.ndarray, angles: np.ndarray) -> np.ndarray:
+    """
+    Rotate a vector from the global frame to the body frame
+
+    Args:
+        input (np.ndarray): vector to rotate
+        angles (np.ndarray): angles of the body frame [phi, theta, psi]
+
+    Returns:
+        np.ndarray: rotated vector
+    """
+    R = get_W2B(angles[0], angles[1], angles[2])
+    return R @ input
+
+def rot_body2global(input: np.ndarray, angles: np.ndarray) -> np.ndarray:
+    """
+    Rotate a vector from the body frame to the global frame
+
+    Args:
+        input (np.ndarray): vector to rotate
+        angles (np.ndarray): angles of the body frame [phi, theta, psi]
+
+    Returns:
+        np.ndarray: rotated vector
+    """ 
+    R = get_RB2W(angles[0], angles[1], angles[2])
+    return R @ input
+
+#===============================#
+#    Olfati-Saber Model        #
+#===============================#
+
 # Calculate the cohesion intensity for the Olfati-Saber model
-def get_cohesion_intensity(r, d_ref, a, b, c):
+def get_cohesion_intensity(r: float, d_ref: float, a: float, b: float, c: float) -> float:
+    """
+    Calculate the cohesion intensity for the Olfati-Saber model
+
+    Args:
+        r (float): distance between two drones
+        d_ref (float): desired distance between two drones
+        a (float): potential field parameter
+        b (float): potential field parameter
+        c (float): potential field parameter
+
+    Returns:
+        float: cohesion force
+    """
     
     diff = r - d_ref
     return ((a+b)/2 * (np.sqrt(1+(diff + c)**2) - np.sqrt(1+c**2)) + (a-b)*diff/2)
 
 # Calculate the cohesion intensity derivative for the Olfati-Saber model
-def get_cohesion_intensity_der(r, d_ref, a, b, c):
+def get_cohesion_intensity_der(r: float, d_ref: float, a: float, b: float, c: float) -> float:
+    """
+    Calculate the cohesion intensity derivative for the Olfati-Saber model
+
+    Args:
+        r (float): distance between two drones
+        d_ref (float): desired distance between two drones
+        a (float): potential field parameter
+        b (float): potential field parameter
+        c (float): potential field parameter
+
+    Returns:
+        float: cohesion force derivative
+    """
         
     diff = r - d_ref
     return (a+b)/2 * (diff + c) / np.sqrt(1+(diff + c)**2) + (a-b)/2
 
 # Calcualte the neighbour weight for the Olfati-Saber model
-def get_neighbour_weight(r, r0, delta):
+def get_neighbour_weight(r: float, r0: float, delta: float) -> float:
+    """
+    Calcualte the neighbour weight for the Olfati-Saber model
 
+    Args:
+        r (float): distance between current drone and neighbour drone
+        r0 (float): minimum distance to be part of the swarm
+        delta (float): parameter for the neighbour weight
+
+    Returns:
+        float: neighbour weight
+    """
     r_ratio = r / r0
 
     if r_ratio < delta:
@@ -31,8 +137,18 @@ def get_neighbour_weight(r, r0, delta):
         return 0
 
 # Calcualte the derivative of the neighbour weight for the Olfati-Saber model
-def get_neighbour_weight_der(r, r0, delta):
-    
+def get_neighbour_weight_der(r: float, r0: float, delta: float) -> float:
+    """
+    Calcualte the derivative of the neighbour weight for the Olfati-Saber model
+
+    Args:
+        r (float): distance between current drone and neighbour drone
+        r0 (float): minimum distance to be part of the swarm
+        delta (float): parameter for the neighbour weight
+
+    Returns:
+        float: neighbour weight derivate
+    """
     r_ratio = r/r0
 
     if r_ratio < delta:
@@ -44,39 +160,61 @@ def get_neighbour_weight_der(r, r0, delta):
         return 0
 
 # Calculate the attraction/repulsion force for the Olfati-Saber model
-def get_cohesion_force(r, d_ref, a, b, c, r0, delta):
-    
-    return 1/r0 * get_neighbour_weight_der(r, r0, delta) * get_cohesion_intensity(r, d_ref, a, b, c) + get_neighbour_weight(r, r0, delta) * get_cohesion_intensity_der(r, d_ref, a, b, c)
+def get_cohesion_force(r: float, d_ref: float, a: float, b: float, c: float, r0: float, delta: float) -> float:
+    """
+    Calculate the attraction/repulsion force for the Olfati-Saber model
 
-def get_migration_force(p_mig, p_i, v_ref, v_i, gamma):
+    Args:
+        r (float): distance between current drone and neighbour drone
+        d_ref (float): desired distance between members of the swarm
+        a (float): potential field parameter
+        b (float): potential field parameter
+        c (float): potential field parameter
+        r0 (float): minimum distance to be part of the swarm
+        delta (float): parameter for the neighbour weight
+
+    Returns:
+        float: combined forces for attraction/repulsion
+    """
+    
+    return 1/r0 * get_neighbour_weight_der(r, r0, delta) * get_cohesion_intensity(r, d_ref, a, b, c) \
+            + get_neighbour_weight(r, r0, delta) * get_cohesion_intensity_der(r, d_ref, a, b, c)
+
+def get_migration_force(p_mig: np.ndarray[float], p_i: np.ndarray[float], v_ref: float, v_i: np.ndarray[float], gamma: float) -> np.ndarray[float]:
+    """
+    Calculate the migration force for the Olfati-Saber model to reach a target point
+
+    Args:
+        p_mig (np.ndarray[float]): the target point to reach [x, y, z]
+        p_i (np.ndarray[float]): the current position of the drone [x, y, z]
+        v_ref (float): the reference velocity
+        v_i (np.ndarray[float]): the current velocity of the drone [vx, vy, vz]
+        gamma (float): a tunable parameter
+
+    Returns:
+        np.ndarray[float]: the migration force
+    """
     if p_mig is None:
         return 0
     d = np.linalg.norm(p_mig - p_i)
     u_i = 1/d * (p_mig - p_i)
     return gamma*d*(v_ref*u_i-v_i)
 
-def get_RB2W(phi, theta, psi):
-    R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
-    R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
-    R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
-    return R_psi @ R_theta @ R_phi
-
-def get_W2B(phi, theta, psi):
-    R_psi = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0,0,1]])
-    R_theta = np.array([[np.cos(theta), 0,np.sin(theta)], [0,1,0], [-np.sin(theta), 0, np.cos(theta)]])
-    R_phi = [[1,0,0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]]
-    return np.transpose(R_phi @ R_theta @ R_psi)
-
-def rot_global2body(input, angles):
-    R = get_W2B(angles[0], angles[1], angles[2])
-    return R @ input
-
-def rot_body2global(input, angles):
-    R = get_RB2W(angles[0], angles[1], angles[2])
-    return R @ input
-
 # Compute the olfati-saber swarm commands
-def olfati_saber_input(drone_pose, neighbour_poses, cylinder_poses, p_mig=None, params=dict()):
+def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, cylinder_poses: np.ndarray, p_mig: np.ndarray=None, params: dict=dict()) -> np.ndarray:
+    """
+    Compute the olfati-saber swarm commands
+
+    Args:
+        drone_pose (np.ndarray): current drone pose [x, y, z, vx, vy, vz, phi, theta, psi]
+        neighbour_poses (np.ndarray): neighbour drone poses [x, y, z, vx, vy, vz, phi, theta, psi]
+        cylinder_poses (np.ndarray): obstacles poses [x, y, z] (not implemented yet)
+        p_mig (np.ndarray, optional): target point to reach. Defaults to None.
+        params (dict, optional): other defined parameters. Defaults to dict().
+
+    Returns:
+        np.ndarray: _description_
+    """
     # Extract necessary params
     v_ref = params.get('v_ref',np.array([0.0,0.0,0.0]))
     d_ref = params.get('d_ref',1.0)

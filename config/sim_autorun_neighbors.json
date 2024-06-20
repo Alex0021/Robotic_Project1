@@ -1,26 +1,26 @@
 {
     "test1": {
-        "file_basename": "outter2",
-        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
-        "values": ["outter", 2],
+        "file_basename": "outer2",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outer_points"],
+        "values": ["outer", 2],
         "var": "neighbors_count",
         "from": 2,
         "to": 9,
         "steps": 1
     },
     "test2": {
-        "file_basename": "outter3",
-        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
-        "values": ["outter", 3],
+        "file_basename": "outer3",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outer_points"],
+        "values": ["outer", 3],
         "var": "neighbors_count",
         "from": 3,
         "to": 9,
         "steps": 1
     },
     "test3": {
-        "file_basename": "outter4",
-        "metrics": ["viewing_metric_algorithm", "viewing_metric_outter_points"],
-        "values": ["outter", 4],
+        "file_basename": "outer4",
+        "metrics": ["viewing_metric_algorithm", "viewing_metric_outer_points"],
+        "values": ["outer", 4],
         "var": "neighbors_count",
         "from": 4,
         "to": 6,

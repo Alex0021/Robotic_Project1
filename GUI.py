@@ -1,6 +1,5 @@
 ####################################################
 # THIS FILE CONTAINS THE GUI OF THE SIMULATOR
-# FOR MY SEMESTER PROJECT
 ####################################################
 import sys, os
 sys.path.insert(0, './src')
@@ -14,7 +13,7 @@ from src.simulator import Simulator
 from src.recorder import SwarmRecorder
 import json
 import time
-from src.tester import AutorunSim
+from autorun import AutorunSim
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'app_config.json'     # Default config filename
@@ -60,9 +59,10 @@ class myApp(tk.Frame):
         self.var_neighbors_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
         self.var_neighbors_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
         self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
+        self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('distribution', 'None'))
         self.var_noise_param_dist = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
-        self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('type', 'None'))
         self.var_noise_param_dir = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
+        self.var_noise_param_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
         self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
         self.var_r_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
         self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
@@ -72,10 +72,11 @@ class myApp(tk.Frame):
         self.spawn_area = self.app_config.get('spawn_area', [0,0,0,1])
         self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
         self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
-        self.var_viewing_metric_outter_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outter_points', 2))
+        self.var_viewing_metric_outer_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outer_points', 2))
         self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
         self.render_env = self.app_config['simulation'].get('render', True)
         self.trajectory_mode_enabled = self.app_config['simulation'].get('trajectory_mode', False)
+        self.var_swarming_algorithm = tk.StringVar(value=self.app_config.get('swarming_algorithm', 'olfati-saber'))
         self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
         self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
         self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
@@ -89,6 +90,7 @@ class myApp(tk.Frame):
         self.var_neighbors_metric.trace_add('write', self._update_neighbors_panel_components)
         self.var_neighbors_count.trace_add('write', self._set_neighbors_algo_params)
         self.var_swarm_spread.trace_add('write', self._set_swarm_algo_params)
+        self.var_swarming_algorithm.trace_add('write', self.swarming_algo_changed)
         self.var_delta.trace_add('write', self._set_swarm_algo_params)
         self.var_r_coh.trace_add('write', self._set_swarm_algo_params)
         self.var_vref.trace_add('write', self._set_swarm_algo_params)
@@ -97,10 +99,11 @@ class myApp(tk.Frame):
         self.var_noise_type.trace_add('write', self.noise_changed_callback)
         self.var_noise_param_dist.trace_add('write', self.noise_changed_callback)
         self.var_noise_param_dir.trace_add('write', self.noise_changed_callback)
+        self.var_noise_param_heading.trace_add('write', self.noise_changed_callback)
         self.var_neighbors_sampling.trace_add('write', self._set_neighbors_algo_params)
         self.var_neighbors_sensing_range.trace_add('write', self._set_neighbors_algo_params)
         self.var_neighbors_r_agent.trace_add('write', self._set_neighbors_algo_params)
-        self.var_viewing_metric_outter_points.trace_add('write', self.viewing_metric_changed_callback)
+        self.var_viewing_metric_outer_points.trace_add('write', self.viewing_metric_changed_callback)
         self.var_viewing_metric_algorithm.trace_add('write', self.viewing_metric_changed_callback)
         self.var_viewing_metric_faces.trace_add('write', self.viewing_metric_changed_callback)
         self.var_sim_dt.trace_add('write', self._update_sim_dt)
@@ -175,21 +178,21 @@ class myApp(tk.Frame):
     def init_algo_components(self):
         self.label_algo = ttk.Label(self.panel_algo, anchor='w', text="Algorithm choice: ", justify='left', font=font.Font(size=14))
         self.label_algo.grid(column=0,row=0, sticky='NEWS')
-        self.listbox_viewing_algo = ttk.Combobox(self.panel_algo, values=["None", "average", "outter", "tangent_plane", "convex_hull"], state='disabled', font=font.Font(size=14))
+        self.listbox_viewing_algo = ttk.Combobox(self.panel_algo, values=["None", "average", "outer", "tangent_plane", "convex_hull"], state='disabled', font=font.Font(size=14))
         self.listbox_viewing_algo.set(self.var_viewing_metric_algorithm.get())
         self.listbox_viewing_algo.grid(column=1,row=0, sticky='W', padx=5)
         self.listbox_viewing_algo.bind("<<ComboboxSelected>>", lambda _: self.var_viewing_metric_algorithm.set(self.listbox_viewing_algo.get()))
         self.label_algo_param = ttk.Label(self.panel_algo, anchor='w', text="Algo params:", justify='left', font=font.Font(size=14))
         self.label_algo_param.grid(column=0,row=1, sticky='NEWS')
 
-        # Algo params for outter metric
-        self.panel_algo_params_outter = tk.Frame(self.panel_algo, borderwidth=2, relief='ridge')
-        self.panel_algo_params_outter.grid_columnconfigure((0,1), weight=1)
-        self.panel_algo_params_outter.grid_rowconfigure(0, weight=1)
-        self.label_algo_param_outter_points = ttk.Label(self.panel_algo_params_outter, anchor='w', text="# points: ", font=font.Font(size=14))
-        self.label_algo_param_outter_points.grid(column=0,row=0, sticky='NEWS')
-        self.spinner_algo_param_outter_points = ttk.Spinbox(self.panel_algo_params_outter, increment=1, from_=2, to=10, textvariable=self.var_viewing_metric_outter_points, font=font.Font(size=12), width=20)
-        self.spinner_algo_param_outter_points.grid(column=1,row=0, sticky='W', padx=5)
+        # Algo params for outer metric
+        self.panel_algo_params_outer = tk.Frame(self.panel_algo, borderwidth=2, relief='ridge')
+        self.panel_algo_params_outer.grid_columnconfigure((0,1), weight=1)
+        self.panel_algo_params_outer.grid_rowconfigure(0, weight=1)
+        self.label_algo_param_outer_points = ttk.Label(self.panel_algo_params_outer, anchor='w', text="# points: ", font=font.Font(size=14))
+        self.label_algo_param_outer_points.grid(column=0,row=0, sticky='NEWS')
+        self.spinner_algo_param_outer_points = ttk.Spinbox(self.panel_algo_params_outer, increment=1, from_=2, to=10, textvariable=self.var_viewing_metric_outer_points, font=font.Font(size=12), width=20)
+        self.spinner_algo_param_outer_points.grid(column=1,row=0, sticky='W', padx=5)
 
         # Algo params for convex hull metric
         self.panel_algo_params_convex_hull = tk.Frame(self.panel_algo, borderwidth=2, relief='ridge')
@@ -315,6 +318,7 @@ class myApp(tk.Frame):
         self.listbox_control_scheme = ttk.Combobox(self.panel_control_scheme, values=["Olfati-Saber"])
         self.listbox_control_scheme.set("Olfati-Saber")
         self.listbox_control_scheme.grid(row=0,column=2,columnspan=2, sticky='we', padx=5)
+        self.listbox_control_scheme.bind("<<ComboboxSelected>>", lambda e: self.var_swarming_algorithm.set(self.listbox_control_scheme.get()))
         # Control variables
         self.label_control_delta = ttk.Label(self.panel_control_scheme, anchor='w', text="delta: ")
         self.label_control_delta.grid(column=0,row=1, sticky='NEWS')
@@ -361,8 +365,12 @@ class myApp(tk.Frame):
         self.spinner_noise_pos.grid(column=1, row=1, sticky='W', padx=5)
         self.label_noise_heading = ttk.Label(self.pnael_noise, anchor='w', text="Dir (sensing cone): ", justify='right')
         self.label_noise_heading.grid(column=2,row=1, sticky='NEWS')
-        self.spinner_noise_heading = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_param_dir)
-        self.spinner_noise_heading.grid(column=3, row=1, sticky='W', padx=5)
+        self.spinner_noise_dir = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_param_dir)
+        self.spinner_noise_dir.grid(column=3, row=1, sticky='W', padx=5)
+        self.label_noise_heading = ttk.Label(self.pnael_noise, anchor='w', text="Heading: ", justify='right')
+        self.label_noise_heading.grid(column=4,row=1, sticky='NEWS')
+        self.spinner_noise_heading = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_param_heading)
+        self.spinner_noise_heading.grid(column=5, row=1, sticky='W', padx=5)
         
         # Target
         self.panel_target = tk.Frame(self.panel_params)
@@ -451,7 +459,7 @@ class myApp(tk.Frame):
         self._set_neighbors_algo_params()
         self._set_swarm_algo_params()
         self.swarm.initialize_members()
-        self.swarm.use_pd_smoothing(self.app_config['simulation'].get('use_pd_smoothing', False))
+        self.swarm.set_pd_controller(**self.app_config['simulation']['pd_controller'])
         self.swarm.compute_neighborhood()
         if verbose:
             print("Initializing swarm with parameters: ")
@@ -493,6 +501,7 @@ class myApp(tk.Frame):
 
         try:
             self.swarm.algo_params.update( {
+                'algorithm': self.var_swarming_algorithm.get(),
                 'delta': self.var_delta.get(),
                 'd_ref': self.var_swarm_spread.get(),
                 'a': self.var_a.get(),
@@ -565,16 +574,18 @@ class myApp(tk.Frame):
     def noise_changed_callback(self, verbose=True, *args):
         if self.listbox_noise_type.get() != self.var_noise_type.get():
             self.listbox_noise_type.set(self.var_noise_type.get())
-        if self.var_noise_type.get() == 'None':
+        if self.var_noise_type.get().upper() == 'NONE':
             self.spinner_noise_pos.config(state='disabled')
+            self.spinner_noise_dir.config(state='disabled')
             self.spinner_noise_heading.config(state='disabled')
         else:
             self.spinner_noise_pos.config(state='normal')
+            self.spinner_noise_dir.config(state='normal')
             self.spinner_noise_heading.config(state='normal')
         if self.swarm is None:
             return
         try:
-            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_param_dist.get(), self.var_noise_param_dir.get())
+            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_param_dist.get(), self.var_noise_param_dir.get(), self.var_noise_param_heading.get())
             if verbose:
                 print('Noise parameters changed: {0}'.format(self.swarm.get_noise()))
         except Exception as e:
@@ -586,25 +597,33 @@ class myApp(tk.Frame):
         # Query noise parameters
         noise = self.swarm.get_noise()
         self.listbox_noise_type.set(noise.get('type', 'None'))
-        self.var_noise_param_dist.set(noise.get('param_dist', self.app_config['noise'].get('param_dist', 0.05)))
-        self.var_noise_param_dir.set(noise.get('param_dir', self.app_config['noise'].get('param_dir', 0.05)))
+        self.var_noise_param_dist.set(noise.get('param_dist', self.app_config['noise'].get('param_dist', 0.0)))
+        self.var_noise_param_dir.set(noise.get('param_dir', self.app_config['noise'].get('param_dir', 0.0)))
+        self.var_noise_param_heading.set(noise.get('param_heading', self.app_config['noise'].get('param_heading', 0.0)))
+
+    def swarming_algo_changed(self, *args):
+        if self.listbox_control_scheme.get() != self.var_swarming_algorithm.get():
+            self.listbox_control_scheme.set(self.var_swarming_algorithm.get())
+        if self.swarm is None:
+            return
+        self.swarm.set_swarming_algorithm(self.var_swarming_algorithm.get())
 
     def viewing_metric_changed_callback(self, *args):
         # Viewing algorithm
         algo = self.var_viewing_metric_algorithm.get()
         self.listbox_viewing_algo.set(algo)
         self.listbox_convex_hull_faces.set(self.var_viewing_metric_faces.get())
-        if algo.upper() == 'OUTTER':
-            self.panel_algo_params_outter.grid(column=1, row=1, sticky='NWES', padx=5, pady=0)
+        if algo.upper() == 'outer':
+            self.panel_algo_params_outer.grid(column=1, row=1, sticky='NWES', padx=5, pady=0)
         else:
-            self.panel_algo_params_outter.grid_forget()
+            self.panel_algo_params_outer.grid_forget()
         if algo.upper() == 'CONVEX_HULL':
             self.panel_algo_params_convex_hull.grid(column=1, row=1, sticky='NWES', padx=5, pady=0)
         else:
             self.panel_algo_params_convex_hull.grid_forget()
         # Other params
         dim = self.var_viewing_metric_dim.get()
-        params = {'nb_points': self.var_viewing_metric_outter_points.get(), 
+        params = {'nb_points': self.var_viewing_metric_outer_points.get(), 
                   "faces": self.var_viewing_metric_faces.get(),
                   "in_2d": dim==2}
         self.swarm.set_viewing_algorithm(algo, params)
@@ -859,7 +878,7 @@ class myApp(tk.Frame):
             },
             "viewing_metric": {
                 "algorithm": self.var_viewing_metric_algorithm.get(),
-                "outter_points": self.var_viewing_metric_outter_points.get(),
+                "outer_points": self.var_viewing_metric_outer_points.get(),
                 "faces": self.var_viewing_metric_faces.get(),
                 "dim": self.var_viewing_metric_dim.get()
             }

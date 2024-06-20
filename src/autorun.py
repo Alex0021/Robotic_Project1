@@ -5,6 +5,7 @@ import time
 import os
 import numpy as np
 
+# Interval to check if the simulation has finished
 CHECK_INTERVAL = 0.1
 
 class AutorunSim:
@@ -128,9 +129,9 @@ class AutorunSim:
                     if value.startswith('convex_hull'):
                         self._app.set_var_value("viewing_metric_algorithm", "convex_hull")
                         self._app.set_var_value("viewing_metric_faces", value.split('_')[-1])
-                    elif value.startswith('outter'):
-                        self._app.set_var_value("viewing_metric_algorithm", "outter")
-                        self._app.set_var_value("viewing_metric_outter_points", value.split('_')[-1])
+                    elif value.startswith('outer'):
+                        self._app.set_var_value("viewing_metric_algorithm", "outer")
+                        self._app.set_var_value("viewing_metric_outer_points", value.split('_')[-1])
                     else:
                         self._app.set_var_value("viewing_metric_algorithm", value)
                 elif param == "noise_params":
