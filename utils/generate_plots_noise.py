@@ -259,9 +259,9 @@ if __name__ == '__main__':
                     wkey = "convex_hull_adjacent"
                 elif "visible" in w:
                     wkey = "convex_hull_visible"
-                elif "outter" in w:
-                    idx = w.index("outter")
-                    wkey = f'outter_{w[idx+1]}'
+                elif "outer" in w:
+                    idx = w.index("outer")
+                    wkey = f'outer_{w[idx+1]}'
                 if wkey not in all_drone_data:
                     all_drone_data[wkey] = []
                     timing_data[wkey] = []

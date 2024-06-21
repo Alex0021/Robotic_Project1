@@ -60,8 +60,8 @@
         "repeat": 1
     },
     "num_drones_outer3": {
-        "metrics": ["viewing_metric_algorithm", "outter_points", "neighbors_count"],
-        "values": ["outter", 3, 3],
+        "metrics": ["viewing_metric_algorithm", "outer_points", "neighbors_count"],
+        "values": ["outer", 3, 3],
         "var": [
             {
                 "name": "neighbors_metric",

@@ -5,7 +5,7 @@
         "var": [
             {
                 "name": "viewing_metric_algorithm",
-                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+                "values": ["average", "outer_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
             },
             {
                 "name": "neighbors_count",
@@ -20,7 +20,7 @@
         "var": [
             {
                 "name": "viewing_metric_algorithm",
-                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+                "values": ["average", "outer_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
             },
             {
                 "name": "neighbors_count",
@@ -35,7 +35,7 @@
         "var": [
             {
                 "name": "viewing_metric_algorithm",
-                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+                "values": ["average", "outer_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
             },
             {
                 "name": "neighbors_count",
@@ -50,7 +50,7 @@
         "var": [
             {
                 "name": "viewing_metric_algorithm",
-                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+                "values": ["average", "outer_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
             },
             {
                 "name": "neighbors_count",
@@ -69,7 +69,7 @@
             },
             {
                 "name": "viewing_metric_algorithm",
-                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+                "values": ["average", "outer_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
             }
         ],
         "repeat": 10
@@ -84,7 +84,7 @@
             },
             {
                 "name": "viewing_metric_algorithm",
-                "values": ["average", "outter_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
+                "values": ["average", "outer_3", "convex_hull_adjacent", "convex_hull_visible", "tangent_plane"]
             }
         ],
         "repeat": 10

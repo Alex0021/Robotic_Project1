@@ -12,10 +12,12 @@ plt.rcParams['keymap.quit'] = 'ctrl+w'
 plt.rcParams['keymap.save'] = 'ctrl+s'
 
 PLOT_AXIS_MARGIN = 1.2
-CONVERSION_FACTOR = 35621.262462
 DEBUG_VLOS = False # Draw lines to all neighbors
 
 class RendererData:
+    """
+        Class used to share data between the 3D and 2D renderers
+    """
     axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)
     viewing_radius = 5
     axis_limits_single = np.array([[-viewing_radius,viewing_radius], [-viewing_radius,viewing_radius]], dtype=np.float64)
@@ -32,7 +34,6 @@ class Renderer():
         self.canvas = FigureCanvasTkAgg(self.fig, self.master)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        self.canvas.mpl_connect('key_press_event', self.key_pressed)
         self.canvas.mpl_connect('pick_event', self.onpick)
         self.configure_plot()
 
@@ -45,6 +46,9 @@ class Renderer():
 
 
     def configure_plot(self):
+        """
+        Initial configuration of the plot
+        """
         self.ax.set_xlabel("x")
         self.ax.set_ylabel("y")
         self.ax.set_zlabel("z")
@@ -53,6 +57,9 @@ class Renderer():
         self.ax.set_zlim(RendererData.axis_limits[2])
 
     def center_plot_data(self):
+        """
+        Center the plot data in the middle of the axis limits to include all the data in the plot
+        """
         try:
             min_x, max_x = np.min(self.data[:,0]), np.max(self.data[:,0])
             min_y, max_y = np.min(self.data[:,1]), np.max(self.data[:,1])
@@ -70,15 +77,27 @@ class Renderer():
             return
         
     def reset_view(self):
+        """
+        Reset to original view
+        """
         RendererData.axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)
 
     def disable_rendering(self):
+        """
+        Disable the rendering of the plot
+        """
         self.ani.event_source.stop()
         self.canvas.get_tk_widget().pack_forget()
         self.toolbar.pack_forget()
 
     
-    def render(self, i):
+    def render(self, i: int):
+        """
+        Render the 3D view of the swarm
+
+        Args:
+            i (int): frame index
+        """
         if self._swarm_ref is not None:
             try:
                 self.data = self._swarm_ref.get_states().copy()
@@ -113,25 +132,35 @@ class Renderer():
             except Exception as e:
                 print(e)
 
-    def _get_size_in_points(self, size):
-        return size**2*CONVERSION_FACTOR
-
     def stop(self):
+        """
+        Stop the animation
+        """
         self.ani.event_source.stop()
 
     def start(self):
+        """
+        Start the animation
+        """
         self.ani.event_source.start()
     
     def reset(self):
+        """
+        Reset the plot to the initial state
+        """
         self.ax.clear()
         self.configure_plot()
         self.canvas.draw()
         self.ax.view_init(18,-170,0)
 
-    def key_pressed(self, event):
-        pass
+    def onpick(self, event: tk.Event):
+        """
+        Callback function for the pick event when selecting a point
 
-    def onpick(self, event):
+        Args:
+            event (tk.Event): data of the event
+
+        """
         index = event.ind
         if index is None:
             return
@@ -146,11 +175,16 @@ class Renderer():
 
 
 class Renderer2D():
+    """
+        Class used to render the 2D views of the swarm
+
+        !! Need improvements to be less computationally expensive and more interactive
+    """
     def __init__(self, panel:tk.Frame, swarm:Swarm):
         self.master = panel
         # Single drone view definitions
         self.viewing_radius = 5
-        #swarm.compute_neighborhood("TEST")
+
         # Initialize the figure
         self.fig = plt.figure(2, constrained_layout=True)
         gs = self.fig.add_gridspec(6,2,width_ratios=[1,2])
@@ -159,7 +193,6 @@ class Renderer2D():
         self.canvas = FigureCanvasTkAgg(self.fig, self.master)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        self.canvas.mpl_connect('key_press_event', self.key_pressed)
         self.canvas.mpl_connect('pick_event', self.onpick)
         self.ax_limits = np.array([[-5,5], [-5,5], [5,15]])
         # Add slider
@@ -190,7 +223,13 @@ class Renderer2D():
         self._swarm_ref = swarm
         self.ani = FuncAnimation(self.fig, init_func=self.init_plots, frames=self.frame_iter, func=self.render, interval=5, cache_frame_data=False, blit=True)
 
-    def update_viewing_radius(self, val):
+    def update_viewing_radius(self, val: float):
+        """
+        Change the axis limits of the single drone view
+
+        Args:
+            val (float): New viewing radius
+        """
         self.viewing_radius = val
         RendererData.axis_limits_single = np.array([[-self.viewing_radius,self.viewing_radius], [-self.viewing_radius,self.viewing_radius]])
         self.init_plots()
@@ -232,7 +271,16 @@ class Renderer2D():
             neighbors = self._swarm_ref.members[selected_drone].neighbors
         yield (swarm_states,neighbors, selected_drone)
     
-    def render(self, data):
+    def render(self, data: tuple) -> list:
+        """
+        Render the 2D views of the swarm
+
+        Args:
+            data (tuple): Yielded data from the frame_iter function
+
+        Returns:
+            list: List of artists to be rendered
+        """
         swarm_states = data[0]
         neighbors = data[1]
         selected_drone = data[2]
@@ -301,17 +349,20 @@ class Renderer2D():
         except Exception as e:
             print(e)
         return self.artists.values()
-    
-    def _get_size_in_points(self, size):
-        return size**2*CONVERSION_FACTOR
 
     def stop(self):
+        """
+        Stop the animation
+        """
         self.fig.clear()
 
-    def key_pressed(self, event):
-        pass
+    def onpick(self, event: tk.Event):
+        """
+        Callback function for the pick event when selecting a point
 
-    def onpick(self, event):
+        Args:
+            event (tk.Event): data of the event
+        """
         index = event.ind
         if index is None:
             return
@@ -325,7 +376,10 @@ class Renderer2D():
             self.master.drone_selection_changed()
         except:
             pass
-            
+
+#================================================================================================
+# FOR TESTING
+#=================================================================================================    
 def main():
     root = tk.Tk()
     root.geometry("1000x800")

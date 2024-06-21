@@ -1,0 +1,17 @@
+{
+    "outer_vs_cv": {
+        "metrics": ["neighbors_metric", "noise_type"],
+        "values": ["Topological", "None"],
+        "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["outer_2", "outer_3", "outer_4", "convex_hull_adjacent"]
+            },
+            {
+                "name": "neighbors_count",
+                "values": [3, 4, 5, 6, 7, 8]
+            }
+        ],
+        "repeat": 10
+    }
+}

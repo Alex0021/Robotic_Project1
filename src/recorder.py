@@ -36,6 +36,16 @@ class SwarmRecorder():
         self.MAX_BUFFER_SIZE = MAX_BUFFER_SIZE
 
     def start(self, sim_params:dict={}, sim_time:int=0):
+        """
+        Start recording the data of the swarm
+
+        Args:
+            sim_params (dict, optional): To save current parameters used for simulation. Defaults to {}.
+            sim_time (int, optional): Starting time of the recording. Defaults to 0.
+
+        Raises:
+            Exception: If the swarm object is not set
+        """
         if self._swarm is None:
             raise Exception("RECORDER :: Swarm object not set!")
         sim_params['sim_time'] = sim_time
@@ -59,6 +69,9 @@ class SwarmRecorder():
             print("RECORD DATA: ON")
 
     def _terminate_run(self):
+        """
+        Terminate the current run and update the record dict with running average if more than one run is performed
+        """
         # Update record dict with running average
         self._run_count += 1
         if self._run_count == 1:
@@ -79,6 +92,9 @@ class SwarmRecorder():
             print("RECORD DATA: RUN COUNT ==> ", self._run_count)
 
     def stop(self):
+        """
+        Stop the recording of the data of the swarm and terminate the current run
+        """
         self._record = False
         # Terminating the current run
         self._terminate_run()
@@ -86,6 +102,9 @@ class SwarmRecorder():
             print("RECORD DATA: OFF")
 
     def record(self):
+        """
+        Main function to record the data of the swarm at each timestep.
+        """
         if self._record:
             self._current_run_dict['timesteps'][self.buff_idx] = self._time
             # Record swarm center
@@ -121,10 +140,22 @@ class SwarmRecorder():
             self._time += self._dt
             self.buff_idx += 1
 
-    def get_data(self):
+    def get_data(self) -> dict:
+        """
+        Get the recorded data of the swarm
+
+        Returns:
+            dict: The recorded data of the swarm
+        """
         return self._record_dict
 
     def export(self, filepath: str):
+        """
+        Export the recorded data of the swarm to a numpy file
+
+        Args:
+            filepath (str): The path to save the recorded data
+        """
         if self._record:
             self.stop()
         # Keep only the minimum length of the data
@@ -138,6 +169,9 @@ class SwarmRecorder():
             print("RECORD DATA: SAVED ==> Output file: ", filepath)
 
     def clear(self):
+        """
+        Clear the recorded data of the swarm
+        """
         self._record_dict = {}
         self._current_run_dict = {}
         self._time = 0
