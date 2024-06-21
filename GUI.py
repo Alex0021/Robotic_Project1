@@ -17,6 +17,7 @@ from autorun import AutorunSim
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'app_config.json'     # Default config filename
+DEFAULT_CONFIG_FILENAME = 'app_config_template.json'
 AUTORUN_FILENAME = 'sim_autorun.json'   # Default auorun filename
 DATA_OUTPUT_FOLDER = 'sim_results'      # Output folder for .npy data files after recording
 FRONTEND_UPDATE_INTERVAL = 0.1          # To querry updates for the algo panel sidebar (viewing directions, coverage %)
@@ -50,7 +51,14 @@ class myApp(tk.Frame):
             with open(os.path.join('./config', CONFIG_FILENAME)) as f:
                 self.app_config = json.load(f)
         except FileNotFoundError:
-            self.app_config = {}
+            # Default config file
+            # Create app config file if not found
+            print(f'!! Config file not found. Creating default config file {CONFIG_FILENAME} from {DEFAULT_CONFIG_FILENAME}')
+            with open(os.path.join('./config', DEFAULT_CONFIG_FILENAME)) as f:
+                self.app_config = json.load(f)
+            with open(os.path.join('./config', CONFIG_FILENAME), 'w') as f:
+                json.dump(self.app_config, f, indent=4)
+
         # Initialize app variables with json values or defaults
         self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', 10))
         self.var_neighbors_metric = tk.StringVar(value=self.app_config['neighbors'].get('metric', 'Topological'))
