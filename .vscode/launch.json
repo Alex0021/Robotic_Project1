@@ -18,7 +18,7 @@
             "request": "launch",
             "program": "utils/generate_plots_noise.py",
             "console": "integratedTerminal",
-            "args": ["--visual", "2D_NO_noise_topo"]
+            "args": ["--visual", "2D_outter_vs_cv_test"]
         },
         {
             "name": "Python Debugger: Current File",

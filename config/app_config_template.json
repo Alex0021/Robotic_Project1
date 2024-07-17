@@ -3,6 +3,7 @@
     "swarm_2d": true,
     "drone_count": 9,
     "swarm_spread": 1.00,
+    "swarming_algorithm": "olfati-saber",
     "delta": 0.1,
     "r_coh": 20.0,
     "vref": 0.5,
