@@ -444,6 +444,7 @@ class myApp(tk.Frame):
         self.listbox_neighbors_select.grid(column=2, row=0, sticky='WE', padx=5)
 
 
+
     #==================================#
     #   SIM COMPONENTS CALLBACK        #
     #==================================# 
