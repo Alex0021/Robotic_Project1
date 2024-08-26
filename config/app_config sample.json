@@ -35,5 +35,10 @@
         "render": true,
         "use_pd_smoothing": false,
         "trajectory_mode": false
+    },
+    "drone": {
+        "name": "Crazyflie",
+        "type": "quadrotor",
+        "mass": 29.5
     }
 }
