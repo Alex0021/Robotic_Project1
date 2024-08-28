@@ -121,6 +121,7 @@ class myApp(tk.Frame):
         self.init_main_panels()
         self.init_algo_components()
         self.init_sidebar_components()
+        self.init_concave_hull_components()
         self.noise_changed_callback()
         # Start 3D plot renderer
         if self.render_env:
@@ -164,6 +165,12 @@ class myApp(tk.Frame):
         self.panel_algo.grid_rowconfigure(list(range(10)),weight=1)
         self.panel_algo.grid_rowconfigure(10,weight=2)
         self.tabbed_pane.add(self.panel_algo, text='Algo params')
+
+        # Panel concave hull
+        self.panel_hull = tk.Frame(self.mainframe, bg='lightgray')
+        self.panel_hull.grid_columnconfigure(0,weight=1)
+        self.panel_hull.grid_rowconfigure(0,weight=1)
+        self.tabbed_pane.add(self.panel_hull, text='Concave hull')
 
         # Subpabels of sidebar
         self.panel_title = tk.Frame(self.panel_sidebar, bg='darkslategray')
@@ -443,6 +450,17 @@ class myApp(tk.Frame):
         self.listbox_neighbors_select.bind("<<ComboboxSelected>>", lambda e: self._set_neighbors_algo_params())
         self.listbox_neighbors_select.grid(column=2, row=0, sticky='WE', padx=5)
 
+    def init_concave_hull_components(self):
+        
+        # Add a heading label
+        self.label_concave_hull = ttk.Label(self.panel_hull, anchor='center', text="Concave Hull", justify='center', font=font.Font(size=14, weight='bold'))
+        self.label_concave_hull.grid(column=0, row=0, pady=10, padx=10, sticky='NEWS')
+
+        # Add a button to toggle concave hull computation and rendering
+        self.btn_toggle_hull = ttk.Button(self.panel_hull, text="Enable Concave Hull", command=self._btn_concave_hull_callback)
+        self.btn_toggle_hull.grid(column=0, row=1, pady=20, padx=20, sticky='EW')
+
+
 
     #==================================#
     #   SIM COMPONENTS CALLBACK        #
@@ -502,7 +520,6 @@ class myApp(tk.Frame):
             self.swarm.set_migration_mode('trajectory')
         self.viewing_metric_changed_callback(None)
         
-
     def _set_swarm_algo_params(self, *args):
         if self.swarm is None:
             return
@@ -778,7 +795,6 @@ class myApp(tk.Frame):
             self._recorder.stop()
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='normal')
-        
 
     def _btn_autorun_callback(self):
         filepath = os.path.join('./config', self.var_autorun_filename.get())
@@ -786,6 +802,9 @@ class myApp(tk.Frame):
         self._is_autorun = True
         self.autorun.run_all()
 
+    def _btn_concave_hull_callback(self):
+        self.swarm.concave_hull_enabled = not self.swarm.concave_hull_enabled
+        
     #==================================#
     #          KEYBOARD CALLBACKS      #
     #==================================#
