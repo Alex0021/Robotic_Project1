@@ -109,15 +109,8 @@ class Renderer():
                 
                 # If the concave hull is enabled then color the drones on the border magenta using the outer_drones variable
                 if self._swarm_ref.concave_hull_enabled:
-                    print('outer drones')
-                    # outer_drones_id = [n.drone_index for n in self._swarm_ref.outer_drones]
-                    # colors[outer_drones_id] = '#ff00ffff'
-                    print(self._swarm_ref.outer_drones)
-                    print('neighbors_id')
-                    neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
-                    print(neighbors_id)
-                    colors[self._swarm_ref.outer_drones] = '#ff00ffff'
-                    a = 1
+                    colors[self._swarm_ref.outer_drones] = '#FF00FFFF'
+                    print(self._swarm_ref.alpha)
                 elif self.show_neighbors:
                     neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
                     if len(neighbors_id) > 0:

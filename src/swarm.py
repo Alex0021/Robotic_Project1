@@ -80,6 +80,7 @@ class Swarm():
         # Hull variables
         self.concave_hull_enabled = False
         self.outer_drones = []
+        self.alpha = 1.0
 
         # Initialize trajectory points
         traj_type = kwargs.get('trajectory', 'circle')
@@ -455,7 +456,12 @@ class Swarm():
             p_dim = 3
         
         points = np.array([m.pos[:p_dim] for m in self.members])
-        alpha_shape = alphashape.alphashape(points, alpha=1.0)  # tune alpha to get the desired shape
+        alpha_shape = alphashape.alphashape(points, alpha=self.alpha)  # tune alpha to get the desired shape
+        
+        # Check if the alpha_shape has an exterior
+        if alpha_shape.is_empty or alpha_shape.exterior is None:
+            self.outer_drones = []
+            return
         
         outer_drones = []
         for i, m in enumerate(self.members):
@@ -465,12 +471,12 @@ class Swarm():
         
         self.outer_drones = outer_drones
 
-        print('======================= ALPHA SHAPE =======================')
-        print("\n------ points ------")
-        print(points)
-        print("\n------ alpha shape ------")
-        print(alpha_shape)
-        print('===========================================================\n')
+        # print('======================= ALPHA SHAPE =======================')
+        # print("\n------ points ------")
+        # print(points)
+        # print("\n------ alpha shape ------")
+        # print(alpha_shape)
+        # print('===========================================================\n')
         
 
     
@@ -720,6 +726,15 @@ class Swarm():
         # For semester project specific case
         self.update_drones_FOV(360/self.count)
         self.compute_neighborhood()
+
+    def set_alpha(self, alpha: float):
+        """
+        Set the alpha parameter of the concave hull.
+
+        Args:
+            alpha (float): Alpha parameter of the concave hull.
+        """
+        self.alpha = alpha
 
     #=======================================#
     #            Miscellaneous              #
