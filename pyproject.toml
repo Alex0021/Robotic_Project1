@@ -1,0 +1,8 @@
+[project]
+name = "pyswarm_sim"
+version = "0.1.0"
+description = "A simple swarm simulator using point mass dynamics"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "wheel"]

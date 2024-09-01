@@ -936,6 +936,9 @@ class myApp(tk.Frame):
     def save_recording(self):
         self._recorder.export(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
         self._recorder.clear()
+
+    def update_app_params_dict(self, params):
+        self.app_config.update(params)
     
 
 if __name__ == "__main__":

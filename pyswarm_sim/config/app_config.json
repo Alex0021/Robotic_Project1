@@ -1,0 +1,45 @@
+{
+    "spawn_area": [0.0,0.0,5.0,1.0],
+    "swarm_2d": true,
+    "drone_count": 9,
+    "swarm_spread": 1.00,
+    "swarming_algorithm": "olfati-saber",
+    "delta": 0.1,
+    "r_coh": 20.0,
+    "vref": 0.5,
+    "a": 0.3,
+    "b": 0.5,
+    "target": "",
+    "cmd_yaw": 0.5,
+    "cmd_vel": 0.5,
+    "neighbors": {
+        "sampling": 1,
+        "count": 5,
+        "sensing_range": 30.0,
+        "r_agent": 0.069,
+        "metric": "vlos",
+        "computation": "all"
+    },
+    "noise": {
+        "distribution": "none",
+        "param_dist": 0.01,
+        "param_dir" : 0.0,
+        "param_heading": 0.0
+    },
+    "viewing_metric": {
+        "algorithm": "convex_hull",
+        "outer_points": 4,
+        "faces": "visible",
+        "dim": 3
+    },
+    "simulation": {
+        "render": true,
+        "pd_controller": {
+            "active": false,
+            "kp": 2.0,
+            "kd": 0.1,
+            "rate_limit": 1.0
+        },
+        "trajectory_mode": false
+    }
+}
