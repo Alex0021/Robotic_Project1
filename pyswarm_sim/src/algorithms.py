@@ -3,7 +3,7 @@ from scipy.spatial import ConvexHull
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from drone import Drone, DroneNeighbor
+    from pyswarm_sim.src.drone import Drone, DroneNeighbor
 
 
 def get_viewing_dir(drone, neighbors: list['DroneNeighbor'], algo: str, **params):

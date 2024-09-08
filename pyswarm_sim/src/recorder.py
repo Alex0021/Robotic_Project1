@@ -1,5 +1,5 @@
 import numpy as np
-from swarm import Swarm
+from pyswarm_sim.src.swarm import Swarm
 import copy
 
 class SwarmRecorder():

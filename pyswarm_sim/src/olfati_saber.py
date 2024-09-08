@@ -115,7 +115,7 @@ def get_cohesion_intensity_der(r: float, d_ref: float, a: float, b: float, c: fl
     return (a+b)/2 * (diff + c) / np.sqrt(1+(diff + c)**2) + (a-b)/2
 
 # Calcualte the neighbour weight for the Olfati-Saber model
-def get_neighbour_weight(r: float, r0: float, delta: float) -> float:
+def get_neighbour_weight(r: float|np.ndarray, r0: float, delta: float) -> float:
     """
     Calcualte the neighbour weight for the Olfati-Saber model
 
@@ -129,12 +129,24 @@ def get_neighbour_weight(r: float, r0: float, delta: float) -> float:
     """
     r_ratio = r / r0
 
-    if r_ratio < delta:
-        return 1
-    elif r_ratio < 1:
-        return 0.25 * (1 + np.cos(np.pi * (r_ratio - delta) / (1 - delta)))**2  #with k=2
-    else:
-        return 0
+    if isinstance(r, float):
+        if r_ratio < delta:
+            return 1
+        elif r_ratio < 1:
+            return 0.25 * (1 + np.cos(np.pi * (r_ratio - delta) / (1 - delta)))**2
+        else:
+            return 0
+    elif isinstance(r, np.ndarray):
+        nb_elems = len(r)
+        output = np.zeros(nb_elems)
+
+        for i in range(nb_elems):
+            if r_ratio[i] < delta:
+                output[i] = 1
+            elif r_ratio[i] < 1:
+                output[i] = 0.25 * (1 + np.cos(np.pi * (r_ratio[i] - delta) / (1 - delta)))**2
+
+        return output
 
 # Calcualte the derivative of the neighbour weight for the Olfati-Saber model
 def get_neighbour_weight_der(r: float, r0: float, delta: float) -> float:

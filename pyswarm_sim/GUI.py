@@ -2,18 +2,20 @@
 # THIS FILE CONTAINS THE GUI OF THE SIMULATOR
 ####################################################
 import sys, os
-sys.path.insert(0, './src')
+# sys.path.insert(0, './src')
 
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import font
-from src.swarm import *
-from src.renderer import *
-from src.simulator import Simulator
-from src.recorder import SwarmRecorder
+from pyswarm_sim.src.swarm import *
+from pyswarm_sim.src.renderer import *
+from pyswarm_sim.src.simulator import Simulator
+from pyswarm_sim.src.recorder import SwarmRecorder
 import json
 import time
-from autorun import AutorunSim
+from pyswarm_sim.src.autorun import AutorunSim
+
+os.path.join(os.path.dirname(__file__), 'pyswarm_sim')
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'app_config.json'     # Default config filename
@@ -48,48 +50,20 @@ class myApp(tk.Frame):
         # JSON CONFIG FILE INITIALIZATION  #
         #==================================#
         try:
-            with open(os.path.join('./config', CONFIG_FILENAME)) as f:
+            with open(os.path.join('./pyswarm_sim/config', CONFIG_FILENAME)) as f:
                 self.app_config = json.load(f)
         except FileNotFoundError:
             # Default config file
             # Create app config file if not found
             print(f'!! Config file not found. Creating default config file {CONFIG_FILENAME} from {DEFAULT_CONFIG_FILENAME}')
-            with open(os.path.join('./config', DEFAULT_CONFIG_FILENAME)) as f:
+            with open(os.path.join('./pyswarm_sim/config', DEFAULT_CONFIG_FILENAME)) as f:
                 self.app_config = json.load(f)
-            with open(os.path.join('./config', CONFIG_FILENAME), 'w') as f:
+            with open(os.path.join('./pyswarm_sim/config', CONFIG_FILENAME), 'w') as f:
                 json.dump(self.app_config, f, indent=4)
 
         # Initialize app variables with json values or defaults
-        self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', 10))
-        self.var_neighbors_metric = tk.StringVar(value=self.app_config['neighbors'].get('metric', 'Topological'))
-        self.var_neighbors_count = tk.IntVar(value=self.app_config['neighbors'].get('count', 1))
-        self.var_neighbors_sensing_range = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
-        self.var_neighbors_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
-        self.var_neighbors_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
-        self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
-        self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('distribution', 'None'))
-        self.var_noise_param_dist = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
-        self.var_noise_param_dir = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
-        self.var_noise_param_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
-        self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
-        self.var_r_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
-        self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
-        self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
-        self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
-        self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
-        self.spawn_area = self.app_config.get('spawn_area', [0,0,0,1])
-        self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
-        self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
-        self.var_viewing_metric_outer_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outer_points', 2))
-        self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
-        self.render_env = self.app_config['simulation'].get('render', True)
-        self.trajectory_mode_enabled = self.app_config['simulation'].get('trajectory_mode', False)
-        self.var_swarming_algorithm = tk.StringVar(value=self.app_config.get('swarming_algorithm', 'olfati-saber'))
-        self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
-        self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
-        self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
+        self.set_app_params_dict()
         self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
-        self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
 
         #==================================#
         #   APP VARIABLES TRACKING         #
@@ -893,6 +867,39 @@ class myApp(tk.Frame):
             }
         }
     
+    def set_app_params_dict(self, params=None):
+        if params is not None:
+            self.app_config.update(params)
+        self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', 10))
+        self.var_neighbors_metric = tk.StringVar(value=self.app_config['neighbors'].get('metric', 'Topological'))
+        self.var_neighbors_count = tk.IntVar(value=self.app_config['neighbors'].get('count', 1))
+        self.var_neighbors_sensing_range = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
+        self.var_neighbors_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
+        self.var_neighbors_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
+        self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
+        self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('distribution', 'None'))
+        self.var_noise_param_dist = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
+        self.var_noise_param_dir = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
+        self.var_noise_param_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
+        self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
+        self.var_r_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
+        self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
+        self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
+        self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
+        self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
+        self.spawn_area = self.app_config.get('spawn_area', [0,0,0,1])
+        self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
+        self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
+        self.var_viewing_metric_outer_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outer_points', 2))
+        self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
+        self.render_env = self.app_config['simulation'].get('render', True)
+        self.trajectory_mode_enabled = self.app_config['simulation'].get('trajectory_mode', False)
+        self.var_swarming_algorithm = tk.StringVar(value=self.app_config.get('swarming_algorithm', 'olfati-saber'))
+        self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
+        self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
+        self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
+        self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
+    
     def set_var_value(self, param, value):
         param = "var_" + param.lower()
         try:
@@ -936,9 +943,6 @@ class myApp(tk.Frame):
     def save_recording(self):
         self._recorder.export(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
         self._recorder.clear()
-
-    def update_app_params_dict(self, params):
-        self.app_config.update(params)
     
 
 if __name__ == "__main__":

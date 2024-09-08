@@ -1,8 +1,8 @@
 import numpy as np
-from drone import *
-import olfati_saber as olsab
+from pyswarm_sim.src.drone import *
+import pyswarm_sim.src.olfati_saber as olsab
 from scipy.spatial import ConvexHull
-from helper_functions import elapsed_timer
+from pyswarm_sim.src.helper_functions import elapsed_timer
 import typing
 
 #===============================================================================

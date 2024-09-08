@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 import tkinter as tk
 from matplotlib.animation import FuncAnimation
-from swarm import Swarm
+from pyswarm_sim.src.swarm import Swarm
 from collections import OrderedDict
 from matplotlib.widgets import Slider
 
