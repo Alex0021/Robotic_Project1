@@ -14,6 +14,7 @@ from pyswarm_sim.src.recorder import SwarmRecorder
 import json
 import time
 from pyswarm_sim.src.autorun import AutorunSim
+from pyswarm_sim.src.panels.control_scheme_panel import ControlSchemePanel
 
 os.path.join(os.path.dirname(__file__), 'pyswarm_sim')
 
@@ -62,7 +63,35 @@ class myApp(tk.Frame):
                 json.dump(self.app_config, f, indent=4)
 
         # Initialize app variables with json values or defaults
-        self.set_app_params_dict()
+        self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', 10))
+        self.var_neighbors_metric = tk.StringVar(value=self.app_config['neighbors'].get('metric', 'Topological'))
+        self.var_neighbors_count = tk.IntVar(value=self.app_config['neighbors'].get('count', 1))
+        self.var_neighbors_sensing_range = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
+        self.var_neighbors_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
+        self.var_neighbors_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
+        self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
+        self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('distribution', 'None'))
+        self.var_noise_param_dist = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
+        self.var_noise_param_dir = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
+        self.var_noise_param_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
+        self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
+        self.var_r_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
+        self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
+        self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
+        self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
+        self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
+        self.spawn_area = self.app_config.get('spawn_area', [0,0,0,1])
+        self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
+        self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
+        self.var_viewing_metric_outer_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outer_points', 2))
+        self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
+        self.render_env = self.app_config['simulation'].get('render', True)
+        self.trajectory_mode_enabled = self.app_config['simulation'].get('trajectory_mode', False)
+        self.var_swarming_algorithm = tk.StringVar(value=self.app_config.get('swarming_algorithm', 'olfati-saber'))
+        self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
+        self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
+        self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
+        self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
         self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
 
         #==================================#
@@ -108,6 +137,7 @@ class myApp(tk.Frame):
         
         # Create recorder object
         self._recorder = SwarmRecorder(self.swarm, float(self.var_sim_dt.get()), verbose=True)
+
 
     def init_main_panels(self):
         self.panel_view = tk.Frame(self.mainframe)
@@ -292,41 +322,43 @@ class myApp(tk.Frame):
         # Control params panel
         self.panel_control_scheme = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
         self.panel_control_scheme.grid(column=0, row=3, columnspan=3, rowspan=3, sticky='NWES', padx=0, pady=5)
-        self.panel_control_scheme.grid_columnconfigure((0,1,2,3,4,5), weight=1)
-        self.panel_control_scheme.grid_rowconfigure((0,1,2), weight=1)
+        self.panel_control_scheme.grid_columnconfigure((0,1,2), weight=1)
+        self.panel_control_scheme.grid_rowconfigure(0, weight=1)
         # COntrol scheme
         self.label_control_scheme = ttk.Label(self.panel_control_scheme, anchor='w', text="Control scheme: ")
-        self.label_control_scheme.grid(column=0,row=0, columnspan=2, sticky='NEWS')
-        self.listbox_control_scheme = ttk.Combobox(self.panel_control_scheme, values=["Olfati-Saber"])
-        self.listbox_control_scheme.set("Olfati-Saber")
-        self.listbox_control_scheme.grid(row=0,column=2,columnspan=2, sticky='we', padx=5)
+        self.label_control_scheme.grid(column=0,row=0, sticky='NEWS')
+        self.listbox_control_scheme = ttk.Combobox(self.panel_control_scheme, values=["Olfati-Saber", "Reynolds"])
+        self.listbox_control_scheme.set(self.var_swarming_algorithm.get())
+        self.listbox_control_scheme.grid(row=0,column=1, sticky='we', padx=10)
         self.listbox_control_scheme.bind("<<ComboboxSelected>>", lambda e: self.var_swarming_algorithm.set(self.listbox_control_scheme.get()))
+        self.button_control_scheme_params = ttk.Button(self.panel_control_scheme, text="Edit Params", command=self._btn_control_scheme_params_callback)
+        self.button_control_scheme_params.grid(row=0,column=2, sticky='EW', padx=10, ipady=5)
         # Control variables
-        self.label_control_delta = ttk.Label(self.panel_control_scheme, anchor='w', text="delta: ")
-        self.label_control_delta.grid(column=0,row=1, sticky='NEWS')
-        self.textbox_control_delta = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_delta)
-        self.textbox_control_delta.grid(column=1, row=1, sticky='W', padx=5)
+        # self.label_control_delta = ttk.Label(self.panel_control_scheme, anchor='w', text="delta: ")
+        # self.label_control_delta.grid(column=0,row=1, sticky='NEWS')
+        # self.textbox_control_delta = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_delta)
+        # self.textbox_control_delta.grid(column=1, row=1, sticky='W', padx=5)
 
-        self.label_control_r_coh = ttk.Label(self.panel_control_scheme, anchor='w', text="r_coh: ")
-        self.label_control_r_coh.grid(column=2,row=1, sticky='NEWS')
-        self.textbox_control_r_coh = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_r_coh)
-        self.textbox_control_r_coh.grid(column=3, row=1, sticky='W', padx=5)
+        # self.label_control_r_coh = ttk.Label(self.panel_control_scheme, anchor='w', text="r_coh: ")
+        # self.label_control_r_coh.grid(column=2,row=1, sticky='NEWS')
+        # self.textbox_control_r_coh = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_r_coh)
+        # self.textbox_control_r_coh.grid(column=3, row=1, sticky='W', padx=5)
 
-        self.label_control_vref = ttk.Label(self.panel_control_scheme, anchor='w', text="vref: ")
-        self.label_control_vref.grid(column=4,row=1, sticky='NEWS')
-        self.textbox_control_vref = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_vref)
-        #self.textbox_control_vref.bind("<Return>", lambda e: self.swarm.set_cmd_velocity(np.array([float(self.var_vref.get())]*3)))
-        self.textbox_control_vref.grid(column=5, row=1, sticky='W', padx=5)
+        # self.label_control_vref = ttk.Label(self.panel_control_scheme, anchor='w', text="vref: ")
+        # self.label_control_vref.grid(column=4,row=1, sticky='NEWS')
+        # self.textbox_control_vref = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_vref)
+        # #self.textbox_control_vref.bind("<Return>", lambda e: self.swarm.set_cmd_velocity(np.array([float(self.var_vref.get())]*3)))
+        # self.textbox_control_vref.grid(column=5, row=1, sticky='W', padx=5)
 
-        self.label_control_a = ttk.Label(self.panel_control_scheme, anchor='w', text="a: ")
-        self.label_control_a.grid(column=0,row=2, sticky='NEWS')
-        self.textbox_control_a = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_a)
-        self.textbox_control_a.grid(column=1, row=2, sticky='W', padx=5)
+        # self.label_control_a = ttk.Label(self.panel_control_scheme, anchor='w', text="a: ")
+        # self.label_control_a.grid(column=0,row=2, sticky='NEWS')
+        # self.textbox_control_a = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_a)
+        # self.textbox_control_a.grid(column=1, row=2, sticky='W', padx=5)
 
-        self.label_control_b = ttk.Label(self.panel_control_scheme, anchor='w', text="b: ")
-        self.label_control_b.grid(column=2,row=2, sticky='NEWS')
-        self.textbox_control_b = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_b)
-        self.textbox_control_b.grid(column=3, row=2, sticky='W', padx=5)
+        # self.label_control_b = ttk.Label(self.panel_control_scheme, anchor='w', text="b: ")
+        # self.label_control_b.grid(column=2,row=2, sticky='NEWS')
+        # self.textbox_control_b = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_b)
+        # self.textbox_control_b.grid(column=3, row=2, sticky='W', padx=5)
         
         # Noise
         self.pnael_noise = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
@@ -753,13 +785,15 @@ class myApp(tk.Frame):
             self._recorder.stop()
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='normal')
-        
 
     def _btn_autorun_callback(self):
         filepath = os.path.join('./config', self.var_autorun_filename.get())
         self.autorun = AutorunSim(self, filepath)
         self._is_autorun = True
         self.autorun.run_all()
+
+    def _btn_control_scheme_params_callback(self):
+        ControlSchemePanel(self, self.var_swarming_algorithm.get())
 
     #==================================#
     #          KEYBOARD CALLBACKS      #
@@ -867,38 +901,35 @@ class myApp(tk.Frame):
             }
         }
     
-    def set_app_params_dict(self, params=None):
+    def set_app_params_dict_values(self, params=None):
         if params is not None:
             self.app_config.update(params)
-        self.var_drone_count = tk.IntVar(value=self.app_config.get('drone_count', 10))
-        self.var_neighbors_metric = tk.StringVar(value=self.app_config['neighbors'].get('metric', 'Topological'))
-        self.var_neighbors_count = tk.IntVar(value=self.app_config['neighbors'].get('count', 1))
-        self.var_neighbors_sensing_range = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
-        self.var_neighbors_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
-        self.var_neighbors_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
-        self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
-        self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('distribution', 'None'))
-        self.var_noise_param_dist = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
-        self.var_noise_param_dir = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
-        self.var_noise_param_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
-        self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
-        self.var_r_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
-        self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
-        self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
-        self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
-        self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
-        self.spawn_area = self.app_config.get('spawn_area', [0,0,0,1])
-        self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
-        self.cmd_vel = self.app_config.get('cmd_vel', 0.5)
-        self.var_viewing_metric_outer_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outer_points', 2))
-        self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
-        self.render_env = self.app_config['simulation'].get('render', True)
-        self.trajectory_mode_enabled = self.app_config['simulation'].get('trajectory_mode', False)
-        self.var_swarming_algorithm = tk.StringVar(value=self.app_config.get('swarming_algorithm', 'olfati-saber'))
-        self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
-        self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
-        self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
-        self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
+        self.var_drone_count.set(self.app_config.get('drone_count', 10))
+        self.var_swarm_spread.set(self.app_config.get('swarm_spread', 1.0))
+        self.var_delta.set(self.app_config.get('delta', 0.5))
+        self.var_r_coh.set(self.app_config.get('r_coh', 1.0))
+        self.var_vref.set(self.app_config.get('vref', 0.5))
+        self.var_a.set(self.app_config.get('a', 0.5))
+        self.var_b.set(self.app_config.get('b', 0.5))
+        self.textbox_target.delete(0, tk.END)
+        self.textbox_target.insert(0, self.app_config.get('target', ''))
+        self.var_neighbors_sampling.set(self.app_config['neighbors'].get('sampling', 1))
+        self.var_neighbors_count.set(self.app_config['neighbors'].get('count', 1))
+        self.var_neighbors_sensing_range.set(self.app_config['neighbors'].get('sensing_range', 1.0))
+        self.var_neighbors_r_agent.set(self.app_config['neighbors'].get('r_agent', 1.0))
+        self.listbox_neighbors_algo.set(self.app_config['neighbors'].get('metric', 'Eucledian'))
+        self.listbox_neighbors_select.set(self.app_config['neighbors'].get('computation', 'None'))
+        self.listbox_noise_type.set(self.app_config['noise'].get('type', 'None'))
+        self.var_noise_param_dist.set(self.app_config['noise'].get('param_dist', 0.0))
+        self.var_noise_param_dir.set(self.app_config['noise'].get('param_dir', 0.0))
+        self.var_noise_param_heading.set(self.app_config['noise'].get('param_heading', 0.0))
+        self.var_swarming_algorithm.set(self.app_config.get('swarming_algorithm', 'olfati-saber'))
+        if self.swarm is not None:
+            self.var_viewing_metric_algorithm.set(self.app_config['viewing_metric'].get('algorithm', 'Outer'))
+            self.var_viewing_metric_outer_points.set(self.app_config['viewing_metric'].get('outer_points', 10))
+            self.var_viewing_metric_faces.set(self.app_config['viewing_metric'].get('faces', 10))
+            self.var_viewing_metric_dim.set(self.app_config['viewing_metric'].get('dim', 3))
+        
     
     def set_var_value(self, param, value):
         param = "var_" + param.lower()

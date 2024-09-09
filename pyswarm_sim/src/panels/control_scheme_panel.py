@@ -66,7 +66,8 @@ class ControlSchemePanel(tk.Toplevel):
         self.control_scheme = current_control_scheme
 
         self.init_common_components()
-        self.calculate_c_param()
+        if current_control_scheme.upper() == "OLFATI-SABER":
+            self.calculate_c_param()
 
 
     def init_common_components(self):
@@ -111,8 +112,8 @@ class ControlSchemePanel(tk.Toplevel):
 
 
     def init_parameters_panel(self) -> tk.Frame:
-        if self.control_scheme == "Olfati-Saber":
-            parameters_panel = tk.Frame(self.algorithm_panel)
+        parameters_panel = tk.Frame(self.algorithm_panel)
+        if self.control_scheme.upper() == "OLFATI-SABER":
             parameters_panel.grid_columnconfigure(1, weight=1)
             parameters_panel.configure(border=2, relief="groove")
             # d_ref parameter
@@ -160,8 +161,7 @@ class ControlSchemePanel(tk.Toplevel):
             self.c_auto_checkbox = tk.Checkbutton(self.c_param_panel, text="Auto", variable=self.c_param_auto)
             self.c_auto_checkbox.grid(row=0, column=1, sticky="ew", padx=5)
 
-        elif self.control_scheme == "Reynolds":
-            parameters_panel = tk.Frame(self.algorithm_panel)
+        elif self.control_scheme.upper() == "REYNOLDS":
             parameters_panel.grid_columnconfigure(0, weight=0)
             parameters_panel.grid_columnconfigure(1, weight=1)
             parameters_panel.configure(border=2, relief="groove")
@@ -224,9 +224,9 @@ class ControlSchemePanel(tk.Toplevel):
         Generate the plot based on the control scheme
         """
         self.fig_ref.clear()
-        if self.control_scheme == "Olfati-Saber":
+        if self.control_scheme.upper() == "OLFATI-SABER":
             self.generate_plot_os()
-        elif self.control_scheme == "Reynolds":
+        elif self.control_scheme.upper() == "REYNOLDS":
             self.generate_plot_reynolds()
         self.plot_view_panel.plot_view_canvas.draw()
         self.plot_view_panel.plot_view_toolbar.update()
@@ -303,7 +303,8 @@ class ControlSchemePanel(tk.Toplevel):
         self.current_app_config["r_coh"] = self.r_coh_param.get()
         self.current_app_config["d_ref"] = self.d_ref_param.get()
         self.current_app_config["c_auto"] = self.c_param_auto.get()
-        self.parent.set_app_params_dict(self.current_app_config)
+        self.current_app_config["swarming_algorithm"] = self.control_scheme
+        self.parent.set_app_params_dict_values(self.current_app_config)
 
     def update_control_scheme(self, control_scheme: str):
         """
@@ -315,6 +316,8 @@ class ControlSchemePanel(tk.Toplevel):
         self.parameters_panel.destroy()
         self.parameters_panel = self.init_parameters_panel()
         self.parameters_panel.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=5, pady=5)
+        if control_scheme.upper() == "OLFATI-SABER":
+            self.calculate_c_param()
         self.generate_plot()
 
     def on_parameters_change(self, *args):
@@ -330,15 +333,15 @@ class ControlSchemePanel(tk.Toplevel):
         """
         self.save_app_params()
         self.destroy()
-        exit(0)
+        # exit(0)
 
     def on_cancel(self):
         """
             To do when cancel button
         """ 
-        self.parent.set_app_params_dict(self.old_app_config)
+        self.parent.set_app_params_dict_values(self.old_app_config)
         self.destroy()
-        exit(0)
+        # exit(0)
 
 
 
@@ -351,6 +354,6 @@ if __name__ == "__main__":
     with open("pyswarm_sim/config/app_config.json", "r") as f:
         app_config = json.load(f)
     root.get_app_params_dict = lambda: app_config
-    root.set_app_params_dict = lambda a: print(a)
+    root.set_app_params_dict_values = lambda a: print(a)
     ControlSchemePanel(root, "Olfati-Saber")
     root.mainloop()
