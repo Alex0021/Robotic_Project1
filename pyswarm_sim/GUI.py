@@ -69,16 +69,10 @@ class myApp(tk.Frame):
         self.var_neighbors_sensing_range = tk.DoubleVar(value=self.app_config['neighbors'].get('sensing_range', 1.0))
         self.var_neighbors_r_agent = tk.DoubleVar(value=self.app_config['neighbors'].get('r_agent', 0.01))
         self.var_neighbors_sampling = tk.IntVar(value=self.app_config['neighbors'].get('sampling', 1))
-        self.var_swarm_spread = tk.DoubleVar(value=self.app_config.get('swarm_spread', 1.0))
         self.var_noise_type = tk.StringVar(value=self.app_config['noise'].get('distribution', 'None'))
         self.var_noise_param_dist = tk.DoubleVar(value=self.app_config['noise'].get('param_dist', 0.05))
         self.var_noise_param_dir = tk.DoubleVar(value=self.app_config['noise'].get('param_dir', 0.02))
         self.var_noise_param_heading = tk.DoubleVar(value=self.app_config['noise'].get('param_heading', 0.0))
-        self.var_delta = tk.DoubleVar(value=self.app_config.get('delta', 0.0))
-        self.var_r_coh = tk.DoubleVar(value=self.app_config.get('r_coh', 0.0))
-        self.var_vref = tk.DoubleVar(value=self.app_config.get('vref', 0.0))
-        self.var_a = tk.DoubleVar(value=self.app_config.get('a', 0.0))
-        self.var_b = tk.DoubleVar(value=self.app_config.get('b', 0.0))
         self.var_z_offset = tk.DoubleVar(value=self.app_config.get('z_offset', 10.0))
         self.spawn_area = self.app_config.get('spawn_area', [0,0,0,1])
         self.cmd_yaw = self.app_config.get('cmd_yaw', 0.5)
@@ -87,7 +81,7 @@ class myApp(tk.Frame):
         self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
         self.render_env = self.app_config['simulation'].get('render', True)
         self.trajectory_mode_enabled = self.app_config['simulation'].get('trajectory_mode', False)
-        self.var_swarming_algorithm = tk.StringVar(value=self.app_config.get('swarming_algorithm', 'olfati-saber'))
+        self.var_swarming_algorithm = tk.StringVar(value=self.app_config['swarming_algorithm'].get('name', 'olfati-saber'))
         self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
         self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
         self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
@@ -100,13 +94,7 @@ class myApp(tk.Frame):
         self.var_drone_count.trace_add('write', self._update_swarm_count)
         self.var_neighbors_metric.trace_add('write', self._update_neighbors_panel_components)
         self.var_neighbors_count.trace_add('write', self._set_neighbors_algo_params)
-        self.var_swarm_spread.trace_add('write', self._set_swarm_algo_params)
         self.var_swarming_algorithm.trace_add('write', self.swarming_algo_changed)
-        self.var_delta.trace_add('write', self._set_swarm_algo_params)
-        self.var_r_coh.trace_add('write', self._set_swarm_algo_params)
-        self.var_vref.trace_add('write', self._set_swarm_algo_params)
-        self.var_a.trace_add('write', self._set_swarm_algo_params)
-        self.var_b.trace_add('write', self._set_swarm_algo_params)
         self.var_noise_type.trace_add('write', self.noise_changed_callback)
         self.var_noise_param_dist.trace_add('write', self.noise_changed_callback)
         self.var_noise_param_dir.trace_add('write', self.noise_changed_callback)
@@ -175,10 +163,10 @@ class myApp(tk.Frame):
         self.panel_title.grid_rowconfigure(0,weight=1)
         self.panel_title.grid(column=0,row=0, sticky='NWES')
 
-        self.panel_params = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=5, pady=5)
+        self.panel_params = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=0, pady=5)
         self.panel_params.grid_columnconfigure(0, weight=2)
         self.panel_params.grid_columnconfigure((1,2), weight=1)
-        self.panel_params.grid_rowconfigure(list(range(9)),weight=1)
+        self.panel_params.grid_rowconfigure(list(range(6)),weight=1)
         self.panel_params.grid(column=0, row=1,sticky='NWES')
 
         self.panel_sim = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=5, pady=5)
@@ -291,7 +279,7 @@ class myApp(tk.Frame):
         self.spinner_drone_nb.set(self.var_drone_count.get())
 
         # Neighbors
-        self.panel_neighbors = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
+        self.panel_neighbors = tk.Frame(self.panel_params)
         self.panel_neighbors.grid(column=0, row=1, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=5)
         self.panel_neighbors.grid_columnconfigure((0,1,2,3,4,5), weight=1)
         self.panel_neighbors.grid_rowconfigure(0, weight=1)
@@ -311,17 +299,17 @@ class myApp(tk.Frame):
         for child in self.panel_neighbors.winfo_children():
             child.config(state='disabled')
 
-        # Swarm spread
-        self.label_swarm_spread = ttk.Label(self.panel_params, anchor='w', text="Swarm spread (r): ")
-        self.label_swarm_spread.grid(column=0,row=2, sticky='NEWS')
-        self.slider_spread = ttk.Scale(self.panel_params, from_=0,to=5, orient='horizontal', variable=self.var_swarm_spread, command=lambda val: self.var_swarm_spread.set(round(float(val),2)))
-        self.slider_spread.grid(row=2, column=1, sticky='WE', padx=5)
-        self.textbox_slider_value = ttk.Entry(self.panel_params, textvariable=self.var_swarm_spread, width=10)
-        self.textbox_slider_value.grid(row=2, column=2, sticky='W', padx=5)
+        # # Swarm spread
+        # self.label_d_ref = ttk.Label(self.panel_params, anchor='w', text="Swarm spread (r): ")
+        # self.label_d_ref.grid(column=0,row=2, sticky='NEWS')
+        # self.slider_spread = ttk.Scale(self.panel_params, from_=0,to=5, orient='horizontal', variable=self.var_d_ref, command=lambda val: self.var_d_ref.set(round(float(val),2)))
+        # self.slider_spread.grid(row=2, column=1, sticky='WE', padx=5)
+        # self.textbox_slider_value = ttk.Entry(self.panel_params, textvariable=self.var_d_ref, width=10)
+        # self.textbox_slider_value.grid(row=2, column=2, sticky='W', padx=5)
 
         # Control params panel
         self.panel_control_scheme = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
-        self.panel_control_scheme.grid(column=0, row=3, columnspan=3, rowspan=3, sticky='NWES', padx=0, pady=5)
+        self.panel_control_scheme.grid(column=0, row=2, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=5)
         self.panel_control_scheme.grid_columnconfigure((0,1,2), weight=1)
         self.panel_control_scheme.grid_rowconfigure(0, weight=1)
         # COntrol scheme
@@ -362,7 +350,7 @@ class myApp(tk.Frame):
         
         # Noise
         self.pnael_noise = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
-        self.pnael_noise.grid(column=0, row=6, columnspan=3, rowspan=2, sticky='NWES', padx=0, pady=5)
+        self.pnael_noise.grid(column=0, row=3, columnspan=3, rowspan=2, sticky='NWES', padx=0, pady=5)
         self.pnael_noise.grid_columnconfigure((0,1,2,3,4,5,6), weight=1)
         self.pnael_noise.grid_rowconfigure((0,1), weight=1)
         self.label_noise = ttk.Label(self.pnael_noise, anchor='w', text="Noise: ")
@@ -371,8 +359,8 @@ class myApp(tk.Frame):
         self.listbox_noise_type.set(self.app_config['noise'].get('type', 'None'))
         self.listbox_noise_type.grid(column=1,row=0, sticky='we', padx=5)
         self.listbox_noise_type.bind("<<ComboboxSelected>>", lambda e: self.var_noise_type.set(self.listbox_noise_type.get()))
-        self.btn_apply_noise_all = ttk.Button(self.pnael_noise, text="Apply to all", command=self.btn_apply_all_callback)
-        self.btn_apply_noise_all.grid(column=3,row=0, columnspan=2, sticky='NEWS', pady=10)
+        self.btn_apply_noise_all = ttk.Button(self.pnael_noise, text="Apply to all", state="disabled", command=self.btn_apply_all_callback)
+        self.btn_apply_noise_all.grid(column=3,row=0, columnspan=2, sticky='EW', ipady=5)
         self.label_noise_pos = ttk.Label(self.pnael_noise, anchor='e', text="Dist:", justify='right')
         self.label_noise_pos.grid(column=0,row=1, sticky='NEWS')
         self.spinner_noise_pos = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_param_dist)
@@ -388,7 +376,7 @@ class myApp(tk.Frame):
         
         # Target
         self.panel_target = tk.Frame(self.panel_params)
-        self.panel_target.grid(column=0, row=8, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=0)
+        self.panel_target.grid(column=0, row=5, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=0)
         self.panel_target.grid_columnconfigure((0,1,2,4), weight=1)
         self.panel_target.grid_rowconfigure(0, weight=1)
         self.label_target = ttk.Label(self.panel_target, anchor='w', text="Target: ")
@@ -400,7 +388,7 @@ class myApp(tk.Frame):
         self.label_target_format.grid(column=2,row=0, sticky='NEWS')
         btn_text = "Single mode" if self.trajectory_mode_enabled else "Trajectory mode"
         self.btn_trajectory_mode = ttk.Button(self.panel_target, text=btn_text, command=self.btn_trajectory_mode_callback, state='disabled')
-        self.btn_trajectory_mode.grid(column=4,row=0, sticky='NEWS', padx=5)
+        self.btn_trajectory_mode.grid(column=4,row=0, sticky='EW', ipady=5, padx=10)
 
         # Simulate buttons
         self.btn_init = ttk.Button(self.panel_sim, text="Initialize", command=self._initialize_simulation)
@@ -466,7 +454,8 @@ class myApp(tk.Frame):
             target_numbers = target_text.split(';')
             target = np.asarray(target_numbers, dtype=float)
 
-        self.swarm = Swarm(count=nb_drones, area=self.spawn_area, migration_point=target, is_2d=self.swarm_2d, trajectory=self.swarm_traj)
+        self.swarm = Swarm(count=nb_drones, area=self.spawn_area, migration_point=target, 
+                           is_2d=self.swarm_2d, trajectory=self.swarm_traj, obstacles=self.app_config.get('obstacles', []))
         dt = float(self.var_sim_dt.get())
         self._recorder._swarm = self.swarm
         self.sim = Simulator(dt, self.swarm, self._recorder)
@@ -502,6 +491,7 @@ class myApp(tk.Frame):
         self.radio_3D_viewing.config(state='normal')
         self.button_start_recording.config(state='normal')
         self.btn_reset_view.config(state='normal')
+        self.btn_apply_noise_all.config(state='normal')
         if self.swarm.is_2D:
             self.var_viewing_metric_dim.set(2)
             self.radio_3D_viewing.config(state='disabled')
@@ -517,12 +507,7 @@ class myApp(tk.Frame):
         try:
             self.swarm.algo_params.update( {
                 'algorithm': self.var_swarming_algorithm.get(),
-                'delta': self.var_delta.get(),
-                'd_ref': self.var_swarm_spread.get(),
-                'a': self.var_a.get(),
-                'b': self.var_b.get(),
-                'r0_coh': self.var_r_coh.get(),
-                'v_ref_target': self.var_vref.get()
+                **self.app_config['swarming_algorithm'].get('params', {})
             })
         except ValueError as e:
             pass
@@ -703,6 +688,7 @@ class myApp(tk.Frame):
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='disabled')
         self.btn_reset_view.config(state='disabled')
+        self.btn_apply_noise_all.config(state='disabled')
         self.update_frontend_running = False
         # Disable all components in the neighbors panel
         for child in self.panel_neighbors.winfo_children():
@@ -762,7 +748,7 @@ class myApp(tk.Frame):
 
     def btn_apply_all_callback(self):
         try:
-            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_param_dist.get(), self.var_noise_orient.get(), self.var_noise_param_dir.get(), apply_all=True)
+            self.swarm.set_noise(self.listbox_noise_type.get(), self.var_noise_param_dist.get(), self.var_noise_param_heading.get(), self.var_noise_param_dir.get(), apply_all=True)
             print('Noise parameters changed for ALL: {0}'.format(self.swarm.get_noise()))
         except Exception as e:
             print("Error setting noise: {0}".format(e))
@@ -872,12 +858,10 @@ class myApp(tk.Frame):
     def get_app_params_dict(self):
         return {
             "drone_count": self.var_drone_count.get(),
-            "swarm_spread": self.var_swarm_spread.get(),
-            "delta": self.var_delta.get(),
-            "r_coh": self.var_r_coh.get(),
-            "vref": self.var_vref.get(),
-            "a": self.var_a.get(),
-            "b": self.var_b.get(),
+            "swarming_algorithm": {
+                "name": self.var_swarming_algorithm.get(),
+                "params": self.app_config['swarming_algorithm']['params']
+            },
             "target": self.textbox_target.get(),
             "neighbors": {
                 "sampling": self.var_neighbors_sampling.get(),
@@ -891,7 +875,7 @@ class myApp(tk.Frame):
                 "type": self.listbox_noise_type.get(),
                 "param_dist": self.var_noise_param_dist.get(),
                 "param_dir" : self.var_noise_param_dir.get(),
-                "param_heading": 0.0
+                "param_heading": self.var_noise_param_heading.get()
             },
             "viewing_metric": {
                 "algorithm": self.var_viewing_metric_algorithm.get(),
@@ -905,12 +889,6 @@ class myApp(tk.Frame):
         if params is not None:
             self.app_config.update(params)
         self.var_drone_count.set(self.app_config.get('drone_count', 10))
-        self.var_swarm_spread.set(self.app_config.get('swarm_spread', 1.0))
-        self.var_delta.set(self.app_config.get('delta', 0.5))
-        self.var_r_coh.set(self.app_config.get('r_coh', 1.0))
-        self.var_vref.set(self.app_config.get('vref', 0.5))
-        self.var_a.set(self.app_config.get('a', 0.5))
-        self.var_b.set(self.app_config.get('b', 0.5))
         self.textbox_target.delete(0, tk.END)
         self.textbox_target.insert(0, self.app_config.get('target', ''))
         self.var_neighbors_sampling.set(self.app_config['neighbors'].get('sampling', 1))
@@ -923,7 +901,7 @@ class myApp(tk.Frame):
         self.var_noise_param_dist.set(self.app_config['noise'].get('param_dist', 0.0))
         self.var_noise_param_dir.set(self.app_config['noise'].get('param_dir', 0.0))
         self.var_noise_param_heading.set(self.app_config['noise'].get('param_heading', 0.0))
-        self.var_swarming_algorithm.set(self.app_config.get('swarming_algorithm', 'olfati-saber'))
+        self.var_swarming_algorithm.set(self.app_config['swarming_algorithm'].get('name', 'olfati-saber'))
         if self.swarm is not None:
             self.var_viewing_metric_algorithm.set(self.app_config['viewing_metric'].get('algorithm', 'Outer'))
             self.var_viewing_metric_outer_points.set(self.app_config['viewing_metric'].get('outer_points', 10))
@@ -932,6 +910,7 @@ class myApp(tk.Frame):
         
     
     def set_var_value(self, param, value):
+        self.app_config.update({param: value})
         param = "var_" + param.lower()
         try:
             getattr(self, param).set(value)

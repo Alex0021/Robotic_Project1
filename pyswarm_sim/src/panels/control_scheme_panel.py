@@ -20,6 +20,8 @@ class ControlSchemePanel(tk.Toplevel):
         self.current_app_config = parent.get_app_params_dict()
         # keep a copy of the old config if cancelled
         self.old_app_config = self.current_app_config.copy() 
+        # Keep only parameters dictionnary for ease of use
+        self.current_app_config = self.current_app_config['swarming_algorithm'].get('params', dict())
 
         # Other variables
         self.plot_canvas = None
@@ -69,6 +71,9 @@ class ControlSchemePanel(tk.Toplevel):
         if current_control_scheme.upper() == "OLFATI-SABER":
             self.calculate_c_param()
 
+        # Behavior
+        self.protocol("WM_DELETE_WINDOW", self.on_cancel)
+
 
     def init_common_components(self):
         self.title("Control Scheme")
@@ -114,6 +119,10 @@ class ControlSchemePanel(tk.Toplevel):
     def init_parameters_panel(self) -> tk.Frame:
         parameters_panel = tk.Frame(self.algorithm_panel)
         if self.control_scheme.upper() == "OLFATI-SABER":
+            # Create a tabbed panel for swarm and obstacle parameters
+            # tabbed_panel_params = ttk.Notebook(parameters_panel)
+            # tabbed_panel_params.grid(row=0, column=0, sticky="nsew")
+
             parameters_panel.grid_columnconfigure(1, weight=1)
             parameters_panel.configure(border=2, relief="groove")
             # d_ref parameter
@@ -296,15 +305,21 @@ class ControlSchemePanel(tk.Toplevel):
         """
         Generate the app config dictionary and save it to the parent
         """
-        self.current_app_config["a"] = float(self.a_param.get())
-        self.current_app_config["b"] = float(self.b_param.get())
-        self.current_app_config["c"] = float(self.c_param.get())
-        self.current_app_config["delta"] = float(self.delta_param.get())
-        self.current_app_config["r_coh"] = self.r_coh_param.get()
-        self.current_app_config["d_ref"] = self.d_ref_param.get()
-        self.current_app_config["c_auto"] = self.c_param_auto.get()
-        self.current_app_config["swarming_algorithm"] = self.control_scheme
-        self.parent.set_app_params_dict_values(self.current_app_config)
+        self.current_app_config.update({
+            "a": float(self.a_param.get()),
+            "b": float(self.b_param.get()),
+            "c": float(self.c_param.get()),
+            "delta": float(self.delta_param.get()),
+            "r_coh": self.r_coh_param.get(),
+            "d_ref": self.d_ref_param.get(),
+            "c_auto": self.c_param_auto.get(),
+            "c_coh": self.cohesion_param.get(),
+            "c_sep": self.separation_param.get(),
+            "c_align": self.alignment_param.get(),
+            "c_mig": self.migration_param.get(),
+        })
+        self.parent.set_app_params_dict_values({"swarming_algorithm": { "name": self.control_scheme, 
+                                                                        "params": self.current_app_config }})
 
     def update_control_scheme(self, control_scheme: str):
         """

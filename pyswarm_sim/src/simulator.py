@@ -40,6 +40,8 @@ class Simulator():
                     t = time.time() - self.last_time
                     if t < self._dt:
                         time.sleep(self._dt - t)
+            else:
+                time.sleep(0.01)
                     
 
     def start(self):

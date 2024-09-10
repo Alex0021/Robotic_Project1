@@ -1,9 +1,11 @@
 import numpy as np
 from pyswarm_sim.src.drone import *
 import pyswarm_sim.src.olfati_saber as olsab
+import pyswarm_sim.src.reynolds as reynolds
 from scipy.spatial import ConvexHull
 from pyswarm_sim.src.helper_functions import elapsed_timer
 import typing
+from pyswarm_sim.src.obstacles import Cylinder
 
 #===============================================================================
 # Trajectory parameters
@@ -72,6 +74,18 @@ class Swarm():
         self.timing_coverage = 0.0
         self.sim_time = 0.0
         self.dist_weights = np.ones(self.count)
+
+        # Initialize obstacles list if any
+        self.obstacles = []
+        if "obstacles" in kwargs:
+            for obs in kwargs["obstacles"]:
+                obs_type = obs.get('type', 'unknown')
+                match obs_type.upper():
+                    case 'CYLINDER':
+                        self.obstacles.append(Cylinder(**obs))
+                    case _:
+                        raise ValueError("Invalid obstacle type: {0}".format(obs_type))
+               
 
         # Initialize trajectory points
         traj_type = kwargs.get('trajectory', 'circle')
@@ -157,7 +171,10 @@ class Swarm():
                     new_acc[i,:] = np.zeros(3)
                 case "OLFATI-SABER":
                     neighbor_poses = np.array([n.get_state() for n in neighborhood])
-                    new_acc[i,:] = olsab.olfati_saber_input(m.get_state(), neighbor_poses, [], self.migration_point, self.algo_params)
+                    new_acc[i,:] = olsab.olfati_saber_input(m.get_state(), neighbor_poses, self.obstacles, self.migration_point, self.algo_params)
+                case "REYNOLDS":
+                    neighbor_poses = np.array([n.get_state() for n in neighborhood])
+                    new_acc[i,:] = reynolds.reynolds_input(m.get_state(), neighbor_poses, self.obstacles,self.migration_point, self.algo_params)
                 case _:
                     raise ValueError("Invalid algorithm: {0}".format(self.algo_params.get('algorithm', 'None')))
         # Perform update step based on new acceleration
@@ -685,7 +702,13 @@ class Swarm():
     def print_swarm(self):
         """
         Print the members of the swarm with their positions, velocities and accelerations.
+        Print the obstacles in the environment.
         """
         for i in range(self.count):
             print("====| DRONE {0} |=====".format(i+1))
             self.members[i].print_state()
+
+        if len(self.obstacles) > 0:
+            print("====| OBSTACLES |=====")
+            for i in range(len(self.obstacles)):
+                print("{0} --> {1}".format(i+1, self.obstacles[i]))

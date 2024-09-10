@@ -1,4 +1,5 @@
 import numpy as np
+from pyswarm_sim.src.obstacles import Obstacle, Cylinder
 
 '''
     This code is greatly inspired from the swarm_pilot.py file
@@ -213,14 +214,14 @@ def get_migration_force(p_mig: np.ndarray[float], p_i: np.ndarray[float], v_ref:
     return gamma*d*(v_ref*u_i-v_i)
 
 # Compute the olfati-saber swarm commands
-def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, cylinder_poses: np.ndarray, p_mig: np.ndarray=None, params: dict=dict()) -> np.ndarray:
+def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obstacles: list["Obstacle"], p_mig: np.ndarray=None, params: dict=dict()) -> np.ndarray:
     """
     Compute the olfati-saber swarm commands
 
     Args:
         drone_pose (np.ndarray): current drone pose [x, y, z, vx, vy, vz, phi, theta, psi]
         neighbour_poses (np.ndarray): neighbour drone poses [x, y, z, vx, vy, vz, phi, theta, psi]
-        cylinder_poses (np.ndarray): obstacles poses [x, y, z] (not implemented yet)
+        obstacles (np.ndarray): obstacles definition (use Obstacle class)
         p_mig (np.ndarray, optional): target point to reach. Defaults to None.
         params (dict, optional): other defined parameters. Defaults to dict().
 
@@ -240,6 +241,7 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, cyli
     lambda_obs = params.get('lambda_obs',1)
     c_pm_obs = params.get('c_pm_obs',4.3)
     c_vm_obs = params.get('c_vm_obs',0)
+    d_ref_obs = params.get('d_ref_obs',0.5)
     gamma = params.get('gamma',1)
     v_ref_target = params.get('v_ref_target',1.0)
     
@@ -290,39 +292,50 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, cyli
     acc_mig += get_migration_force(p_mig, drone_pos, v_ref_target, drone_vel, gamma)
     #acc_mig = rot_global2body(acc_mig, drone_pose[3])
 
-    # # Initialize the obstacle avoidance commands
-    # acc_obs = np.zeros(3)
+    # Initialize the obstacle avoidance commands
+    acc_obs = np.zeros(3)
 
-    # # Compute the obstacle avoidance commands
-    # for i in range(self.num_obs):
+    # Compute the obstacle avoidance commands
+    for obs in obstacles:
+
+        # Check obstacle height w.r.t drone height
+        if drone_pos[2] > obs.center[2] + obs.height/2:
+            continue
+
+        if type(obs) != Cylinder:
+            # not implemented yet
+            print("WARNING: Obstacle other than cylinders not implemented yet")
+            continue
         
-    #     cylinder_poses[i][2] = drone_pos[2]
+        # Extract the cylinder position
+        cylinder_pos = obs.center
+        cylinder_pos[2] = drone_pos[2]
 
-    #     pos_rel = drone_pos - cylinder_poses[i]
-    #     dist = np.linalg.norm(pos_rel) - self.cylinder_radius
+        pos_rel = drone_pos - cylinder_pos
+        dist = np.linalg.norm(pos_rel) - obs.radius
         
-    #     if dist < r0_obs:
+        if dist < r0_obs:
 
-    #         # s in range (0,1]
-    #         s = self.cylinder_radius / (dist + self.cylinder_radius)
-    #         pos_obs = s*drone_pos + (1-s)*cylinder_poses[i]
+            # s in range (0,1]
+            s = obs.radius / (dist + obs.radius)
+            pos_obs = s*drone_pos + (1-s)*cylinder_pos
 
-    #         # Derivative of s
-    #         s_der = self.cylinder_radius * (drone_vel * (pos_obs - drone_pos) / dist) / (self.cylinder_radius + dist)**2
+            # Derivative of s
+            s_der = obs.radius * (drone_vel * (pos_obs - drone_pos) / dist) / (obs.radius + dist)**2
             
-    #         vel_obs = s * drone_vel - self.cylinder_radius * (s_der/s) * (pos_obs-drone_pos)/dist
-    #         pos_gamma = cylinder_poses[i] + lambda_obs * v_ref_u
-    #         d_ag = np.linalg.norm(pos_gamma - pos_obs)
+            vel_obs = s * drone_vel - obs.radius * (s_der/s) * (pos_obs-drone_pos)/dist
+            pos_gamma = cylinder_pos + lambda_obs * v_ref_u
+            d_ag = np.linalg.norm(pos_gamma - pos_obs)
 
-    #         acc_obs += c_pm_obs * self.get_neighbour_weight(dist/r0_obs, r0_coh, delta) * (self.get_cohesion_force(dist, d_ref_obs, a, b, c, r0_coh, delta)*(pos_obs - drone_pos)/dist +
-    #                                 self.get_cohesion_force(d_ag, d_ref_obs, a, b, c, r0_coh, delta)*(pos_gamma - drone_pos)/(np.linalg.norm(pos_gamma - drone_pos))) + c_vm_obs * (vel_obs - drone_vel)
+            acc_obs += c_pm_obs * get_neighbour_weight(dist/r0_obs, r0_coh, delta) * (get_cohesion_force(dist, d_ref_obs, a, b, c, r0_coh, delta)*(pos_obs - drone_pos)/dist +
+                                    get_cohesion_force(d_ag, d_ref_obs, a, b, c, r0_coh, delta)*(pos_gamma - drone_pos)/(np.linalg.norm(pos_gamma - drone_pos))) + c_vm_obs * (vel_obs - drone_vel)
 
     # # Rotate the obstacle avoidance force to the body reference frame
     # acc_obs = self.rot_global2body(acc_obs, drone_pose[2][2])
 
     # Remove the z component of the cohesion command
     #acc_coh[2] = 0        
-    acc_command = acc_vel + acc_coh + acc_mig #+ acc_obs
+    acc_command = acc_vel + acc_coh + acc_mig + acc_obs
     # ======================
     # !!! IMPORTANT !!!
     # NOT CONVERTING TO BODY FRAME

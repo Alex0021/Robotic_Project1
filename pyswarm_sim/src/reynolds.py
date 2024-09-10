@@ -75,7 +75,7 @@ def reynolds_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, cylinder
     drone_pos = drone_pose[0]
     drone_vel = drone_pose[1]
 
-    num_neighbours = neighbour_poses.shape[0]
+    num_neighbours = len(neighbour_poses)
 
     # loop through all the neighbours
     coh = np.zeros(3)
@@ -96,7 +96,7 @@ def reynolds_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, cylinder
         align += get_alignment_force(drone_vel, n_vel, c_align)
 
     # Compute total force
-    acc = coh - sep + align
+    acc = c_coh * coh - c_sep * sep + c_align * align + c_mig * migration + c_obs * obs
     acc = acc / num_neighbours
 
     return acc
