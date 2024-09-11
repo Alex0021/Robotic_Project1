@@ -128,6 +128,9 @@ class Renderer():
                     index = self._swarm_ref.selected_drone
                     for i in range(self._swarm_ref.count):
                         self.ax.plot([self.data[i,0], self.data[index,0]], [self.data[i,1], self.data[index,1]], [self.data[i,2], self.data[index,2]], 'k--', alpha=0.5)
+                # RENDER OBSTACLES
+                for obs in self._swarm_ref.obstacles:
+                    obs.render(self.ax)
 
             except Exception as e:
                 print(e)
