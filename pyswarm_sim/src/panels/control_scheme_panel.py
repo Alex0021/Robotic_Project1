@@ -27,44 +27,59 @@ class ControlSchemePanel(tk.Toplevel):
         self.plot_canvas = None
 
         # Tk variables
-        self.delta_param = tk.StringVar()
-        self.a_param = tk.StringVar()
-        self.b_param = tk.StringVar()
-        self.c_param = tk.StringVar()
-        self.r_coh_param = tk.DoubleVar()
-        self.d_ref_param = tk.DoubleVar()
-        self.c_param_auto = tk.BooleanVar()
-
-        # tk variables values
         # Olfati-Saber
+        self.a_param = tk.StringVar()
         self.a_param.set(self.current_app_config.get("a", 1.0))
+        self.b_param = tk.StringVar()
         self.b_param.set(self.current_app_config.get("b", 1.0))
+        self.c_param = tk.StringVar()
         self.c_param.set(self.current_app_config.get("c", 1.0))
+        self.delta_param = tk.StringVar()
         self.delta_param.set(self.current_app_config.get("delta", 1.0))
+        self.c_param_auto = tk.BooleanVar()
         self.c_param_auto.set(self.current_app_config.get("c_auto", True))
+        self.r_coh_param = tk.DoubleVar()
         self.r_coh_param.set(self.current_app_config.get("r_coh", 20.0))
+        self.d_ref_param = tk.DoubleVar()
         self.d_ref_param.set(self.current_app_config.get("d_ref", np.mean(D_REF_LIMITS)))
+        self.r_coh_obs_param = tk.DoubleVar()
+        self.r_coh_obs_param.set(self.current_app_config.get("r_coh_obs", 1.0))
+        self.d_ref_obs_param = tk.DoubleVar()
+        self.d_ref_obs_param.set(self.current_app_config.get("d_ref_obs", 0.5))
+        self.lambda_obs_param = tk.DoubleVar()
+        self.lambda_obs_param.set(self.current_app_config.get("lambda_obs", 1.0))
+        self.c_pm_obs_param = tk.DoubleVar()
+        self.c_pm_obs_param.set(self.current_app_config.get("c_pm_obs", 4.3))
+        self.c_vm_obs_param = tk.DoubleVar()
+        self.c_vm_obs_param.set(self.current_app_config.get("c_vm_obs", 0.0))
         # Reynolds
         self.cohesion_param = tk.DoubleVar()
         self.cohesion_param.set(self.current_app_config.get("c_coh", 1.0))
         self.separation_param = tk.DoubleVar()
-        self.separation_param.set(self.current_app_config.get("c_sep", 1.0))
+        self.separation_param.set(self.current_app_config.get("c_sep", 2.0))
         self.alignment_param = tk.DoubleVar()
-        self.alignment_param.set(self.current_app_config.get("c_align", 1.0))
+        self.alignment_param.set(self.current_app_config.get("c_align", 3.0))
         self.migration_param = tk.DoubleVar()
-        self.migration_param.set(self.current_app_config.get("c_mig", 1.0))
+        self.migration_param.set(self.current_app_config.get("c_mig", 4.0))
+        self.obstacle_param = tk.DoubleVar()
+        self.obstacle_param.set(self.current_app_config.get("c_obs", 5.0))
 
         # Variables binding
         self.c_param_auto.trace_add("write", self.calculate_c_param)
         self.a_param.trace_add("write", self.calculate_c_param)
         self.b_param.trace_add("write", self.calculate_c_param)
-        self.d_ref_param.trace_add("write", lambda *args: self.d_ref_value_label.config(text=str.format("{:.2f}", self.d_ref_param.get())))
-        # self.d_ref_param.trace_add("write", self.generate_plot)
+        self.d_ref_param.trace_add("write", self.on_d_ref_slider_change)
         self.r_coh_param.trace_add("write", self.generate_plot)
         self.delta_param.trace_add("write", self.generate_plot)
         self.cohesion_param.trace_add("write", self.generate_plot)
         self.separation_param.trace_add("write", self.generate_plot)
         self.alignment_param.trace_add("write", self.generate_plot)
+        self.d_ref_obs_param.trace_add("write", self.generate_plot)
+        self.r_coh_obs_param.trace_add("write", self.generate_plot)
+        self.lambda_obs_param.trace_add("write", self.generate_plot)
+        self.c_pm_obs_param.trace_add("write", self.generate_plot)
+        self.c_vm_obs_param.trace_add("write", self.generate_plot)
+        self.obstacle_param.trace_add("write", self.generate_plot)
         self.control_scheme = current_control_scheme
 
         self.init_common_components()
@@ -120,55 +135,14 @@ class ControlSchemePanel(tk.Toplevel):
         parameters_panel = tk.Frame(self.algorithm_panel)
         if self.control_scheme.upper() == "OLFATI-SABER":
             # Create a tabbed panel for swarm and obstacle parameters
-            # tabbed_panel_params = ttk.Notebook(parameters_panel)
-            # tabbed_panel_params.grid(row=0, column=0, sticky="nsew")
-
-            parameters_panel.grid_columnconfigure(1, weight=1)
-            parameters_panel.configure(border=2, relief="groove")
-            # d_ref parameter
-            self.d_ref_label = tk.Label(parameters_panel, text="d_ref: ")
-            self.d_ref_label.grid(row=0, column=0, sticky="w", padx=5, pady=5)
-            self.d_ref_panel = tk.Frame(parameters_panel)
-            self.d_ref_panel.grid_columnconfigure(0, weight=1)
-            self.d_ref_panel.grid_rowconfigure(0, weight=1)
-            self.d_ref_panel.grid(row=0, column=1, columnspan=1, sticky="nsew")
-            self.d_ref_slider = ttk.Scale(self.d_ref_panel, from_=D_REF_LIMITS[0], to=D_REF_LIMITS[1], orient="horizontal", variable=self.d_ref_param)
-            self.d_ref_slider.grid(row=0, column=0, sticky="ew", padx=5)
-            self.d_ref_value_label = tk.Label(self.d_ref_panel, text=str.format("{:.2f}", self.d_ref_param.get()))
-            self.d_ref_value_label.grid(row=0, column=1, sticky="ew", padx=5)
-            # r_coh parameter
-            self.r_coh_label = tk.Label(parameters_panel, text="r_coh: ")
-            self.r_coh_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-            self.r_coh_spinner = ttk.Spinbox(parameters_panel, from_=R_COH_LIMITS[0], to=R_COH_LIMITS[1], increment=0.1, textvariable=self.r_coh_param)
-            self.r_coh_spinner.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-            # delta parameter
-            self.delta_label = tk.Label(parameters_panel, text="delta: ")
-            self.delta_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-            self.delta_textbox = tk.Entry(parameters_panel, textvariable=self.delta_param)
-            self.delta_textbox.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
-            # a parameter
-            self.a_label = tk.Label(parameters_panel, text="a: ")
-            self.a_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
-            self.a_textbox = tk.Entry(parameters_panel, textvariable=self.a_param)
-            # self.a_textbox.insert(0, self.current_app_config.get("a", 1.0))
-            self.a_textbox.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
-            # b parameter
-            self.b_label = tk.Label(parameters_panel, text="b: ")
-            self.b_label.grid(row=4, column=0, sticky="w", padx=5, pady=5)
-            self.b_textbox = tk.Entry(parameters_panel, textvariable=self.b_param)
-            # self.b_textbox.insert(0, self.current_app_config.get("b", 1.0))
-            self.b_textbox.grid(row=4, column=1, sticky="ew", padx=5, pady=5)
-            # c parameter panel
-            self.c_label = tk.Label(parameters_panel, text="c: ")
-            self.c_label.grid(row=5, column=0, sticky="w", padx=5, pady=5)
-            self.c_param_panel = tk.Frame(parameters_panel)
-            self.c_param_panel.grid_columnconfigure(1, weight=1)
-            self.c_param_panel.grid_rowconfigure(0, weight=1)
-            self.c_param_panel.grid(row=5, column=1, columnspan=1, sticky="nsew", padx=5, pady=5) 
-            self.c_textbox = tk.Entry(self.c_param_panel, textvariable=self.c_param)
-            self.c_textbox.grid(row=0, column=0, sticky="ew", padx=5)
-            self.c_auto_checkbox = tk.Checkbutton(self.c_param_panel, text="Auto", variable=self.c_param_auto)
-            self.c_auto_checkbox.grid(row=0, column=1, sticky="ew", padx=5)
+            tabbed_panel_params = ttk.Notebook(parameters_panel)
+            tabbed_panel_params.grid(row=0, column=0, sticky="nsew")
+            self.tab1_panel = tk.Frame(tabbed_panel_params, border=2, relief="groove")
+            self._generate_panel_params_os(self.tab1_panel)
+            tabbed_panel_params.add(self.tab1_panel, text="Agents")
+            self.tab2_panel = tk.Frame(tabbed_panel_params, border=2, relief="groove")
+            self._generate_panel_obs_os(self.tab2_panel)
+            tabbed_panel_params.add(self.tab2_panel, text="Obstacles")
 
         elif self.control_scheme.upper() == "REYNOLDS":
             parameters_panel.grid_columnconfigure(0, weight=0)
@@ -201,8 +175,90 @@ class ControlSchemePanel(tk.Toplevel):
                 self.migration_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.migration_param)
                 self.migration_spinner.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
+            # Obstacle parameter
+            self.obstacle_label = tk.Label(parameters_panel, text="Obstacle: ")
+            self.obstacle_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
+            self.obstacle_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.obstacle_param)
+            self.obstacle_spinner.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
+
 
         return parameters_panel
+    
+    def _generate_panel_params_os(self, parent: tk.Frame):
+        parameters_panel = parent
+        # d_ref parameter
+        self.d_ref_label = tk.Label(parameters_panel, text="d_ref: ")
+        self.d_ref_label.grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.d_ref_panel = tk.Frame(parameters_panel)
+        self.d_ref_panel.grid_columnconfigure(0, weight=1)
+        self.d_ref_panel.grid_rowconfigure(0, weight=1)
+        self.d_ref_panel.grid(row=0, column=1, columnspan=1, sticky="nsew")
+        self.d_ref_slider = ttk.Scale(self.d_ref_panel, from_=D_REF_LIMITS[0], to=D_REF_LIMITS[1], orient="horizontal", variable=self.d_ref_param)
+        self.d_ref_slider.grid(row=0, column=0, sticky="ew", padx=5)
+        self.d_ref_value_label = tk.Label(self.d_ref_panel, text=str.format("{:.2f}", self.d_ref_param.get()))
+        self.d_ref_value_label.grid(row=0, column=1, sticky="ew", padx=5)
+        # r_coh parameter
+        self.r_coh_label = tk.Label(parameters_panel, text="r_coh: ")
+        self.r_coh_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        self.r_coh_spinner = ttk.Spinbox(parameters_panel, from_=R_COH_LIMITS[0], to=R_COH_LIMITS[1], increment=0.1, textvariable=self.r_coh_param)
+        self.r_coh_spinner.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+        # delta parameter
+        self.delta_label = tk.Label(parameters_panel, text="delta: ")
+        self.delta_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        self.delta_textbox = tk.Entry(parameters_panel, textvariable=self.delta_param)
+        self.delta_textbox.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+        # a parameter
+        self.a_label = tk.Label(parameters_panel, text="a: ")
+        self.a_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
+        self.a_textbox = tk.Entry(parameters_panel, textvariable=self.a_param)
+        # self.a_textbox.insert(0, self.current_app_config.get("a", 1.0))
+        self.a_textbox.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
+        # b parameter
+        self.b_label = tk.Label(parameters_panel, text="b: ")
+        self.b_label.grid(row=4, column=0, sticky="w", padx=5, pady=5)
+        self.b_textbox = tk.Entry(parameters_panel, textvariable=self.b_param)
+        # self.b_textbox.insert(0, self.current_app_config.get("b", 1.0))
+        self.b_textbox.grid(row=4, column=1, sticky="ew", padx=5, pady=5)
+        # c parameter panel
+        self.c_label = tk.Label(parameters_panel, text="c: ")
+        self.c_label.grid(row=5, column=0, sticky="w", padx=5, pady=5)
+        self.c_param_panel = tk.Frame(parameters_panel)
+        self.c_param_panel.grid_columnconfigure(1, weight=1)
+        self.c_param_panel.grid_rowconfigure(0, weight=1)
+        self.c_param_panel.grid(row=5, column=1, columnspan=1, sticky="nsew", padx=5, pady=5) 
+        self.c_textbox = tk.Entry(self.c_param_panel, textvariable=self.c_param)
+        self.c_textbox.grid(row=0, column=0, sticky="ew", padx=5)
+        self.c_auto_checkbox = tk.Checkbutton(self.c_param_panel, text="Auto", variable=self.c_param_auto)
+        self.c_auto_checkbox.grid(row=0, column=1, sticky="ew", padx=5)
+
+    def _generate_panel_obs_os(self, parent: tk.Frame):
+        parameters_panel = parent
+
+        self.r_coh_obs_label = tk.Label(parameters_panel, text="r_coh_obs: ")
+        self.r_coh_obs_label.grid(row=6, column=0, sticky="w", padx=5, pady=5)
+        self.r_coh_obs_spinner = ttk.Spinbox(parameters_panel, from_=R_COH_LIMITS[0], to=R_COH_LIMITS[1], increment=0.1, textvariable=self.r_coh_obs_param)
+        self.r_coh_obs_spinner.grid(row=6, column=1, sticky="w", padx=5, pady=5)
+
+        self.d_ref_obs_label = tk.Label(parameters_panel, text="d_ref_obs: ")
+        self.d_ref_obs_label.grid(row=7, column=0, sticky="w", padx=5, pady=5)
+        self.d_ref_obs_spinner = ttk.Spinbox(parameters_panel, from_=D_REF_LIMITS[0], to=D_REF_LIMITS[1], increment=0.1, textvariable=self.d_ref_obs_param)
+        self.d_ref_obs_spinner.grid(row=7, column=1, sticky="w", padx=5, pady=5)
+
+        self.lambda_obs_label = tk.Label(parameters_panel, text="lambda_obs: ")
+        self.lambda_obs_label.grid(row=8, column=0, sticky="w", padx=5, pady=5)
+        self.lambda_obs_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.lambda_obs_param)
+        self.lambda_obs_spinner.grid(row=8, column=1, sticky="w", padx=5, pady=5)
+
+        self.c_pm_obs_label = tk.Label(parameters_panel, text="c_pm_obs: ")
+        self.c_pm_obs_label.grid(row=9, column=0, sticky="w", padx=5, pady=5)
+        self.c_pm_obs_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.c_pm_obs_param)
+        self.c_pm_obs_spinner.grid(row=9, column=1, sticky="w", padx=5, pady=5)
+
+        self.c_vm_obs_label = tk.Label(parameters_panel, text="c_vm_obs: ")
+        self.c_vm_obs_label.grid(row=10, column=0, sticky="w", padx=5, pady=5)
+        self.c_vm_obs_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.c_vm_obs_param)
+        self.c_vm_obs_spinner.grid(row=10, column=1, sticky="w", padx=5, pady=5)
+
     
     def init_plot_view_panel(self):
         """
@@ -333,6 +389,17 @@ class ControlSchemePanel(tk.Toplevel):
         self.parameters_panel.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=5, pady=5)
         if control_scheme.upper() == "OLFATI-SABER":
             self.calculate_c_param()
+        self.generate_plot()
+
+    #===========================================================================
+    # Event Handlers
+    #===========================================================================
+
+    def on_d_ref_slider_change(self, *args):
+        """
+            Event handler for d_ref slider change
+        """
+        self.d_ref_value_label.config(text=str.format("{:.2f}", self.d_ref_param.get()))
         self.generate_plot()
 
     def on_parameters_change(self, *args):

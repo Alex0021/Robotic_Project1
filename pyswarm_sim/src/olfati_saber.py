@@ -228,22 +228,26 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
     Returns:
         np.ndarray: _description_
     """
-    # Extract necessary params
+    # AGENT PARAMETERS
     v_ref = params.get('v_ref',np.array([0.0,0.0,0.0]))
     d_ref = params.get('d_ref',1.0)
     r0_coh = params.get('r0_coh',20)
     delta = params.get('delta',0.1)
     a = params.get('a',0.3)
     b = params.get('b',0.5)
-    c = params.get('c',(b - a)/(2*np.sqrt(a*b)))
-    c_vm = params.get('c_vm',1)
-    r0_obs = params.get('r0_obs',0.6)
+    c = params.get('c', (b - a)/(2*np.sqrt(a*b)))
+
+    # OBSTACLES PARAMETERS
+    r0_obs = params.get('r0_obs',1.0)
+    d_ref_obs = params.get('d_ref_obs',0.5)
     lambda_obs = params.get('lambda_obs',1)
     c_pm_obs = params.get('c_pm_obs',4.3)
     c_vm_obs = params.get('c_vm_obs',0)
-    d_ref_obs = params.get('d_ref_obs',0.5)
-    gamma = params.get('gamma',1)
+
+    # MIGRATION PARAMETERS
     v_ref_target = params.get('v_ref_target',1.0)
+    c_vm = params.get('c_vm',1)
+    gamma = params.get('gamma',1)
     
     #count += 1
     drone_pos = drone_pose[0]

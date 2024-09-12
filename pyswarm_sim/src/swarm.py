@@ -5,7 +5,7 @@ import pyswarm_sim.src.reynolds as reynolds
 from scipy.spatial import ConvexHull
 from pyswarm_sim.src.helper_functions import elapsed_timer
 import typing
-from pyswarm_sim.src.obstacles import Cylinder
+from pyswarm_sim.src.environment import Environment
 
 #===============================================================================
 # Trajectory parameters
@@ -39,11 +39,10 @@ class Swarm():
       - computing the neighborhood
       - calculations of swarm metrics (e.g. coverage)
     """
-    def __init__(self, count: int=1, area: list[float]=[0.0,0.0,0.0,1.0], **kwargs):
+    def __init__(self, env: Environment,count: int=1, area: list[float]=[0.0,0.0,0.0,1.0], **kwargs):
         # Swarm parameters
         self.count = count
         self.members = list()
-        self.migration_point = None
         self.noise = {'type': 'None', 'param_pos': 0.0, 'param_heading': 0.0}
         self.ang_rates = np.zeros(3)
         self.selected_drone = 0
@@ -51,14 +50,14 @@ class Swarm():
         self.is_2D = kwargs.get('is_2d', True)
         self.spawn_area = area
         self.migration_mode = 'single' # ['single', 'trajectory']
-        if 'migration_point' in kwargs:
-            self.migration_point = kwargs['migration_point']
         self.algo_params = {}
         if 'algo_params' in kwargs:
             self.algo_params = kwargs['algo_params']
         self.neighbors_params = kwargs.get('neighbors_metric', {'computation':'None', 'metric': 'Eucledian', 'sampling': 1})
         self.viewing_params = kwargs.get('viewing_metric', {'algorithm': 'None'})
         self.viewing_params.update({'in_2d': self.is_2D})
+
+        self._env = env
 
         # Sim variables
         self.update_counter = 0
@@ -74,17 +73,6 @@ class Swarm():
         self.timing_coverage = 0.0
         self.sim_time = 0.0
         self.dist_weights = np.ones(self.count)
-
-        # Initialize obstacles list if any
-        self.obstacles = []
-        if "obstacles" in kwargs:
-            for obs in kwargs["obstacles"]:
-                obs_type = obs.get('type', 'unknown')
-                match obs_type.upper():
-                    case 'CYLINDER':
-                        self.obstacles.append(Cylinder(**obs))
-                    case _:
-                        raise ValueError("Invalid obstacle type: {0}".format(obs_type))
                
 
         # Initialize trajectory points
@@ -99,7 +87,7 @@ class Swarm():
 
         # Setting first trajectory point
         if self.migration_mode == 'trajectory':
-            self.migration_point = self.trajectory_points[self.trajectory_idx]
+            self._env.set_target(self.trajectory_points[self.trajectory_idx])
 
     #=======================================#
     #            Initialization             #
@@ -171,10 +159,10 @@ class Swarm():
                     new_acc[i,:] = np.zeros(3)
                 case "OLFATI-SABER":
                     neighbor_poses = np.array([n.get_state() for n in neighborhood])
-                    new_acc[i,:] = olsab.olfati_saber_input(m.get_state(), neighbor_poses, self.obstacles, self.migration_point, self.algo_params)
+                    new_acc[i,:] = olsab.olfati_saber_input(m.get_state(), neighbor_poses, self._env.obstacles, self._env.target, self.algo_params)
                 case "REYNOLDS":
                     neighbor_poses = np.array([n.get_state() for n in neighborhood])
-                    new_acc[i,:] = reynolds.reynolds_input(m.get_state(), neighbor_poses, self.obstacles,self.migration_point, self.algo_params)
+                    new_acc[i,:] = reynolds.reynolds_input(m.get_state(), neighbor_poses, self._env.obstacles,self._env.target, self.algo_params)
                 case _:
                     raise ValueError("Invalid algorithm: {0}".format(self.algo_params.get('algorithm', 'None')))
         # Perform update step based on new acceleration
@@ -244,12 +232,12 @@ class Swarm():
         # Check if migration point is reached
         if not self._stabilized:
                 self._stabilized = self.is_swarm_stabilized()
-        elif self.migration_point is not None:
-            if np.linalg.norm(self.swarm_center - self.migration_point) < TARGET_TOL:
+        elif self._env.target is not None:
+            if np.linalg.norm(self.swarm_center - self._env.target) < TARGET_TOL:
                 self.trajectory_idx += 1
                 if self.trajectory_idx % NB_POINTS == 0:
                     self.circle_done = True
-                self.migration_point = self.trajectory_points[self.trajectory_idx % NB_POINTS]
+                self._env.target = self.trajectory_points[self.trajectory_idx % NB_POINTS]
 
     #=======================================#
     #            Swarm metrics              #
@@ -634,7 +622,7 @@ class Swarm():
         """
         self.migration_mode = mode
         if mode == 'trajectory':
-            self.migration_point = self.trajectory_points[self.trajectory_idx]
+            self._env.target = self.trajectory_points[self.trajectory_idx]
 
     def update_drones_FOV(self, fov: float):
         """
@@ -708,7 +696,7 @@ class Swarm():
             print("====| DRONE {0} |=====".format(i+1))
             self.members[i].print_state()
 
-        if len(self.obstacles) > 0:
+        if len(self._env.obstacles) > 0:
             print("====| OBSTACLES |=====")
-            for i in range(len(self.obstacles)):
-                print("{0} --> {1}".format(i+1, self.obstacles[i]))
+            for i in range(len(self._env.obstacles)):
+                print("{0} --> {1}".format(i+1, self._env.obstacles[i]))

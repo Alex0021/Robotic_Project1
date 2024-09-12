@@ -4,7 +4,7 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolb
 import tkinter as tk
 from matplotlib.animation import FuncAnimation
 from pyswarm_sim.src.swarm import Swarm
-from collections import OrderedDict
+from pyswarm_sim.src.environment import Environment
 from matplotlib.widgets import Slider
 
 # Set the default keymap to close the window to ctrl+w
@@ -23,7 +23,7 @@ class RendererData:
     axis_limits_single = np.array([[-viewing_radius,viewing_radius], [-viewing_radius,viewing_radius]], dtype=np.float64)
 
 class Renderer():
-    def __init__(self, panel:tk.Frame, swarm:Swarm):
+    def __init__(self, panel:tk.Frame, swarm:Swarm, env: Environment):
         self.master = panel
         # Initialize the figure
         self.fig = plt.figure(1)
@@ -39,6 +39,8 @@ class Renderer():
 
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=True)
         self.toolbar.update()
+
+        self._env = env
 
         self._swarm_ref = swarm
         self.show_neighbors = True
@@ -98,11 +100,11 @@ class Renderer():
         Args:
             i (int): frame index
         """
+        self.ax.clear()
+        self.configure_plot()
         if self._swarm_ref is not None:
             try:
                 self.data = self._swarm_ref.get_states().copy()
-                self.ax.clear()
-                self.configure_plot()
                 # Plot the drones as points
                 colors = np.array(['#0000FFFF']*self._swarm_ref.count)
                 colors[self._swarm_ref.selected_drone] = '#00ff00ff'
@@ -120,20 +122,18 @@ class Renderer():
                 self.ax.quiver(self.data[id,0],self.data[id,1],self.data[id,2], self._swarm_ref.members[id].ground_truth_viewing_dir[0], 
                                self._swarm_ref.members[id].ground_truth_viewing_dir[1], self._swarm_ref.members[id].ground_truth_viewing_dir[2], 
                                color='#55FF00FF', length=0.5, normalize=True)
-                # Plot the migration point
-                if self._swarm_ref.migration_point is not None:
-                    self.ax.plot(self._swarm_ref.migration_point[0], self._swarm_ref.migration_point[1], self._swarm_ref.migration_point[2],'r', marker='x', markersize=20)
                 # VLOS DEBUG
                 if DEBUG_VLOS:
                     index = self._swarm_ref.selected_drone
                     for i in range(self._swarm_ref.count):
                         self.ax.plot([self.data[i,0], self.data[index,0]], [self.data[i,1], self.data[index,1]], [self.data[i,2], self.data[index,2]], 'k--', alpha=0.5)
-                # RENDER OBSTACLES
-                for obs in self._swarm_ref.obstacles:
-                    obs.render(self.ax)
-
             except Exception as e:
                 print(e)
+
+        # RENDER ENV
+        if self._env is not None:
+            self._env.render(self.ax)
+
 
     def stop(self):
         """

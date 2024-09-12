@@ -12,6 +12,9 @@ class Obstacle:
         self.center = np.array(center)
         self.color = color
 
+    def __class__(self) -> str:
+        return "Obstacle"
+
     @abstractmethod
     def render(self, ax) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -24,6 +27,9 @@ class Obstacle:
             tuple: grid meshpoints for rendering (X, Y, Z)
         """
         pass
+
+    def to_dict(self) -> dict:
+        return {"center": self.center, "color": self.color}
 
 
 class Cylinder(Obstacle):
@@ -59,3 +65,8 @@ class Cylinder(Obstacle):
     def __str__(self) -> str:
         return "Cylinder: center={}, radius={}, height={}".format(self.center, self.radius, self.height)
 
+    def __class__(self) -> str:
+        return "Cylinder"
+    
+    def to_dict(self) -> dict:
+        return {"type": self.__class__(), "center": self.center.tolist(), "radius": self.radius, "height": self.height, "color": self.color}

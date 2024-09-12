@@ -15,6 +15,7 @@ import json
 import time
 from pyswarm_sim.src.autorun import AutorunSim
 from pyswarm_sim.src.panels.control_scheme_panel import ControlSchemePanel
+from pyswarm_sim.src.environment import Environment
 
 os.path.join(os.path.dirname(__file__), 'pyswarm_sim')
 
@@ -80,7 +81,7 @@ class myApp(tk.Frame):
         self.var_viewing_metric_outer_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outer_points', 2))
         self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
         self.render_env = self.app_config['simulation'].get('render', True)
-        self.trajectory_mode_enabled = self.app_config['simulation'].get('trajectory_mode', False)
+        self.var_trajectory_mode = tk.BooleanVar(value=self.app_config['simulation'].get('trajectory_mode', False))
         self.var_swarming_algorithm = tk.StringVar(value=self.app_config['swarming_algorithm'].get('name', 'olfati-saber'))
         self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
         self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
@@ -112,10 +113,14 @@ class myApp(tk.Frame):
         self.init_main_panels()
         self.init_algo_components()
         self.init_sidebar_components()
+        self.init_env_components()
         self.noise_changed_callback()
+        # Initialize environment
+        self.env = Environment(self.app_config['obstacles'], self.app_config.get('target', None))
         # Start 3D plot renderer
         if self.render_env:
-            self.renderer = Renderer(self.panel_view, None)
+            self.renderer = Renderer(self.panel_view, None, self.env)
+        self._generate_obstacles_list()
         # Check for target
         self.textbox_target.delete(0, tk.END)
         self.textbox_target.insert(0, self.app_config.get('target', ''))
@@ -150,7 +155,13 @@ class myApp(tk.Frame):
         self.panel_sidebar.grid_rowconfigure(2,weight=4)
         self.tabbed_pane.add(self.panel_sidebar, text='Swarm config')
 
-        # Panel alog params
+        # Panel environment
+        self.panel_env = tk.Frame(self.mainframe, bg='lightgray')
+        self.panel_env.grid_columnconfigure(0,weight=1)
+        self.panel_env.grid_rowconfigure(1,weight=1)
+        self.tabbed_pane.add(self.panel_env, text='Environment')
+
+        # Panel algo params
         self.panel_algo = tk.Frame(self.mainframe, bg='lightgray')
         self.panel_algo.grid_columnconfigure((0,1,2),weight=1)
         self.panel_algo.grid_rowconfigure(list(range(10)),weight=1)
@@ -163,13 +174,13 @@ class myApp(tk.Frame):
         self.panel_title.grid_rowconfigure(0,weight=1)
         self.panel_title.grid(column=0,row=0, sticky='NWES')
 
-        self.panel_params = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=0, pady=5)
+        self.panel_params = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=0, pady=0)
         self.panel_params.grid_columnconfigure(0, weight=2)
         self.panel_params.grid_columnconfigure((1,2), weight=1)
         self.panel_params.grid_rowconfigure(list(range(6)),weight=1)
         self.panel_params.grid(column=0, row=1,sticky='NWES')
 
-        self.panel_sim = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=5, pady=5)
+        self.panel_sim = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=5, pady=0)
         self.panel_sim.grid_columnconfigure(0, weight=2)
         self.panel_sim.grid_columnconfigure((1,2), weight=1)
         self.panel_sim.grid_rowconfigure((0,1,2,3),weight=1)
@@ -299,17 +310,9 @@ class myApp(tk.Frame):
         for child in self.panel_neighbors.winfo_children():
             child.config(state='disabled')
 
-        # # Swarm spread
-        # self.label_d_ref = ttk.Label(self.panel_params, anchor='w', text="Swarm spread (r): ")
-        # self.label_d_ref.grid(column=0,row=2, sticky='NEWS')
-        # self.slider_spread = ttk.Scale(self.panel_params, from_=0,to=5, orient='horizontal', variable=self.var_d_ref, command=lambda val: self.var_d_ref.set(round(float(val),2)))
-        # self.slider_spread.grid(row=2, column=1, sticky='WE', padx=5)
-        # self.textbox_slider_value = ttk.Entry(self.panel_params, textvariable=self.var_d_ref, width=10)
-        # self.textbox_slider_value.grid(row=2, column=2, sticky='W', padx=5)
-
         # Control params panel
         self.panel_control_scheme = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
-        self.panel_control_scheme.grid(column=0, row=2, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=5)
+        self.panel_control_scheme.grid(column=0, row=2, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=0)
         self.panel_control_scheme.grid_columnconfigure((0,1,2), weight=1)
         self.panel_control_scheme.grid_rowconfigure(0, weight=1)
         # COntrol scheme
@@ -321,36 +324,10 @@ class myApp(tk.Frame):
         self.listbox_control_scheme.bind("<<ComboboxSelected>>", lambda e: self.var_swarming_algorithm.set(self.listbox_control_scheme.get()))
         self.button_control_scheme_params = ttk.Button(self.panel_control_scheme, text="Edit Params", command=self._btn_control_scheme_params_callback)
         self.button_control_scheme_params.grid(row=0,column=2, sticky='EW', padx=10, ipady=5)
-        # Control variables
-        # self.label_control_delta = ttk.Label(self.panel_control_scheme, anchor='w', text="delta: ")
-        # self.label_control_delta.grid(column=0,row=1, sticky='NEWS')
-        # self.textbox_control_delta = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_delta)
-        # self.textbox_control_delta.grid(column=1, row=1, sticky='W', padx=5)
-
-        # self.label_control_r_coh = ttk.Label(self.panel_control_scheme, anchor='w', text="r_coh: ")
-        # self.label_control_r_coh.grid(column=2,row=1, sticky='NEWS')
-        # self.textbox_control_r_coh = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_r_coh)
-        # self.textbox_control_r_coh.grid(column=3, row=1, sticky='W', padx=5)
-
-        # self.label_control_vref = ttk.Label(self.panel_control_scheme, anchor='w', text="vref: ")
-        # self.label_control_vref.grid(column=4,row=1, sticky='NEWS')
-        # self.textbox_control_vref = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_vref)
-        # #self.textbox_control_vref.bind("<Return>", lambda e: self.swarm.set_cmd_velocity(np.array([float(self.var_vref.get())]*3)))
-        # self.textbox_control_vref.grid(column=5, row=1, sticky='W', padx=5)
-
-        # self.label_control_a = ttk.Label(self.panel_control_scheme, anchor='w', text="a: ")
-        # self.label_control_a.grid(column=0,row=2, sticky='NEWS')
-        # self.textbox_control_a = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_a)
-        # self.textbox_control_a.grid(column=1, row=2, sticky='W', padx=5)
-
-        # self.label_control_b = ttk.Label(self.panel_control_scheme, anchor='w', text="b: ")
-        # self.label_control_b.grid(column=2,row=2, sticky='NEWS')
-        # self.textbox_control_b = ttk.Entry(self.panel_control_scheme, width=10, textvariable=self.var_b)
-        # self.textbox_control_b.grid(column=3, row=2, sticky='W', padx=5)
         
-        # Noise
+        # Noise panel
         self.pnael_noise = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
-        self.pnael_noise.grid(column=0, row=3, columnspan=3, rowspan=2, sticky='NWES', padx=0, pady=5)
+        self.pnael_noise.grid(column=0, row=3, columnspan=3, rowspan=2, sticky='NWES', padx=0, pady=0)
         self.pnael_noise.grid_columnconfigure((0,1,2,3,4,5,6), weight=1)
         self.pnael_noise.grid_rowconfigure((0,1), weight=1)
         self.label_noise = ttk.Label(self.pnael_noise, anchor='w', text="Noise: ")
@@ -374,21 +351,22 @@ class myApp(tk.Frame):
         self.spinner_noise_heading = ttk.Spinbox(self.pnael_noise, increment=0.01, from_=0, to=1, textvariable=self.var_noise_param_heading)
         self.spinner_noise_heading.grid(column=5, row=1, sticky='W', padx=5)
         
-        # Target
-        self.panel_target = tk.Frame(self.panel_params)
+        # Target panel
+        self.panel_target = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
         self.panel_target.grid(column=0, row=5, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=0)
         self.panel_target.grid_columnconfigure((0,1,2,4), weight=1)
-        self.panel_target.grid_rowconfigure(0, weight=1)
-        self.label_target = ttk.Label(self.panel_target, anchor='w', text="Target: ")
-        self.label_target.grid(column=0,row=0, sticky='NEWS')
+        self.panel_target.grid_rowconfigure((0,1), weight=1)
+        self.radio_target = ttk.Radiobutton(self.panel_target, text="Target", variable=self.var_trajectory_mode, value=False ,command=self._update_swarm_target)
+        self.radio_target.grid(column=0,row=0, sticky='NEWS', padx=5)
+        self.radio_trajectory = ttk.Radiobutton(self.panel_target, text="Trajectory", variable=self.var_trajectory_mode, value=True, command=self._update_swarm_target)
+        self.radio_trajectory.grid(column=0,row=1, sticky='NEWS', padx=5)
         self.textbox_target = ttk.Entry(self.panel_target, text='', font=font.Font(size=10))
-        self.textbox_target.bind("<Return>", self._set_swarm_algo_params)
+        self.textbox_target.bind("<Return>", self._update_swarm_target)
         self.textbox_target.grid(column=1, row=0, sticky='WE', padx=5)
         self.label_target_format = ttk.Label(self.panel_target, anchor='w', text="#.#;#.#;#.# or empty", justify='left', font=font.Font(size=10))
         self.label_target_format.grid(column=2,row=0, sticky='NEWS')
-        btn_text = "Single mode" if self.trajectory_mode_enabled else "Trajectory mode"
-        self.btn_trajectory_mode = ttk.Button(self.panel_target, text=btn_text, command=self.btn_trajectory_mode_callback, state='disabled')
-        self.btn_trajectory_mode.grid(column=4,row=0, sticky='EW', ipady=5, padx=10)
+        self.btn_update_target = ttk.Button(self.panel_target, text="Update", command=self._update_swarm_target)
+        self.btn_update_target.grid(column=4,row=0, sticky='EW', ipady=2, padx=5)
 
         # Simulate buttons
         self.btn_init = ttk.Button(self.panel_sim, text="Initialize", command=self._initialize_simulation)
@@ -438,6 +416,88 @@ class myApp(tk.Frame):
         self.listbox_neighbors_select.grid(column=2, row=0, sticky='WE', padx=5)
 
 
+    def init_env_components(self):
+        # Obstacle parameters
+        self.label_obstacle_params = ttk.Label(self.panel_env, text='Obstacle Parameters', background='lightgray', font=font.Font(size=12))
+        self.label_obstacle_params.grid(row=0, column=0, sticky='W', pady=5, padx=10)
+
+        # Obstacle panel
+        self.panel_obstacle_params = tk.Frame(self.panel_env, borderwidth=2, relief='ridge')
+        self.panel_obstacle_params.columnconfigure(0, weight=1)
+        self.panel_obstacle_params.rowconfigure(7, weight=1)
+        self.panel_obstacle_params.grid(row=1, column=0, sticky='NWES', padx=10)
+
+        # Treeview for current obstacles
+        self.treeview_obstacles = ttk.Treeview(self.panel_obstacle_params, columns=('type', 'center', 'height', 'radius'), show='tree headings')
+        self.treeview_obstacles.column('#0', width=30)
+        self.treeview_obstacles.heading('type', text='Type')
+        self.treeview_obstacles.column('type', anchor='center')
+        self.treeview_obstacles.heading('center', text='Center')
+        self.treeview_obstacles.column('center', anchor='center')
+        self.treeview_obstacles.heading('height', text='Height')
+        self.treeview_obstacles.column('height', width=60, anchor='center')
+        self.treeview_obstacles.heading('radius', text='Radius')
+        self.treeview_obstacles.column('radius', width=60, anchor='center')
+        self.treeview_obstacles.grid(row=0, column=0, rowspan=9, sticky='NWES', padx=0)
+        self.treeview_obstacles.bind("<ButtonRelease-1>", self._select_obstacle_callback)
+
+        # X coordinate
+        self.label_obstacle_x = ttk.Label(self.panel_obstacle_params, text='Center X:')
+        self.label_obstacle_x.grid(row=1, column=1, sticky='W', padx=10)
+        self.spinner_obstacle_x = ttk.Spinbox(self.panel_obstacle_params, increment=0.1, from_=-np.inf, to=np.inf, command=self._update_obstacle_params)
+        self.spinner_obstacle_x.grid(row=1, column=2, sticky='W')
+        self.spinner_obstacle_x.bind("<Return>", self._update_obstacle_params)
+        self.spinner_obstacle_x.insert(0, 0.0)
+
+        # Y coordinate
+        self.label_obstacle_y = ttk.Label(self.panel_obstacle_params, text='Center Y:')
+        self.label_obstacle_y.grid(row=2, column=1, sticky='W', padx=10)
+        self.spinner_obstacle_y = ttk.Spinbox(self.panel_obstacle_params, increment=0.1, from_=-np.inf, to=np.inf, command=self._update_obstacle_params)
+        self.spinner_obstacle_y.grid(row=2, column=2, sticky='W')
+        self.spinner_obstacle_y.bind("<Return>", self._update_obstacle_params)
+        self.spinner_obstacle_y.insert(0, 0.0)
+
+        # Z coordinate
+        self.label_obstacle_z = ttk.Label(self.panel_obstacle_params, text='Center Z:')
+        self.label_obstacle_z.grid(row=3, column=1, sticky='W', padx=10)
+        self.spinner_obstacle_z = ttk.Spinbox(self.panel_obstacle_params, increment=0.1, from_=-np.inf, to=np.inf, command=self._update_obstacle_params)
+        self.spinner_obstacle_z.grid(row=3, column=2, sticky='W')
+        self.spinner_obstacle_z.bind("<Return>", self._update_obstacle_params)
+        self.spinner_obstacle_z.insert(0, 0.0)
+
+        # Height
+        self.label_obstacle_height = ttk.Label(self.panel_obstacle_params, text='Height:')
+        self.label_obstacle_height.grid(row=4, column=1, sticky='W', padx=10)
+        self.spinner_obstacle_height = ttk.Spinbox(self.panel_obstacle_params, increment=0.1, from_=0, to=np.inf, command=self._update_obstacle_params)
+        self.spinner_obstacle_height.grid(row=4, column=2, sticky='W')
+        self.spinner_obstacle_height.bind("<Return>", self._update_obstacle_params)
+        self.spinner_obstacle_height.insert(0, 10.0)
+
+        # Radius
+        self.label_obstacle_radius = ttk.Label(self.panel_obstacle_params, text='Radius:')
+        self.label_obstacle_radius.grid(row=5, column=1, sticky='W', padx=10)
+        self.spinner_obstacle_radius = ttk.Spinbox(self.panel_obstacle_params, increment=0.1, from_=0, to=np.inf, command=self._update_obstacle_params)
+        self.spinner_obstacle_radius.grid(row=5, column=2, sticky='W')
+        self.spinner_obstacle_radius.bind("<Return>", self._update_obstacle_params)
+        self.spinner_obstacle_radius.insert(0, 1.0)
+
+        # buttons panel
+        self.panel_obstacle_buttons = tk.Frame(self.panel_obstacle_params)
+        self.panel_obstacle_buttons.grid(row=6, column=1, columnspan=2, sticky='NES', padx=0, pady=5)
+        self.panel_obstacle_buttons.rowconfigure(0, weight=1)
+
+        # Add obstacle button
+        self.btn_add_obstacle = tk.Button(self.panel_obstacle_buttons, text='+', font=font.Font(size=14, weight='bold'), command=self._add_obstacle_callback)
+        self.btn_add_obstacle.grid(row=0, column=0, sticky='WE', padx=5)
+
+        # Remove obstacle button
+        self.btn_remove_obstacle = tk.Button(self.panel_obstacle_buttons, font=font.Font(size=14, weight='bold'),text='-', command=self._remove_obstacle_callback)
+        self.btn_remove_obstacle.grid(row=0, column=1, sticky='WE', padx=5)
+        self.btn_remove_obstacle.config(state='disabled')
+
+        # Save environment
+        self.btn_save_env = tk.Button(self.panel_obstacle_params, text='Save environment', command=self._save_env_callback)
+        self.btn_save_env.grid(row=8, column=1, columnspan=2, sticky='WE', padx=5, pady=5)
 
     #==================================#
     #   SIM COMPONENTS CALLBACK        #
@@ -447,15 +507,10 @@ class myApp(tk.Frame):
         # Retrieve all necessary parameters from app widgets
         nb_drones = self.var_drone_count.get()
         target_text = self.textbox_target.get()
-        if target_text == '':
-            target = None
-        else:
-            target_text = target_text.strip('()')
-            target_numbers = target_text.split(';')
-            target = np.asarray(target_numbers, dtype=float)
+        self.env.set_target(target_text)
 
-        self.swarm = Swarm(count=nb_drones, area=self.spawn_area, migration_point=target, 
-                           is_2d=self.swarm_2d, trajectory=self.swarm_traj, obstacles=self.app_config.get('obstacles', []))
+        self.swarm = Swarm(self.env, count=nb_drones, area=self.spawn_area,
+                           is_2d=self.swarm_2d, trajectory=self.swarm_traj)
         dt = float(self.var_sim_dt.get())
         self._recorder._swarm = self.swarm
         self.sim = Simulator(dt, self.swarm, self._recorder)
@@ -479,7 +534,6 @@ class myApp(tk.Frame):
             self.btn_2D_view.config(state='normal')
             self.btn_center.config(state='normal')
         self.btn_simulate.config(state='normal')
-        self.btn_trajectory_mode.config(state='normal')
         # Enable all components in the neighbors panel
         for child in self.panel_neighbors.winfo_children():
             child.config(state='normal')
@@ -495,7 +549,7 @@ class myApp(tk.Frame):
         if self.swarm.is_2D:
             self.var_viewing_metric_dim.set(2)
             self.radio_3D_viewing.config(state='disabled')
-        if self.trajectory_mode_enabled:
+        if self.var_trajectory_mode.get():
             self.swarm.set_migration_mode('trajectory')
         self.viewing_metric_changed_callback(None)
         
@@ -513,12 +567,23 @@ class myApp(tk.Frame):
             pass
         except Exception as e:
             print("Error setting swarm algo params: {0}".format(e))
-        try:
-            target = self.textbox_target.get().split(';')
-            target = np.asarray(target, dtype=float)
-            self.swarm.migration_point = target
-        except ValueError as e:
-            pass
+
+    def _update_swarm_target(self, *args):
+        if self.var_trajectory_mode.get() == 0:
+            self.textbox_target.config(state='normal')
+            self.btn_update_target.config(state='normal')
+            if self.swarm is not None:
+                self.swarm.set_migration_mode('target')
+            try:
+                self.env.set_target(self.textbox_target.get())
+            except ValueError as e:
+                pass
+        else:
+            self.env.target = None
+            self.textbox_target.config(state='disabled')
+            self.btn_update_target.config(state='disabled')
+            if self.swarm is not None:
+                self.swarm.set_migration_mode('trajectory')
 
     def _update_neighbors_panel_components(self, *args):
         current_algo = self.var_neighbors_metric.get()
@@ -668,6 +733,60 @@ class myApp(tk.Frame):
         if self._recorder is not None:
             self._recorder._dt = float(self.var_sim_dt.get())
 
+    def _generate_obstacles_list(self):
+        """
+        Generate a list of obstacles for the treeview widget
+        """
+        # Clear all items
+        for item in self.treeview_obstacles.get_children():
+            self.treeview_obstacles.delete(item)
+        obstacles = self.env.obstacles
+        # Add new items with index
+        for idx, obs in enumerate(obstacles):
+            self.treeview_obstacles.insert('', 'end', text=idx, values=(obs.__class__(), obs.center, obs.height, obs.radius))
+        self.btn_remove_obstacle.config(state='disabled')
+
+    def _select_obstacle_callback(self, event):
+        """
+        Handles the selection of an obstacle in the treeview widget
+        Args:
+            event (_type_): _description_
+
+        """
+
+        item = self.treeview_obstacles.selection()[0]
+        idx = self.treeview_obstacles.item(item, 'text')
+        obs = self.env.obstacles[idx]
+        self.spinner_obstacle_x.set(obs.center[0])
+        self.spinner_obstacle_y.set(obs.center[1])
+        self.spinner_obstacle_z.set(obs.center[2])
+        self.spinner_obstacle_height.set(obs.height)
+        self.spinner_obstacle_radius.set(obs.radius)
+        self.btn_remove_obstacle.config(state='normal')
+
+    def _update_obstacle_params(self, *args):
+        """
+        Updates the obstacle parameters based on the values in the spinbox widgets
+        """
+        items = self.treeview_obstacles.selection()
+        if len(items) == 0:
+            return
+        item = items[0]
+        idx = self.treeview_obstacles.item(item, 'text')
+        obs = self.env.obstacles[idx]
+        try:
+            x = float(self.spinner_obstacle_x.get())
+            y = float(self.spinner_obstacle_y.get())
+            z = float(self.spinner_obstacle_z.get())
+            height = float(self.spinner_obstacle_height.get())
+            radius = float(self.spinner_obstacle_radius.get())
+        except ValueError as e:
+            return
+        obs.center = np.array([x, y, z])
+        obs.height = height
+        obs.radius = radius
+        # update treeview
+        self.treeview_obstacles.item(item, values=(obs.__class__(), obs.center, obs.height, obs.radius))
 
     #==================================#
     #          BUTTON CALLBACKS        #
@@ -682,7 +801,6 @@ class myApp(tk.Frame):
         self.btn_center.config(state='disabled')
         self.btn_simulate.config(state='disabled')
         self.btn_2D_view.config(state='disabled')
-        self.btn_trajectory_mode.config(state='disabled')
         self.radio_2D_viewing.config(state='disabled')
         self.radio_3D_viewing.config(state='disabled')
         self.button_stop_recording.config(state='disabled')
@@ -730,7 +848,7 @@ class myApp(tk.Frame):
             self.set_rendering('off')
         else:
             self.set_rendering('on')
-        
+
 
     def btn_2D_view_callback(self):
         # Initialize 2D view windows
@@ -753,12 +871,6 @@ class myApp(tk.Frame):
         except Exception as e:
             print("Error setting noise: {0}".format(e))
 
-    def btn_trajectory_mode_callback(self):
-        if self.trajectory_mode_enabled:
-            self.set_trajectory_mode('off')
-        else:
-            self.set_trajectory_mode('on')
-
     def start_recording_callback(self):
         self._recorder.start(self.get_app_params_dict())
         self.button_stop_recording.config(state='normal')
@@ -780,6 +892,37 @@ class myApp(tk.Frame):
 
     def _btn_control_scheme_params_callback(self):
         ControlSchemePanel(self, self.var_swarming_algorithm.get())
+
+    def _add_obstacle_callback(self):
+        # Create a new obstacle with current parameters
+        try:
+            x = float(self.spinner_obstacle_x.get())
+            y = float(self.spinner_obstacle_y.get())
+            z = float(self.spinner_obstacle_z.get())
+            height = float(self.spinner_obstacle_height.get())
+            radius = float(self.spinner_obstacle_radius.get())
+        except ValueError as e:
+            return
+        self.env.add_obstacle('cylinder', center=[x, y, z], height=height, radius=radius)
+        self.treeview_obstacles.insert('', 'end', text=len(self.env.obstacles)-1, values=('cylinder', [x, y, z], height, radius))
+        # select the new obstacle
+        self.treeview_obstacles.selection_set(self.treeview_obstacles.get_children()[-1])
+        self.btn_remove_obstacle.config(state='normal')
+
+    def _remove_obstacle_callback(self):
+        if len(self.treeview_obstacles.selection()) == 0:
+            self.btn_remove_obstacle.config(state='disabled')
+            return
+        idx_to_remove = []
+        for item in self.treeview_obstacles.selection():
+            idx_to_remove.append(self.treeview_obstacles.item(item, 'text'))
+        self.env.remove_obstacle(idx_to_remove)
+        self._generate_obstacles_list()
+
+    def _save_env_callback(self):
+        # For now only export obstacles definition
+        self.app_config['obstacles'] = [obs.to_dict() for obs in self.env.obstacles]
+        self.export_app_config()
 
     #==================================#
     #          KEYBOARD CALLBACKS      #
@@ -938,21 +1081,13 @@ class myApp(tk.Frame):
             self.label_no_renderering.grid_forget()
             self.renderer = self.renderer = Renderer(self.panel_view, self.swarm)
 
-    def set_trajectory_mode(self, val: str):
-        if val.upper() == "OFF":
-            self.trajectory_mode_enabled = False
-            self.btn_trajectory_mode.config(text='Trajectory mode')
-            self.textbox_target.config(state='normal')
-            self.swarm.set_migration_mode('single')
-        elif val.upper() == "ON":
-            self.trajectory_mode_enabled = True
-            self.btn_trajectory_mode.config(text='Single mode')
-            self.textbox_target.config(state='disabled')
-            self.swarm.set_migration_mode('trajectory')
-
     def save_recording(self):
         self._recorder.export(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
         self._recorder.clear()
+
+    def export_app_config(self):
+        with open(os.path.join('./pyswarm_sim/config', CONFIG_FILENAME), 'w') as f:
+            json.dump(self.app_config, f, indent=4)
     
 
 if __name__ == "__main__":

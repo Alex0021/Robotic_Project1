@@ -1,9 +1,14 @@
 {
-    "spawn_area": [0.0,0.0,5.0,1.0],
+    "spawn_area": [
+        0.0,
+        0.0,
+        5.0,
+        1.0
+    ],
     "swarm_2d": true,
     "drone_count": 5,
     "swarming_algorithm": {
-        "name": "reynolds",
+        "name": "olfati-saber",
         "params": {
             "d_ref": 1.0,
             "delta": 0.1,
@@ -29,9 +34,9 @@
         "computation": "all"
     },
     "noise": {
-        "distribution": "none",
+        "type": "none",
         "param_dist": 0.01,
-        "param_dir" : 0.0,
+        "param_dir": 0.0,
         "param_heading": 0.0
     },
     "viewing_metric": {
@@ -52,10 +57,49 @@
     },
     "obstacles": [
         {
-            "type": "cylinder",
-            "center": [2.5, 0.0, 5.0],
+            "type": "Cylinder",
+            "center": [
+                2.5,
+                0.0,
+                5.0
+            ],
             "radius": 0.5,
-            "height": 10.0
+            "height": 10.0,
+            "color": [
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "type": "Cylinder",
+            "center": [
+                0.5,
+                -1.8,
+                5.0
+            ],
+            "radius": 0.5,
+            "height": 10.0,
+            "color": [
+                0.0,
+                0.0,
+                1.0
+            ]
+        },
+        {
+            "type": "Cylinder",
+            "center": [
+                0.5,
+                1.7,
+                5.0
+            ],
+            "radius": 0.5,
+            "height": 10.0,
+            "color": [
+                0.0,
+                0.0,
+                1.0
+            ]
         }
     ]
 }
