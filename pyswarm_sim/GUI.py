@@ -33,6 +33,15 @@ class myApp(tk.Frame):
         self.mainframe = root
 
         #==================================#
+        #        APP CONSTANTS             #
+        #==================================#
+        self.RENDERER_CALLBACKS = {
+            'drone_selection_changed': self.drone_selection_changed,
+            'obstacle_moved_callback': self.obstacle_moved_callback,
+            'obstacle_clicked_callback': self.obstacle_clicked_callback
+        }
+
+        #==================================#
         #        EVENT HANDLERS            #
         #==================================#
         self.mainframe.bind("<KeyPress>", self.key_press_callback)
@@ -41,9 +50,6 @@ class myApp(tk.Frame):
         self.mainframe.grid_columnconfigure(0, weight=1)
         self.mainframe.grid_columnconfigure(1, weight=3)
         self.mainframe.grid_rowconfigure(0,weight=1)
-        self.mainframe.drone_selection_changed = self.drone_selection_changed
-        self.mainframe.obstacle_moved_callback = self.obstacle_moved_callback
-        self.mainframe.obstacle_clicked_callback = self.obstacle_clicked_callback
 
         self.window_2d = None
         self.renderer2D = None
@@ -123,7 +129,7 @@ class myApp(tk.Frame):
         self.env = Environment(self.app_config['obstacles'], self.app_config.get('target', None))
         # Start 3D plot renderer
         if self.render_env:
-            self.renderer = Renderer(self.panel_view, None, self.env)
+            self.renderer = Renderer(self.panel_view, None, self.env, callbacks=self.RENDERER_CALLBACKS)
         self._generate_obstacles_list()
         # Check for target
         self.textbox_target.delete(0, tk.END)
@@ -443,6 +449,7 @@ class myApp(tk.Frame):
         self.treeview_obstacles.heading('radius', text='Radius')
         self.treeview_obstacles.column('radius', width=60, anchor='center')
         self.treeview_obstacles.grid(row=0, column=0, rowspan=9, sticky='NWES', padx=0)
+        self.treeview_obstacles.configure(selectmode='browse')
         self.treeview_obstacles.bind("<ButtonRelease-1>", self._select_obstacle_callback)
 
         # X coordinate
@@ -840,6 +847,8 @@ class myApp(tk.Frame):
         self.button_start_recording.config(state='disabled')
         self.btn_reset_view.config(state='disabled')
         self.btn_apply_noise_all.config(state='disabled')
+        self.btn_pause.config(state='disabled')
+        self.swarm = None
         self.update_frontend_running = False
         # Disable all components in the neighbors panel
         for child in self.panel_neighbors.winfo_children():
@@ -1112,7 +1121,7 @@ class myApp(tk.Frame):
             self.render_env = True
             self.btn_rendering.config(text="Rendering: ON")
             self.label_no_renderering.grid_forget()
-            self.renderer = self.renderer = Renderer(self.panel_view, self.swarm)
+            self.renderer = Renderer(self.panel_view, self.swarm, callbacks=self.RENDERER_CALLBACKS)
 
     def save_recording(self):
         self._recorder.export(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())

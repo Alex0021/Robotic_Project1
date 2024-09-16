@@ -25,7 +25,7 @@ class RendererData:
     axis_limits_single = np.array([[-viewing_radius,viewing_radius], [-viewing_radius,viewing_radius]], dtype=np.float64)
 
 class Renderer():
-    def __init__(self, panel:tk.Frame, swarm:Swarm, env: Environment):
+    def __init__(self, panel:tk.Frame, swarm:Swarm, env: Environment, callbacks: dict["callable"]=defaultdict(lambda: None), **kwargs):
         self.master = panel
         # Initialize the figure
         self.fig = plt.figure(1)
@@ -40,6 +40,7 @@ class Renderer():
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_moved)
         self.configure_plot()
         self.artists_dict = defaultdict(lambda: None)
+        self.callbacks = callbacks
 
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=True)
         self.toolbar.update()
@@ -181,10 +182,8 @@ class Renderer():
             print("Selected drone: {0}".format(index[0]))
             self._swarm_ref.selected_drone = index[0]
             # Update main app noise panel
-            try:
-                self.master.master.drone_selection_changed()
-            except:
-                pass
+            if self.callbacks['drone_selection_changed'] is not None:
+                self.callbacks['drone_selection_changed']()
 
         else:
             for k,v in self.artists_dict.items():
@@ -193,7 +192,8 @@ class Renderer():
                         obs_idx = int(k.split('_')[1])
                         print(f"Selected obstacle: {obs_idx}")
                         self._env.select_obstacle(obs_idx, with_mouse=True)
-                        self.master.master.obstacle_clicked_callback()
+                        if self.callbacks['obstacle_clicked_callback'] is not None:
+                            self.callbacks['obstacle_clicked_callback']()
                         self.btn_press_cid = self.canvas.mpl_connect('button_press_event', self.on_mouse_pressed)
                         break
 
@@ -202,7 +202,8 @@ class Renderer():
             # Check if an obstacle is already selected
             if self._env.obs_selected_mouse:
                 self._env.obs_selected_mouse = False
-                self.master.master.obstacle_moved_callback()
+                if self.callbacks['obstacle_moved_callback'] is not None:
+                    self.callbacks['obstacle_moved_callback']()
                 self.canvas.mpl_disconnect(self.btn_press_cid)
 
     def on_mouse_moved(self, event: tk.Event):

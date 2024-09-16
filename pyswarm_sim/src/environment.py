@@ -24,7 +24,6 @@ class Environment:
 
     def render(self, ax) -> dict["Artist"]:
         artists = dict()
-        # Render obstacles
         for idx, obstacle in enumerate(self.obstacles):
             artists[f'obs_{idx}'] = obstacle.render(ax)
 
