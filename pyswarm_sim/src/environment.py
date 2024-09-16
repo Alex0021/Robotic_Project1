@@ -96,5 +96,14 @@ class Environment:
         if self.current_selected_obs is None:
             return None
         return self.obstacles[self.current_selected_obs]
+    
+    def get_selected_obstacle_idx(self) -> int:
+        return self.current_selected_obs
+
+    def move_obstacle(self, delta: np.ndarray, obs: Obstacle = None):
+        if obs is not None:
+            obs.center += delta
+        elif self.current_selected_obs is not None:
+            self.obstacles[self.current_selected_obs].center += delta
 
     

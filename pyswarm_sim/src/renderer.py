@@ -37,12 +37,16 @@ class Renderer():
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         self.canvas.mpl_connect('pick_event', self.onpick)
-        #self.canvas.mpl_connect('button_press_event', self.on_mouse_pressed)
+        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_moved)
         self.configure_plot()
         self.artists_dict = defaultdict(lambda: None)
 
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=True)
         self.toolbar.update()
+        # Should be temporary
+        # Needs to find a correct way to extract coordinates from mouse mouvements
+        # event.xdata, event.ydata are not correct with 3D Axes
+        self.coord_lbl = self.toolbar.children['!label2']
 
         self._env = env
 
@@ -158,7 +162,6 @@ class Renderer():
         self.ax.clear()
         self.configure_plot()
         self.canvas.draw()
-        self.ax.view_init(18,-170,0)
 
     def onpick(self, event: tk.Event):
         """
@@ -189,12 +192,33 @@ class Renderer():
                     if v == artist:
                         obs_idx = int(k.split('_')[1])
                         print(f"Selected obstacle: {obs_idx}")
-                        self.master.master.obstacle_selected_with_mouse(obs_idx)
+                        self._env.select_obstacle(obs_idx, with_mouse=True)
+                        self.master.master.obstacle_clicked_callback()
+                        self.btn_press_cid = self.canvas.mpl_connect('button_press_event', self.on_mouse_pressed)
                         break
 
     def on_mouse_pressed(self, event: tk.Event):
         if event.button == MouseButton.LEFT:
-            print("Left click")
+            # Check if an obstacle is already selected
+            if self._env.obs_selected_mouse:
+                self._env.obs_selected_mouse = False
+                self.master.master.obstacle_moved_callback()
+                self.canvas.mpl_disconnect(self.btn_press_cid)
+
+    def on_mouse_moved(self, event: tk.Event):
+        if not (event.inaxes == self.ax):
+            return
+        if self._env.obs_selected_mouse:
+            # Move the obstacle
+            # self._env.move_obstacle(np.array([event.xdata, event.ydata, 0]))
+            # Temporary work around to get coordinates using toolbar label
+            try:
+                x, y, _ = [float(s.split('=')[-1]) for s in self.coord_lbl['text'].replace(u'\u2212', '-').split(',')]
+                obs = self._env.get_selected_obstacle()
+                obs.center[0] = x
+                obs.center[1] = y
+            except:
+                return
 
 
 class Renderer2D():

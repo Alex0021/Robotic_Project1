@@ -42,6 +42,8 @@ class myApp(tk.Frame):
         self.mainframe.grid_columnconfigure(1, weight=3)
         self.mainframe.grid_rowconfigure(0,weight=1)
         self.mainframe.drone_selection_changed = self.drone_selection_changed
+        self.mainframe.obstacle_moved_callback = self.obstacle_moved_callback
+        self.mainframe.obstacle_clicked_callback = self.obstacle_clicked_callback
 
         self.window_2d = None
         self.renderer2D = None
@@ -766,6 +768,26 @@ class myApp(tk.Frame):
         self.spinner_obstacle_radius.set(obs.radius)
         self.btn_remove_obstacle.config(state='normal')
 
+    def obstacle_moved_callback(self, *args):
+        if self.env.get_selected_obstacle() is None:
+            return
+        obs = self.env.get_selected_obstacle()
+        self.spinner_obstacle_x.set(obs.center[0])
+        self.spinner_obstacle_y.set(obs.center[1])
+        self.spinner_obstacle_z.set(obs.center[2])
+        self.spinner_obstacle_height.set(obs.height)
+        self.spinner_obstacle_radius.set(obs.radius)
+        self.btn_remove_obstacle.config(state='normal')
+
+    def obstacle_clicked_callback(self, *args):
+        if self.env.get_selected_obstacle() is None:
+            return
+        idx = self.env.get_selected_obstacle_idx()
+        self.treeview_obstacles.selection_set(self.treeview_obstacles.get_children()[idx])
+        self.obstacle_moved_callback()
+        if self.tabbed_pane.index(self.tabbed_pane.select()) != 1:
+            self.tabbed_pane.select(1)
+
     def _update_obstacle_params(self, *args):
         """
         Updates the obstacle parameters based on the values in the spinbox widgets
@@ -794,6 +816,8 @@ class myApp(tk.Frame):
         """
         Handles the event when the user changes the tab in the notebook widget
         """
+        if self.tabbed_pane.index(self.tabbed_pane.select()) == 1:
+            return
         self.env.deselect_obstacle()
         self.treeview_obstacles.selection_remove(self.treeview_obstacles.selection())
 
