@@ -238,14 +238,14 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
     c = params.get('c', (b - a)/(2*np.sqrt(a*b)))
 
     # OBSTACLES PARAMETERS
-    r0_obs = params.get('r0_obs',1.0)
-    d_ref_obs = params.get('d_ref_obs',0.5)
-    lambda_obs = params.get('lambda_obs',1)
-    c_pm_obs = params.get('c_pm_obs',4.3)
-    c_vm_obs = params.get('c_vm_obs',0)
+    r0_obs = params.get('r0_obs',0.8)
+    d_ref_obs = params.get('d_ref_obs',0.75)
+    lambda_obs = params.get('lambda_obs',1.0)
+    c_pm_obs = params.get('c_pm_obs',6)
+    c_vm_obs = params.get('c_vm_obs',0.5)
 
     # MIGRATION PARAMETERS
-    v_ref_target = params.get('v_ref_target',1.0)
+    v_ref_target = params.get('v_ref_target',0.5)
     c_vm = params.get('c_vm',1)
     gamma = params.get('gamma',1)
     

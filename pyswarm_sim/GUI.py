@@ -107,6 +107,7 @@ class myApp(tk.Frame):
         self.var_viewing_metric_algorithm.trace_add('write', self.viewing_metric_changed_callback)
         self.var_viewing_metric_faces.trace_add('write', self.viewing_metric_changed_callback)
         self.var_sim_dt.trace_add('write', self._update_sim_dt)
+
         #==================================#
         #       APP INITIALIZATION         #
         #==================================#
@@ -115,6 +116,7 @@ class myApp(tk.Frame):
         self.init_sidebar_components()
         self.init_env_components()
         self.noise_changed_callback()
+
         # Initialize environment
         self.env = Environment(self.app_config['obstacles'], self.app_config.get('target', None))
         # Start 3D plot renderer
@@ -125,9 +127,8 @@ class myApp(tk.Frame):
         self.textbox_target.delete(0, tk.END)
         self.textbox_target.insert(0, self.app_config.get('target', ''))
         self.swarm_2d = self.app_config.get('swarm_2d', True)
-        self._is_autorun = False
         self.swarm_traj = self.app_config['simulation'].get('trajectory', 'circle')
-        
+        self._is_autorun = False
         # Create recorder object
         self._recorder = SwarmRecorder(self.swarm, float(self.var_sim_dt.get()), verbose=True)
 
@@ -146,6 +147,7 @@ class myApp(tk.Frame):
         # Creating app tabs
         self.tabbed_pane = ttk.Notebook(self.mainframe)
         self.tabbed_pane.grid(column=0,row=0,sticky='NWES')
+        self.tabbed_pane.bind("<<NotebookTabChanged>>", self._tabbed_panel_changed)
 
         # Panel global params
         self.panel_sidebar = tk.Frame(self.mainframe, bg='lightgray')
@@ -753,10 +755,10 @@ class myApp(tk.Frame):
             event (_type_): _description_
 
         """
-
         item = self.treeview_obstacles.selection()[0]
         idx = self.treeview_obstacles.item(item, 'text')
         obs = self.env.obstacles[idx]
+        self.env.select_obstacle(idx)
         self.spinner_obstacle_x.set(obs.center[0])
         self.spinner_obstacle_y.set(obs.center[1])
         self.spinner_obstacle_z.set(obs.center[2])
@@ -787,6 +789,13 @@ class myApp(tk.Frame):
         obs.radius = radius
         # update treeview
         self.treeview_obstacles.item(item, values=(obs.__class__(), obs.center, obs.height, obs.radius))
+
+    def _tabbed_panel_changed(self, event):
+        """
+        Handles the event when the user changes the tab in the notebook widget
+        """
+        self.env.deselect_obstacle()
+        self.treeview_obstacles.selection_remove(self.treeview_obstacles.selection())
 
     #==================================#
     #          BUTTON CALLBACKS        #
@@ -903,7 +912,7 @@ class myApp(tk.Frame):
             radius = float(self.spinner_obstacle_radius.get())
         except ValueError as e:
             return
-        self.env.add_obstacle('cylinder', center=[x, y, z], height=height, radius=radius)
+        self.env.add_obstacle('cylinder', center=[x, y, z], height=height, radius=radius, selected=True)
         self.treeview_obstacles.insert('', 'end', text=len(self.env.obstacles)-1, values=('cylinder', [x, y, z], height, radius))
         # select the new obstacle
         self.treeview_obstacles.selection_set(self.treeview_obstacles.get_children()[-1])

@@ -6,11 +6,16 @@ class Obstacle:
     """
     This base class contains necessary information for an obstacle implementation.
     """
-    def __init__(self, center: np.ndarray, color: tuple=(1.0, 0.0, 0.0)):
+    def __init__(self, center: np.ndarray, color: tuple=(1.0, 0.0, 0.0), selected: bool=False):
         # CONSTANTS
         self.MESH_RESOLUTION = 50
+        self.SELECTED_COLOR = (1.0, 0.9, 0.2)
+        self.SELECTED_ALPHA = 0.8
+
+        # Obstacle variables
         self.center = np.array(center)
         self.color = color
+        self.selected = selected
 
     def __class__(self) -> str:
         return "Obstacle"
@@ -30,6 +35,7 @@ class Obstacle:
 
     def to_dict(self) -> dict:
         return {"center": self.center, "color": self.color}
+    
 
 
 class Cylinder(Obstacle):
@@ -37,8 +43,8 @@ class Cylinder(Obstacle):
     """
     This class defines a cylinder obstacle.
     """
-    def __init__(self, center: np.ndarray, radius: float, height: float, color: tuple=(0.0, 0.0, 1.0), **kwargs):
-        super().__init__(center, color)
+    def __init__(self, center: np.ndarray, radius: float, height: float, color: tuple=(0.0, 0.0, 1.0), selected: bool=False, **kwargs):
+        super().__init__(center, color, selected)
         self.radius = radius
         self.height = height
 
@@ -59,8 +65,12 @@ class Cylinder(Obstacle):
         theta_grid, z_grid=np.meshgrid(theta, z)
         x_grid = self.radius*np.cos(theta_grid) + self.center[0]
         y_grid = self.radius*np.sin(theta_grid) + self.center[1]
-        return ax.plot_surface(x_grid, y_grid, z_grid, color=self.color, alpha=self.alpha, edgecolor=self.edgecolor, 
-                               rcount=self.rcount, ccount=self.ccount)
+        if self.selected:
+            return ax.plot_surface(x_grid, y_grid, z_grid, color=self.color, alpha=self.SELECTED_ALPHA, edgecolor=self.SELECTED_COLOR, 
+                               rcount=self.rcount, ccount=self.ccount, picker=True)
+        else:
+            return ax.plot_surface(x_grid, y_grid, z_grid, color=self.color, alpha=self.alpha, edgecolor=self.edgecolor, 
+                               rcount=self.rcount, ccount=self.ccount, picker=True)
 
     def __str__(self) -> str:
         return "Cylinder: center={}, radius={}, height={}".format(self.center, self.radius, self.height)

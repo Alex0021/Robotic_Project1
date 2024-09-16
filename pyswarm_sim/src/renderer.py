@@ -6,6 +6,8 @@ from matplotlib.animation import FuncAnimation
 from pyswarm_sim.src.swarm import Swarm
 from pyswarm_sim.src.environment import Environment
 from matplotlib.widgets import Slider
+from matplotlib.backend_bases import MouseButton
+from collections import defaultdict
 
 # Set the default keymap to close the window to ctrl+w
 plt.rcParams['keymap.quit'] = 'ctrl+w'
@@ -35,7 +37,9 @@ class Renderer():
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         self.canvas.mpl_connect('pick_event', self.onpick)
+        #self.canvas.mpl_connect('button_press_event', self.on_mouse_pressed)
         self.configure_plot()
+        self.artists_dict = defaultdict(lambda: None)
 
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=True)
         self.toolbar.update()
@@ -114,7 +118,7 @@ class Renderer():
                         colors[neighbors_id] = '#ff0000ff'
                 #sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
                 sizes = [100]*self._swarm_ref.count
-                self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
+                self.artists_dict['drones'] = self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
                 # Plot the heading as arrows
                 self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
                 # Plot the desired viewing direction
@@ -132,7 +136,7 @@ class Renderer():
 
         # RENDER ENV
         if self._env is not None:
-            self._env.render(self.ax)
+            self.artists_dict.update(self._env.render(self.ax))
 
 
     def stop(self):
@@ -164,17 +168,33 @@ class Renderer():
             event (tk.Event): data of the event
 
         """
-        index = event.ind
-        if index is None:
-            return
+        
+        artist = event.artist
 
-        print("Selected drone: {0}".format(index[0]))
-        self._swarm_ref.selected_drone = index[0]
-        # Update main app noise panel
-        try:
-            self.master.master.drone_selection_changed()
-        except:
-            pass
+        if artist == self.artists_dict['drones']:
+            index = event.ind
+            if index is None:
+                return
+            print("Selected drone: {0}".format(index[0]))
+            self._swarm_ref.selected_drone = index[0]
+            # Update main app noise panel
+            try:
+                self.master.master.drone_selection_changed()
+            except:
+                pass
+
+        else:
+            for k,v in self.artists_dict.items():
+                if k.startswith('obs'):
+                    if v == artist:
+                        obs_idx = int(k.split('_')[1])
+                        print(f"Selected obstacle: {obs_idx}")
+                        self.master.master.obstacle_selected_with_mouse(obs_idx)
+                        break
+
+    def on_mouse_pressed(self, event: tk.Event):
+        if event.button == MouseButton.LEFT:
+            print("Left click")
 
 
 class Renderer2D():
