@@ -58,7 +58,16 @@ class Cylinder(Obstacle):
     # Rendering inspired from this forum thread: 
     # https://stackoverflow.com/questions/26989131/add-cylinder-to-plot
     #===========================================================================
-    def render(self, ax):
+    def render(self, ax: plt.Axes) -> plt.Artist:
+        """
+        This method renders the cylinder in the simulation environment.
+
+        Args:
+            ax (Axes): axes object used for rendering
+
+        Returns:
+            Artist: generated artist object
+        """
         z_lim = (self.center[2] - self.height/2, self.center[2] + self.height/2)
         z = np.linspace(z_lim[0], z_lim[1], self.MESH_RESOLUTION)
         theta = np.linspace(0, 2*np.pi, self.MESH_RESOLUTION)

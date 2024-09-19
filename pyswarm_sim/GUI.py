@@ -89,7 +89,7 @@ class myApp(tk.Frame):
         self.var_viewing_metric_outer_points = tk.IntVar(value=self.app_config['viewing_metric'].get('outer_points', 2))
         self.var_output_csv = tk.StringVar(value=self.app_config.get('output_data', 'output'))
         self.render_env = self.app_config['simulation'].get('render', True)
-        self.var_trajectory_mode = tk.BooleanVar(value=self.app_config['simulation'].get('trajectory_mode', False))
+        self.var_trajectory_mode = tk.StringVar(value=self.app_config['simulation'].get('trajectory_mode', 'target'))
         self.var_swarming_algorithm = tk.StringVar(value=self.app_config['swarming_algorithm'].get('name', 'olfati-saber'))
         self.var_viewing_metric_dim = tk.IntVar(value=self.app_config['viewing_metric'].get('dim', 2))
         self.var_viewing_metric_algorithm = tk.StringVar(value=self.app_config['viewing_metric'].get('algorithm', 'None'))
@@ -162,7 +162,7 @@ class myApp(tk.Frame):
         self.panel_sidebar.grid_columnconfigure(0,weight=1)
         self.panel_sidebar.grid_rowconfigure(0,weight=1)
         self.panel_sidebar.grid_rowconfigure(1,weight=6)
-        self.panel_sidebar.grid_rowconfigure(2,weight=4)
+        self.panel_sidebar.grid_rowconfigure(2,weight=3)
         self.tabbed_pane.add(self.panel_sidebar, text='Swarm config')
 
         # Panel environment
@@ -187,13 +187,13 @@ class myApp(tk.Frame):
         self.panel_params = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=0, pady=0)
         self.panel_params.grid_columnconfigure(0, weight=2)
         self.panel_params.grid_columnconfigure((1,2), weight=1)
-        self.panel_params.grid_rowconfigure(list(range(6)),weight=1)
+        self.panel_params.grid_rowconfigure((2,3,4,5),weight=1)
         self.panel_params.grid(column=0, row=1,sticky='NWES')
 
         self.panel_sim = tk.Frame(self.panel_sidebar, borderwidth=2, relief='ridge', padx=5, pady=0)
         self.panel_sim.grid_columnconfigure(0, weight=2)
         self.panel_sim.grid_columnconfigure((1,2), weight=1)
-        self.panel_sim.grid_rowconfigure((0,1,2,3),weight=1)
+        self.panel_sim.grid_rowconfigure((0,1,3),weight=1)
         self.panel_sim.grid(column=0, row=2,sticky='NWES')
 
     def init_algo_components(self):
@@ -293,10 +293,10 @@ class myApp(tk.Frame):
 
         # Drone number
         self.label_drone_nb = ttk.Label(self.panel_params, anchor='w', text="# drones: ")
-        self.label_drone_nb.grid(column=0,row=0, sticky='NEWS')
+        self.label_drone_nb.grid(column=0,row=0, sticky='NEWS', pady=5)
         self.spinner_drone_nb = ttk.Spinbox(self.panel_params, increment=1,from_=1, to=50, command=lambda: self.var_drone_count.set(self.spinner_drone_nb.get()))
         self.spinner_drone_nb.bind("<Return>", lambda e: self.var_drone_count.set(self.spinner_drone_nb.get()))
-        self.spinner_drone_nb.grid(row=0,column=1,sticky='w', padx=5)
+        self.spinner_drone_nb.grid(row=0,column=1,sticky='w', padx=5, pady=5)
         self.spinner_drone_nb.set(self.var_drone_count.get())
 
         # Neighbors
@@ -365,18 +365,25 @@ class myApp(tk.Frame):
         self.panel_target = tk.Frame(self.panel_params, borderwidth=2, relief='ridge')
         self.panel_target.grid(column=0, row=5, columnspan=3, rowspan=1, sticky='NWES', padx=0, pady=0)
         self.panel_target.grid_columnconfigure((0,1,2,4), weight=1)
-        self.panel_target.grid_rowconfigure((0,1), weight=1)
-        self.radio_target = ttk.Radiobutton(self.panel_target, text="Target", variable=self.var_trajectory_mode, value=False ,command=self._update_swarm_target)
-        self.radio_target.grid(column=0,row=0, sticky='NEWS', padx=5)
-        self.radio_trajectory = ttk.Radiobutton(self.panel_target, text="Trajectory", variable=self.var_trajectory_mode, value=True, command=self._update_swarm_target)
-        self.radio_trajectory.grid(column=0,row=1, sticky='NEWS', padx=5)
+        self.panel_target.grid_rowconfigure((1,2,3), weight=1)
+        self.label_swarm_motion = ttk.Label(self.panel_target, anchor='w', text="Swarm motion", justify='left', font=font.Font(size=11, underline=True))
+        self.label_swarm_motion.grid(column=0,row=0, sticky='NEWS', padx=5, pady=5)
+        self.radio_target = ttk.Radiobutton(self.panel_target, text="Target", variable=self.var_trajectory_mode, value='target' ,command=self._update_swarm_target)
+        self.radio_target.grid(column=0,row=1, sticky='NEWS', padx=5)
+        self.radio_trajectory = ttk.Radiobutton(self.panel_target, text="Trajectory", variable=self.var_trajectory_mode, value='trajectory', command=self._update_swarm_target)
+        self.radio_trajectory.grid(column=0,row=2, sticky='NEWS', padx=5)
+        self.radio_keyboard = ttk.Radiobutton(self.panel_target, text="Keyboard", variable=self.var_trajectory_mode, value='keyboard', command=self._update_swarm_target)
+        self.radio_keyboard.grid(column=0,row=3, sticky='NEWS', padx=5)
         self.textbox_target = ttk.Entry(self.panel_target, text='', font=font.Font(size=10))
         self.textbox_target.bind("<Return>", self._update_swarm_target)
-        self.textbox_target.grid(column=1, row=0, sticky='WE', padx=5)
+        self.textbox_target.grid(column=1, row=1, sticky='WE', padx=5)
         self.label_target_format = ttk.Label(self.panel_target, anchor='w', text="#.#;#.#;#.# or empty", justify='left', font=font.Font(size=10))
-        self.label_target_format.grid(column=2,row=0, sticky='NEWS')
+        self.label_target_format.grid(column=2,row=1, sticky='NEWS')
         self.btn_update_target = ttk.Button(self.panel_target, text="Update", command=self._update_swarm_target)
-        self.btn_update_target.grid(column=4,row=0, sticky='EW', ipady=2, padx=5)
+        self.btn_update_target.grid(column=4,row=1, sticky='EW', ipady=2, padx=5)
+        self.listbox_trajectories = ttk.Combobox(self.panel_target, values=["circle","figure8"], state='disabled')
+        self.listbox_trajectories.set(self.app_config['simulation'].get('trajectory_type', 'circle'))
+        self.listbox_trajectories.grid(column=1,row=2, sticky='WE', padx=5)
 
         # Simulate buttons
         self.btn_init = ttk.Button(self.panel_sim, text="Initialize", command=self._initialize_simulation)
@@ -389,41 +396,60 @@ class myApp(tk.Frame):
         self.btn_reset.grid(column=0, row=1, sticky='EW', padx=10, pady=5)
         self.btn_2D_view = ttk.Button(self.panel_sim, text="2D view", command=self.btn_2D_view_callback, state='disabled')
         self.btn_2D_view.grid(column=1, row=1, sticky='EW', padx=10, pady=5)
-        self.btn_center = ttk.Button(self.panel_sim, text="Center plot data", command=self._btn_center_callback, state='disabled')
-        self.btn_center.grid(column=2, row=2, sticky='EW', padx=10, pady=5)
-        self.btn_reset_view = ttk.Button(self.panel_sim, text="Reset view", command=self._btn_reset_view_callback, state='disabled')
-        self.btn_reset_view.grid(column=1, row=2, sticky='EW', padx=10, pady=5)
+        self.btn_center = ttk.Button(self.panel_sim, text="Center view on swarm", command=self._btn_center_callback, state='disabled')
+        self.btn_center.grid(column=1, row=2, sticky='EW', padx=10, ipady=10)
         text_btn_rendering = "Rendering: ON" if self.render_env else "Rendering: OFF"
         self.btn_rendering = ttk.Button(self.panel_sim, text=text_btn_rendering, command=self._btn_rendering_callback)
         self.btn_rendering.grid(column=2, row=1, sticky='EW', padx=10, pady=5)
 
+        # 3D quick view selection panel (top, sie, front back, reset)
+        self.panel_3D_quick_views = tk.Frame(self.panel_sim)
+        self.panel_3D_quick_views.grid_columnconfigure((0,1,2), weight=1)
+        self.panel_3D_quick_views.grid(row=2, column=2, sticky='NWES')
+        self.btn_3D_top_view = ttk.Button(self.panel_3D_quick_views, text="TOP", command=lambda: self.renderer.set_view('top'))
+        self.btn_3D_top_view.grid(column=1,row=1, sticky='NEWS', padx=5)
+        self.btn_3D_left_view = ttk.Button(self.panel_3D_quick_views, text="LEFT", command=lambda: self.renderer.set_view('left'))
+        self.btn_3D_left_view.grid(column=0,row=1, sticky='NEWS', padx=5)
+        self.btn_3D_right_view = ttk.Button(self.panel_3D_quick_views, text="RIGHT", command=lambda: self.renderer.set_view('right'))
+        self.btn_3D_right_view.grid(column=2,row=1, sticky='NEWS', padx=5)
+        self.btn_3D_front_view = ttk.Button(self.panel_3D_quick_views, text="FRONT", command=lambda: self.renderer.set_view('front'))
+        self.btn_3D_front_view.grid(column=1,row=2, sticky='NEWS', padx=5)
+        self.btn_3D_back_view = ttk.Button(self.panel_3D_quick_views, text="BACK", command=lambda: self.renderer.set_view('back'))
+        self.btn_3D_back_view.grid(column=1,row=0, sticky='NEWS', padx=5)
+        self.btn_3D_reset_view = ttk.Button(self.panel_3D_quick_views, text="RESET", command=self._btn_reset_view_callback)
+        self.btn_3D_reset_view.grid(column=2,row=2, sticky='NEWS', padx=5)
+
+        # Save app params button
+        self.btn_save_params = ttk.Button(self.panel_sim, text="Save configuration", command=self.export_app_config)
+        self.btn_save_params.grid(column=0,row=2, sticky='EW', padx=10, ipady=10)
+
         # Simulation timestep
         self.panel_sim_timestep = tk.Frame(self.panel_sim)
-        self.panel_sim_timestep.grid(column=0, row=2,sticky='NWES')
-        self.panel_sim_timestep.grid_columnconfigure(0, weight=1)
-        self.panel_sim_timestep.grid_columnconfigure(1, weight=5)
+        self.panel_sim_timestep.grid(column=0, row=3, columnspan=2, sticky='NWES')
+        self.panel_sim_timestep.grid_columnconfigure(0, weight=2)
+        self.panel_sim_timestep.grid_columnconfigure(2, weight=1)
         self.panel_sim_timestep.grid_rowconfigure(0, weight=1)
-        self.label_sim_dt = ttk.Label(self.panel_sim_timestep, text="dt: ", justify='right')
-        self.label_sim_dt.grid(column=0, row=0, sticky='E')
+        self.label_sim_dt = ttk.Label(self.panel_sim_timestep, text="dt: ", justify='right', font=font.Font(size=11))
+        self.label_sim_dt.grid(column=1, row=0, sticky='W')
         self.spinner_sim_dt = ttk.Spinbox(self.panel_sim_timestep, increment=0.001, from_=0.001, to=1, textvariable=self.var_sim_dt, width=10)
-        self.spinner_sim_dt.grid(column=1, row=0, sticky='W', padx=5)
-        self.label_sim_total_time = ttk.Label(self.panel_sim, text='Simulation time: 0.000 s', justify='left', font=font.Font(size=10))
-        self.label_sim_total_time.grid(column=0, row=3, columnspan=3, sticky='NEWS', padx=5)
+        self.spinner_sim_dt.grid(column=2, row=0, sticky='W', padx=5)
+        self.label_sim_total_time = ttk.Label(self.panel_sim_timestep, text='Simulation time: 0.000 s', justify='left', font=font.Font(size=10))
+        self.label_sim_total_time.grid(column=0, row=0, sticky='NEWS', padx=5)
 
         # Neihbors display
         self.panel_sim_neighbors = tk.Frame(self.panel_sim)
-        self.panel_sim_neighbors.grid_columnconfigure((0,1), weight=1)
-        self.panel_sim_neighbors.grid_columnconfigure(2, weight=2)
+        # self.panel_sim_neighbors.grid_columnconfigure(0, weight=1)
+        self.panel_sim_neighbors.grid_columnconfigure(2, weight=1)
         self.panel_sim_neighbors.grid_rowconfigure(0, weight=1)
-        self.panel_sim_neighbors.grid(row=3, column=1, columnspan=2, sticky='NWES')
+        self.panel_sim_neighbors.grid(row=3, column=2, columnspan=1, sticky='NWES')
         self.label_neighbor_sampling = ttk.Label(self.panel_sim_neighbors, text="Neighbor sampling: ", justify='right')
         self.label_neighbor_sampling.grid(column=0, row=0, sticky='E')
-        self.spinner_neighbor_sampling = ttk.Spinbox(self.panel_sim_neighbors, increment=1, from_=1, to=100, textvariable=self.var_neighbors_sampling)
+        self.spinner_neighbor_sampling = ttk.Spinbox(self.panel_sim_neighbors, increment=1, from_=1, to=100, textvariable=self.var_neighbors_sampling, width=10)
         self.spinner_neighbor_sampling.grid(column=1, row=0, sticky='W', padx=5)
-        self.listbox_neighbors_select = ttk.Combobox(self.panel_sim_neighbors, values=["None", "Selected", "All"])
+        self.listbox_neighbors_select = ttk.Combobox(self.panel_sim_neighbors, values=["None", "Selected", "All"], width=10)
         self.listbox_neighbors_select.set(self.app_config['neighbors'].get('computation', 'None'))
         self.listbox_neighbors_select.bind("<<ComboboxSelected>>", lambda e: self._set_neighbors_algo_params())
-        self.listbox_neighbors_select.grid(column=2, row=0, sticky='WE', padx=5)
+        self.listbox_neighbors_select.grid(column=2, row=0, sticky='W', padx=15)
 
 
     def init_env_components(self):
@@ -555,13 +581,11 @@ class myApp(tk.Frame):
         self.radio_2D_viewing.config(state='normal')
         self.radio_3D_viewing.config(state='normal')
         self.button_start_recording.config(state='normal')
-        self.btn_reset_view.config(state='normal')
         self.btn_apply_noise_all.config(state='normal')
         if self.swarm.is_2D:
             self.var_viewing_metric_dim.set(2)
             self.radio_3D_viewing.config(state='disabled')
-        if self.var_trajectory_mode.get():
-            self.swarm.set_migration_mode('trajectory')
+        self.swarm.set_migration_mode(self.var_trajectory_mode.get())
         self.viewing_metric_changed_callback(None)
         
 
@@ -580,21 +604,29 @@ class myApp(tk.Frame):
             print("Error setting swarm algo params: {0}".format(e))
 
     def _update_swarm_target(self, *args):
-        if self.var_trajectory_mode.get() == 0:
-            self.textbox_target.config(state='normal')
-            self.btn_update_target.config(state='normal')
-            if self.swarm is not None:
-                self.swarm.set_migration_mode('target')
-            try:
-                self.env.set_target(self.textbox_target.get())
-            except ValueError as e:
-                pass
-        else:
-            self.env.target = None
-            self.textbox_target.config(state='disabled')
-            self.btn_update_target.config(state='disabled')
-            if self.swarm is not None:
-                self.swarm.set_migration_mode('trajectory')
+        mode = self.var_trajectory_mode.get()
+        match mode:
+            case 'target':
+                self.textbox_target.config(state='normal')
+                self.btn_update_target.config(state='normal')
+                self.listbox_trajectories.config(state='disabled')
+                try:
+                    self.env.set_target(self.textbox_target.get())
+                except ValueError as e:
+                    pass
+            case 'trajectory':
+                self.env.target = None
+                self.textbox_target.config(state='disabled')
+                self.btn_update_target.config(state='disabled')
+                self.listbox_trajectories.config(state='normal')
+            case 'keyboard':
+                self.env.target = None
+                self.textbox_target.config(state='disabled')
+                self.btn_update_target.config(state='disabled')
+                self.listbox_trajectories.config(state='disabled')
+        if self.swarm is not None:
+            self.swarm.set_migration_mode(mode)
+                
 
     def _update_neighbors_panel_components(self, *args):
         current_algo = self.var_neighbors_metric.get()
@@ -845,7 +877,6 @@ class myApp(tk.Frame):
         self.radio_3D_viewing.config(state='disabled')
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='disabled')
-        self.btn_reset_view.config(state='disabled')
         self.btn_apply_noise_all.config(state='disabled')
         self.btn_pause.config(state='disabled')
         self.swarm = None
@@ -973,20 +1004,23 @@ class myApp(tk.Frame):
     def key_press_callback(self, event):
         if self.swarm is None:
             return
+        if self.var_trajectory_mode.get().upper() != 'KEYBOARD':
+            return
         target_vel = self.swarm.get_cmd_velocity()
+        vref = self.app_config['simulation'].get("vref", 1.0)
         match event.char:
             case 'q':
                 self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,self.cmd_yaw]))
             case 'e':
                 self.swarm.set_cmd_ang_rates(np.array([0.0,0.0,-self.cmd_yaw]))
             case 'w':
-                target_vel[0] = self.var_vref.get()
+                target_vel[0] = vref
             case 's':
-                target_vel[0] = -self.var_vref.get()
+                target_vel[0] = -vref
             case 'a':
-                target_vel[1] = self.var_vref.get()
+                target_vel[1] = vref
             case 'd':
-                target_vel[1] = -self.var_vref.get()
+                target_vel[1] = -vref
             case 'Q':
                 target_vel[2] = self.cmd_vel
             case 'E':
@@ -996,6 +1030,8 @@ class myApp(tk.Frame):
 
     def key_release_callback(self, event):
         if self.swarm is None:
+            return
+        if self.var_trajectory_mode.get().upper() != 'KEYBOARD':
             return
         target_vel = self.swarm.get_cmd_velocity()
         match event.char:
@@ -1067,6 +1103,10 @@ class myApp(tk.Frame):
                 "outer_points": self.var_viewing_metric_outer_points.get(),
                 "faces": self.var_viewing_metric_faces.get(),
                 "dim": self.var_viewing_metric_dim.get()
+            },
+            "simulation": {
+                "trajectory_mode": self.var_trajectory_mode.get(),
+                "trajectory_type": self.listbox_trajectories.get()
             }
         }
     
@@ -1117,17 +1157,22 @@ class myApp(tk.Frame):
                 self.renderer.disable_rendering()
             self.renderer = None
             self.label_no_renderering.grid(column=0,row=0,sticky='NESW')
+            for child in self.panel_3D_quick_views.winfo_children():
+                child.config(state='disabled')
         elif val.upper() == "ON":
             self.render_env = True
             self.btn_rendering.config(text="Rendering: ON")
             self.label_no_renderering.grid_forget()
-            self.renderer = Renderer(self.panel_view, self.swarm, callbacks=self.RENDERER_CALLBACKS)
+            self.renderer = Renderer(self.panel_view, self.swarm, callbacks=self.RENDERER_CALLBACKS, env=self.env)
+            for child in self.panel_3D_quick_views.winfo_children():
+                child.config(state='normal')
 
     def save_recording(self):
         self._recorder.export(DATA_OUTPUT_FOLDER + '/' + self.var_output_csv.get())
         self._recorder.clear()
 
     def export_app_config(self):
+        self.app_config.update(self.get_app_params_dict())
         with open(os.path.join('./pyswarm_sim/config', CONFIG_FILENAME), 'w') as f:
             json.dump(self.app_config, f, indent=4)
     

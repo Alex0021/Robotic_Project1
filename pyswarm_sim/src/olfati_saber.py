@@ -246,7 +246,7 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
 
     # MIGRATION PARAMETERS
     v_ref_target = params.get('v_ref_target',0.5)
-    c_vm = params.get('c_vm',1)
+    c_vm = params.get('c_vm',0.3)
     gamma = params.get('gamma',1)
     
     #count += 1

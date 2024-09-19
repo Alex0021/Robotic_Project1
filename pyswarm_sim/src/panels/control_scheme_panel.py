@@ -25,6 +25,7 @@ class ControlSchemePanel(tk.Toplevel):
 
         # Other variables
         self.plot_canvas = None
+        self.current_tab = 'Agents'
 
         # Tk variables
         # Olfati-Saber
@@ -34,6 +35,12 @@ class ControlSchemePanel(tk.Toplevel):
         self.b_param.set(self.current_app_config.get("b", 1.0))
         self.c_param = tk.StringVar()
         self.c_param.set(self.current_app_config.get("c", 1.0))
+        self.a_obs_param = tk.DoubleVar()
+        self.a_obs_param.set(self.current_app_config.get("a_obs", self.a_param.get()))
+        self.b_obs_param = tk.DoubleVar()
+        self.b_obs_param.set(self.current_app_config.get("b_obs", self.b_param.get()))
+        self.c_obs_param = tk.DoubleVar()
+        self.c_obs_param.set(self.current_app_config.get("c_obs", self.c_param.get()))
         self.delta_param = tk.StringVar()
         self.delta_param.set(self.current_app_config.get("delta", 1.0))
         self.c_param_auto = tk.BooleanVar()

@@ -17,6 +17,8 @@
             "v_ref_target": 0.35,
             "a": 0.3,
             "b": 0.5,
+            "a_obs": 0.3,
+            "b_obs": 0.5,
             "r_coh_obs": 0.75,
             "d_ref_obs": 0.75,
             "c_pm_obs": 6,
@@ -41,7 +43,7 @@
         "computation": "all"
     },
     "noise": {
-        "type": "none",
+        "type": "None",
         "param_dist": 0.01,
         "param_dir": 0.0,
         "param_heading": 0.0
@@ -53,14 +55,8 @@
         "dim": 3
     },
     "simulation": {
-        "render": true,
-        "pd_controller": {
-            "active": false,
-            "kp": 2.0,
-            "kd": 0.1,
-            "rate_limit": 1.0
-        },
-        "trajectory_mode": false
+        "trajectory_mode": "target",
+        "trajectory_type": "figure8"
     },
     "obstacles": [
         {

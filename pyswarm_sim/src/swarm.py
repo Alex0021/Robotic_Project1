@@ -612,17 +612,20 @@ class Swarm():
         """
         Set the migration mode of the swarm.
 
-        Single: Migrate to a single point and stay there.
+        target: Migrate to a single point and stay there.
 
-        Trajectory: Migrate to a set of points in a trajectory. 
+        trajectory: Migrate to a set of points in a trajectory. 
                     Waypoints are automatically updated.
 
         Args:
-            mode (str): Mode of migration ('single', 'trajectory').
+            mode (str): Mode of migration ('target', 'trajectory', 'keyboard').
         """
         self.migration_mode = mode
-        if mode == 'trajectory':
-            self._env.target = self.trajectory_points[self.trajectory_idx]
+        match mode.upper():
+            case'TRAJECTORY':
+                self._env.target = self.trajectory_points[self.trajectory_idx]
+            case 'KEYBOARD':
+                self._env.target = None    
 
     def update_drones_FOV(self, fov: float):
         """

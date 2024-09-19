@@ -1,8 +1,15 @@
 import numpy as np
 from pyswarm_sim.src.obstacles import Cylinder, Obstacle
-from matplotlib.artist import Artist
+import matplotlib.pyplot as plt
 
 class Environment:
+    """
+    This class defines the environment in which the drones are moving.
+    
+    It contains:
+    - obstacles: list of obstacles in the environment
+    - target: target point to reach (migration point)
+    """
     def __init__(self, obstacles: list, target: np.ndarray = None, **kwargs):
         self.obstacles = []
         for obs in obstacles:
@@ -22,7 +29,17 @@ class Environment:
         self.target_marker = kwargs.get('target_marker', 'x')
         self.target_size = kwargs.get('target_size', 20)
 
-    def render(self, ax) -> dict["Artist"]:
+    def render(self, ax: plt.Axes) -> dict["plt.Artist"]:
+        """
+        This method renders all objects of the environment in the simulation.
+
+        Args:
+            ax (Axes object): axes object used for rendering
+
+        Returns:
+            dict: dictionary containing the artists of the rendered
+                    objects (key: object name, value: artist object)
+        """
         artists = dict()
         for idx, obstacle in enumerate(self.obstacles):
             artists[f'obs_{idx}'] = obstacle.render(ax)
@@ -32,8 +49,18 @@ class Environment:
             ax.plot(self.target[0], self.target[1], self.target[2], marker=self.target_marker, color=self.target_color, markersize=self.target_size)
 
         return artists
-
+    
+    #===========================================================================
+    # TARGET POINT HANDLING
+    #===========================================================================
     def set_target(self, target: np.ndarray|str):
+        """
+        This method sets the target point to be rendered.
+        This does not affect or set the swarm target.
+
+        Args:
+            target (np.ndarray | str): given as [x, y, z] or as a string "x;y;z"
+        """
         if isinstance(target, str):
             if len(target) == 0:
                 self.target = None
@@ -45,6 +72,10 @@ class Environment:
         else:
             self.target = target
 
+
+    #===========================================================================
+    # OBSTACLES HANDLING
+    #===========================================================================
     def add_obstacle(self, type: str, **kwargs):
         new_obs = None
         match type.upper():

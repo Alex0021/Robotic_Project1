@@ -32,7 +32,7 @@ class Renderer():
         self.fig.suptitle("Live Swarm View")
         self.fig.subplots_adjust(top=1.1, bottom=-0.1, left=-0.1, right=1.1)
         self.ax = self.fig.add_subplot(111, projection='3d')
-        self.ax.view_init(18,-170,0)
+        self.set_view("default")
         self.canvas = FigureCanvasTkAgg(self.fig, self.master)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
@@ -92,6 +92,29 @@ class Renderer():
         Reset to original view
         """
         RendererData.axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)
+        self.set_view("default")
+
+    def set_view(self, view: str):
+        """
+        Set a predefined view for the plot
+
+        Args:
+            view (str): ["top", "front", "back","left","right", "default"]
+        """
+        if view == "top":
+            self.ax.view_init(89.9,-179.9)
+        elif view == "front":
+            self.ax.view_init(0,-179.9)
+        elif view == "back":
+            self.ax.view_init(0,0)
+        elif view == "left":
+            self.ax.view_init(0,89.9)
+        elif view == "right":
+            self.ax.view_init(0,-89.9)
+        elif view == "default":
+            self.ax.view_init(18,-170,0)
+        else:
+            print("Setting view impossible :: Invalid value --> '{0}'".format(view))
 
     def disable_rendering(self):
         """
