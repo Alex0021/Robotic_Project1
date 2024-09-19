@@ -30,35 +30,16 @@ class ControlSchemePanel(tk.Toplevel):
         # Tk variables
         # Olfati-Saber
         self.a_param = tk.StringVar()
-        self.a_param.set(self.current_app_config.get("a", 1.0))
         self.b_param = tk.StringVar()
-        self.b_param.set(self.current_app_config.get("b", 1.0))
         self.c_param = tk.StringVar()
-        self.c_param.set(self.current_app_config.get("c", 1.0))
-        self.a_obs_param = tk.DoubleVar()
-        self.a_obs_param.set(self.current_app_config.get("a_obs", self.a_param.get()))
-        self.b_obs_param = tk.DoubleVar()
-        self.b_obs_param.set(self.current_app_config.get("b_obs", self.b_param.get()))
-        self.c_obs_param = tk.DoubleVar()
-        self.c_obs_param.set(self.current_app_config.get("c_obs", self.c_param.get()))
-        self.delta_param = tk.StringVar()
-        self.delta_param.set(self.current_app_config.get("delta", 1.0))
         self.c_param_auto = tk.BooleanVar()
-        self.c_param_auto.set(self.current_app_config.get("c_auto", True))
+        self.delta_param = tk.StringVar()
         self.r_coh_param = tk.DoubleVar()
-        self.r_coh_param.set(self.current_app_config.get("r_coh", 20.0))
         self.d_ref_param = tk.DoubleVar()
-        self.d_ref_param.set(self.current_app_config.get("d_ref", np.mean(D_REF_LIMITS)))
-        self.r_coh_obs_param = tk.DoubleVar()
-        self.r_coh_obs_param.set(self.current_app_config.get("r_coh_obs", 1.0))
-        self.d_ref_obs_param = tk.DoubleVar()
-        self.d_ref_obs_param.set(self.current_app_config.get("d_ref_obs", 0.5))
-        self.lambda_obs_param = tk.DoubleVar()
-        self.lambda_obs_param.set(self.current_app_config.get("lambda_obs", 1.0))
-        self.c_pm_obs_param = tk.DoubleVar()
-        self.c_pm_obs_param.set(self.current_app_config.get("c_pm_obs", 4.3))
-        self.c_vm_obs_param = tk.DoubleVar()
-        self.c_vm_obs_param.set(self.current_app_config.get("c_vm_obs", 0.0))
+        self.lambda_param = tk.DoubleVar()
+        self.c_pm_param = tk.DoubleVar()
+        self.c_vm_param = tk.DoubleVar()
+        self._affect_values_to_vars()
         # Reynolds
         self.cohesion_param = tk.DoubleVar()
         self.cohesion_param.set(self.current_app_config.get("c_coh", 1.0))
@@ -81,11 +62,6 @@ class ControlSchemePanel(tk.Toplevel):
         self.cohesion_param.trace_add("write", self.generate_plot)
         self.separation_param.trace_add("write", self.generate_plot)
         self.alignment_param.trace_add("write", self.generate_plot)
-        self.d_ref_obs_param.trace_add("write", self.generate_plot)
-        self.r_coh_obs_param.trace_add("write", self.generate_plot)
-        self.lambda_obs_param.trace_add("write", self.generate_plot)
-        self.c_pm_obs_param.trace_add("write", self.generate_plot)
-        self.c_vm_obs_param.trace_add("write", self.generate_plot)
         self.obstacle_param.trace_add("write", self.generate_plot)
         self.control_scheme = current_control_scheme
 
@@ -99,7 +75,7 @@ class ControlSchemePanel(tk.Toplevel):
 
     def init_common_components(self):
         self.title("Control Scheme")
-        self.geometry("700x400")
+        self.geometry("700x450")
 
         # Set geometry manager
         self.grid_columnconfigure(2, weight=1)
@@ -148,8 +124,9 @@ class ControlSchemePanel(tk.Toplevel):
             self._generate_panel_params_os(self.tab1_panel)
             tabbed_panel_params.add(self.tab1_panel, text="Agents")
             self.tab2_panel = tk.Frame(tabbed_panel_params, border=2, relief="groove")
-            self._generate_panel_obs_os(self.tab2_panel)
+            # self._generate_panel_params_os(self.tab2_panel)
             tabbed_panel_params.add(self.tab2_panel, text="Obstacles")
+            tabbed_panel_params.bind("<<NotebookTabChanged>>", self.notebook_tab_changed)
 
         elif self.control_scheme.upper() == "REYNOLDS":
             parameters_panel.grid_columnconfigure(0, weight=0)
@@ -237,34 +214,21 @@ class ControlSchemePanel(tk.Toplevel):
         self.c_textbox.grid(row=0, column=0, sticky="ew", padx=5)
         self.c_auto_checkbox = tk.Checkbutton(self.c_param_panel, text="Auto", variable=self.c_param_auto)
         self.c_auto_checkbox.grid(row=0, column=1, sticky="ew", padx=5)
+        
+        self.lambda_label = tk.Label(parameters_panel, text="lambda: ")
+        self.lambda_label.grid(row=6, column=0, sticky="w", padx=5, pady=5)
+        self.lambda_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.lambda_param)
+        self.lambda_spinner.grid(row=6, column=1, sticky="w", padx=5, pady=5)
 
-    def _generate_panel_obs_os(self, parent: tk.Frame):
-        parameters_panel = parent
+        self.c_pm_label = tk.Label(parameters_panel, text="c_pm: ")
+        self.c_pm_label.grid(row=7, column=0, sticky="w", padx=5, pady=5)
+        self.c_pm_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.c_pm_param)
+        self.c_pm_spinner.grid(row=7, column=1, sticky="w", padx=5, pady=5)
 
-        self.r_coh_obs_label = tk.Label(parameters_panel, text="r_coh_obs: ")
-        self.r_coh_obs_label.grid(row=6, column=0, sticky="w", padx=5, pady=5)
-        self.r_coh_obs_spinner = ttk.Spinbox(parameters_panel, from_=R_COH_LIMITS[0], to=R_COH_LIMITS[1], increment=0.1, textvariable=self.r_coh_obs_param)
-        self.r_coh_obs_spinner.grid(row=6, column=1, sticky="w", padx=5, pady=5)
-
-        self.d_ref_obs_label = tk.Label(parameters_panel, text="d_ref_obs: ")
-        self.d_ref_obs_label.grid(row=7, column=0, sticky="w", padx=5, pady=5)
-        self.d_ref_obs_spinner = ttk.Spinbox(parameters_panel, from_=D_REF_LIMITS[0], to=D_REF_LIMITS[1], increment=0.1, textvariable=self.d_ref_obs_param)
-        self.d_ref_obs_spinner.grid(row=7, column=1, sticky="w", padx=5, pady=5)
-
-        self.lambda_obs_label = tk.Label(parameters_panel, text="lambda_obs: ")
-        self.lambda_obs_label.grid(row=8, column=0, sticky="w", padx=5, pady=5)
-        self.lambda_obs_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.lambda_obs_param)
-        self.lambda_obs_spinner.grid(row=8, column=1, sticky="w", padx=5, pady=5)
-
-        self.c_pm_obs_label = tk.Label(parameters_panel, text="c_pm_obs: ")
-        self.c_pm_obs_label.grid(row=9, column=0, sticky="w", padx=5, pady=5)
-        self.c_pm_obs_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.c_pm_obs_param)
-        self.c_pm_obs_spinner.grid(row=9, column=1, sticky="w", padx=5, pady=5)
-
-        self.c_vm_obs_label = tk.Label(parameters_panel, text="c_vm_obs: ")
-        self.c_vm_obs_label.grid(row=10, column=0, sticky="w", padx=5, pady=5)
-        self.c_vm_obs_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.c_vm_obs_param)
-        self.c_vm_obs_spinner.grid(row=10, column=1, sticky="w", padx=5, pady=5)
+        self.c_vm_label = tk.Label(parameters_panel, text="c_vm: ")
+        self.c_vm_label.grid(row=8, column=0, sticky="w", padx=5, pady=5)
+        self.c_vm_spinner = ttk.Spinbox(parameters_panel, from_=0, to=np.inf, increment=0.1, textvariable=self.c_vm_param)
+        self.c_vm_spinner.grid(row=8, column=1, sticky="w", padx=5, pady=5)
 
     
     def init_plot_view_panel(self):
@@ -368,21 +332,27 @@ class ControlSchemePanel(tk.Toplevel):
         """
         Generate the app config dictionary and save it to the parent
         """
-        self.current_app_config.update({
-            "a": float(self.a_param.get()),
-            "b": float(self.b_param.get()),
-            "c": float(self.c_param.get()),
-            "delta": float(self.delta_param.get()),
-            "r_coh": self.r_coh_param.get(),
-            "d_ref": self.d_ref_param.get(),
-            "c_auto": self.c_param_auto.get(),
-            "c_coh": self.cohesion_param.get(),
-            "c_sep": self.separation_param.get(),
-            "c_align": self.alignment_param.get(),
-            "c_mig": self.migration_param.get(),
-        })
-        self.parent.set_app_params_dict_values({"swarming_algorithm": { "name": self.control_scheme, 
-                                                                        "params": self.current_app_config }})
+        if self.control_scheme == 'Olfati-Saber':
+            if self.current_tab == 'Agents':
+                str_ext = ''
+            elif self.current_tab == 'Obstacles':
+                str_ext = '_obs'
+            self.current_app_config[f"a{str_ext}"] = float(self.a_param.get())
+            self.current_app_config[f"b{str_ext}"] = float(self.b_param.get())
+            self.current_app_config[f"c{str_ext}"] = float(self.c_param.get())
+            self.current_app_config[f"c_auto{str_ext}"] = self.c_param_auto.get()
+            self.current_app_config[f"delta{str_ext}"] = float(self.delta_param.get())
+            self.current_app_config[f"r_coh{str_ext}"] = float(self.r_coh_param.get())
+            self.current_app_config[f"d_ref{str_ext}"] = float(self.d_ref_param.get())
+            self.current_app_config[f"lambda{str_ext}"] = float(self.lambda_param.get())
+            self.current_app_config[f"c_pm{str_ext}"] = float(self.c_pm_param.get())
+            self.current_app_config[f"c_vm{str_ext}"] = float(self.c_vm_param.get())
+        elif self.control_scheme == 'Reynolds':
+            self.current_app_config["c_coh"] = self.cohesion_param.get()
+            self.current_app_config["c_sep"] = self.separation_param.get()
+            self.current_app_config["c_align"] = self.alignment_param.get()
+            self.current_app_config["c_mig"] = self.migration_param.get()
+            self.current_app_config["c_obs"] = self.obstacle_param.get()
 
     def update_control_scheme(self, control_scheme: str):
         """
@@ -397,6 +367,26 @@ class ControlSchemePanel(tk.Toplevel):
         if control_scheme.upper() == "OLFATI-SABER":
             self.calculate_c_param()
         self.generate_plot()
+
+    def _affect_values_to_vars(self):
+        """
+        Affect the values from the app config to the Tk variables
+        """
+        if self.current_tab == 'Agents':
+            str_ext = ''
+        elif self.current_tab == 'Obstacles':
+            str_ext = '_obs'
+        self.a_param.set(self.current_app_config.get(f"a{str_ext}", 1.0))
+        self.b_param.set(self.current_app_config.get(f"b{str_ext}", 1.0))
+        self.c_param.set(self.current_app_config.get(f"c{str_ext}", 1.0))
+        self.c_param_auto.set(self.current_app_config.get(f"c_auto{str_ext}", False))
+        self.delta_param.set(self.current_app_config.get(f"delta{str_ext}", 1.0))
+        self.r_coh_param.set(self.current_app_config.get(f"r_coh{str_ext}", 1.0))
+        self.d_ref_param.set(self.current_app_config.get(f"d_ref{str_ext}", 1.0))
+        self.lambda_param.set(self.current_app_config.get(f"lambda{str_ext}", 1.0))
+        self.c_pm_param.set(self.current_app_config.get(f"c_pm{str_ext}", 1.0))
+        self.c_vm_param.set(self.current_app_config.get(f"c_vm{str_ext}", 1.0))
+
 
     #===========================================================================
     # Event Handlers
@@ -416,11 +406,31 @@ class ControlSchemePanel(tk.Toplevel):
         self.generate_plot()
         self.save_app_params()
 
+    def notebook_tab_changed(self, event):
+        """
+            Event handler for tab change
+        """
+        self.save_app_params()
+        self.current_tab = event.widget.tab(event.widget.select(), "text")
+        if self.current_tab == 'Agents':
+            w = self.tab2_panel
+            o = self.tab1_panel
+        elif self.current_tab == 'Obstacles':
+            w = self.tab1_panel
+            o = self.tab2_panel
+        for c in w.winfo_children():
+            c.destroy()
+        self._generate_panel_params_os(o)
+        self._affect_values_to_vars()
+        self.generate_plot()
+
     def on_apply(self):
         """
             To do when apply button is clicked
         """
         self.save_app_params()
+        self.parent.set_app_params_dict_values({"swarming_algorithm": { "name": self.control_scheme, 
+                                                                "params": self.current_app_config }})
         self.destroy()
         # exit(0)
 
@@ -437,12 +447,15 @@ class ControlSchemePanel(tk.Toplevel):
 # ------------------------------- #
 # --- TESTING PURPOSES ONLY ---   #
 # ------------------------------- #
+def dump_config(app_config):
+    with open('test_dump.json', 'w') as f:
+        json.dump(app_config, f, indent=4)
 if __name__ == "__main__":
     root = tk.Tk()
     # load config file
     with open("pyswarm_sim/config/app_config.json", "r") as f:
         app_config = json.load(f)
     root.get_app_params_dict = lambda: app_config
-    root.set_app_params_dict_values = lambda a: print(a)
+    root.set_app_params_dict_values = dump_config
     ControlSchemePanel(root, "Olfati-Saber")
     root.mainloop()

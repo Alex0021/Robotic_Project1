@@ -1105,6 +1105,8 @@ class myApp(tk.Frame):
                 "dim": self.var_viewing_metric_dim.get()
             },
             "simulation": {
+                "render": self.render_env,
+                "pd_controller": self.app_config['simulation']['pd_controller'],
                 "trajectory_mode": self.var_trajectory_mode.get(),
                 "trajectory_type": self.listbox_trajectories.get()
             }

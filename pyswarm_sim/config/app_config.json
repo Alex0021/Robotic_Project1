@@ -55,6 +55,13 @@
         "dim": 3
     },
     "simulation": {
+        "render": true,
+        "pd_controller": {
+            "active": false,
+            "kp": 2.0,
+            "kd": 0.1,
+            "rate_limit": 1.0
+        },
         "trajectory_mode": "target",
         "trajectory_type": "figure8"
     },

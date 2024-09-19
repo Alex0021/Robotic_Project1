@@ -238,7 +238,10 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
     c = params.get('c', (b - a)/(2*np.sqrt(a*b)))
 
     # OBSTACLES PARAMETERS
-    r0_obs = params.get('r0_obs',0.8)
+    a_obs = params.get('a_obs',0.3)
+    b_obs = params.get('b_obs',0.5)
+    c_obs = params.get('c_obs', (b_obs - a_obs)/(2*np.sqrt(a_obs*b_obs)))
+    r0_obs = params.get('r0_coh_obs',0.8)
     d_ref_obs = params.get('d_ref_obs',0.75)
     lambda_obs = params.get('lambda_obs',1.0)
     c_pm_obs = params.get('c_pm_obs',6)
@@ -331,8 +334,8 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
             pos_gamma = cylinder_pos + lambda_obs * v_ref_u
             d_ag = np.linalg.norm(pos_gamma - pos_obs)
 
-            acc_obs += c_pm_obs * get_neighbour_weight(dist/r0_obs, r0_coh, delta) * (get_cohesion_force(dist, d_ref_obs, a, b, c, r0_coh, delta)*(pos_obs - drone_pos)/dist +
-                                    get_cohesion_force(d_ag, d_ref_obs, a, b, c, r0_coh, delta)*(pos_gamma - drone_pos)/(np.linalg.norm(pos_gamma - drone_pos))) + c_vm_obs * (vel_obs - drone_vel)
+            acc_obs += c_pm_obs * get_neighbour_weight(dist/r0_obs, r0_obs, delta) * (get_cohesion_force(dist, d_ref_obs, a_obs, b_obs, c_obs, r0_obs, delta)*(pos_obs - drone_pos)/dist +
+                                    get_cohesion_force(d_ag, d_ref_obs, a_obs, b_obs, c_obs, r0_obs, delta)*(pos_gamma - drone_pos)/(np.linalg.norm(pos_gamma - drone_pos))) + c_vm_obs * (vel_obs - drone_vel)
 
     # # Rotate the obstacle avoidance force to the body reference frame
     # acc_obs = self.rot_global2body(acc_obs, drone_pose[2][2])

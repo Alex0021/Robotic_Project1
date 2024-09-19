@@ -7,3 +7,4 @@ config/sim_autorun.json
 venv
 *.code-workspace
 hardware_results
+test_dump.json
