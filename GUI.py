@@ -121,6 +121,7 @@ class myApp(tk.Frame):
         self.init_main_panels()
         self.init_algo_components()
         self.init_sidebar_components()
+        self.init_concave_hull_components()
         self.noise_changed_callback()
         # Start 3D plot renderer
         if self.render_env:
@@ -165,6 +166,11 @@ class myApp(tk.Frame):
         self.panel_algo.grid_rowconfigure(10,weight=2)
         self.tabbed_pane.add(self.panel_algo, text='Algo params')
 
+        # Panel concave hull
+        self.panel_hull = tk.Frame(self.mainframe, bg='lightgray')
+        self.panel_hull.grid_columnconfigure(0,weight=1)
+        self.panel_hull.grid_rowconfigure(0,weight=1)
+        self.tabbed_pane.add(self.panel_hull, text='Concave hull')
         # Subpabels of sidebar
         self.panel_title = tk.Frame(self.panel_sidebar, bg='darkslategray')
         self.panel_title.grid_columnconfigure(0,weight=1)
@@ -444,6 +450,33 @@ class myApp(tk.Frame):
         self.listbox_neighbors_select.grid(column=2, row=0, sticky='WE', padx=5)
 
 
+    def init_concave_hull_components(self):
+        
+        # Add a heading label
+        self.label_concave_hull = ttk.Label(self.panel_hull, anchor='center', text="Concave Hull", justify='center', font=font.Font(size=14, weight='bold'))
+        self.label_concave_hull.grid(column=0, row=0, pady=10, padx=10, sticky='NEWS')
+
+        # Add the alpha label and entry box panel directly under the heading
+        self.panel_alpha = tk.Frame(self.panel_hull)
+        self.panel_alpha.grid(column=0, row=1, sticky='W', padx=20, pady=10)
+
+        # Add the label for alpha
+        self.label_alpha = ttk.Label(self.panel_alpha, text="Alpha: ", font=font.Font(size=12))
+        self.label_alpha.grid(column=0, row=0, sticky='E', padx=5)
+
+        # Add the entry box for alpha
+        self.var_alpha = tk.DoubleVar(value=1.0)
+        self.entry_alpha = ttk.Entry(self.panel_alpha, textvariable=self.var_alpha, width=8)  # Smaller width
+        self.entry_alpha.grid(column=1, row=0, sticky='W')
+
+        # Add a button to toggle concave hull computation and rendering
+        self.btn_toggle_hull = ttk.Button(self.panel_hull, text="Enable Concave Hull", command=self._btn_concave_hull_callback)
+        self.btn_toggle_hull.grid(column=0, row=2, pady=10, padx=20, sticky='EW')
+
+        # Trace the alpha for real-time updates
+        self.var_alpha.trace_add('write', self._alpha_changed_callback)
+
+
     #==================================#
     #   SIM COMPONENTS CALLBACK        #
     #==================================# 
@@ -502,7 +535,6 @@ class myApp(tk.Frame):
             self.swarm.set_migration_mode('trajectory')
         self.viewing_metric_changed_callback(None)
         
-
     def _set_swarm_algo_params(self, *args):
         if self.swarm is None:
             return
@@ -676,6 +708,10 @@ class myApp(tk.Frame):
         if self._recorder is not None:
             self._recorder._dt = float(self.var_sim_dt.get())
 
+    def _alpha_changed_callback(self, *args):
+        if self.swarm and self.swarm.concave_hull_enabled:
+            alpha = self.var_alpha.get()
+            self.swarm.set_alpha(alpha) 
 
     #==================================#
     #          BUTTON CALLBACKS        #
@@ -778,13 +814,19 @@ class myApp(tk.Frame):
             self._recorder.stop()
         self.button_stop_recording.config(state='disabled')
         self.button_start_recording.config(state='normal')
-        
 
     def _btn_autorun_callback(self):
         filepath = os.path.join('./config', self.var_autorun_filename.get())
         self.autorun = AutorunSim(self, filepath)
         self._is_autorun = True
         self.autorun.run_all()
+
+
+    def _btn_concave_hull_callback(self):
+        self.swarm.concave_hull_enabled = not self.swarm.concave_hull_enabled
+        if self.swarm.concave_hull_enabled:
+            alpha = self.var_alpha.get()
+            self.swarm.set_alpha(alpha) 
 
     #==================================#
     #          KEYBOARD CALLBACKS      #

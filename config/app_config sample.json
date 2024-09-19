@@ -3,10 +3,6 @@
     "swarm_2d": true,
     "drone_count": 9,
     "swarm_spread": 1.00,
-<<<<<<< HEAD
-    "swarming_algorithm": "olfati-saber",
-=======
->>>>>>> 41a9e34c438f536dff861dcf5ae04839b5dcdbaf
     "delta": 0.1,
     "r_coh": 20.0,
     "vref": 0.5,
@@ -37,12 +33,12 @@
     },
     "simulation": {
         "render": true,
-        "pd_controller": {
-            "active": false,
-            "kp": 2.0,
-            "kd": 0.1,
-            "rate_limit": 1.0
-        },
+        "use_pd_smoothing": false,
         "trajectory_mode": false
+    },
+    "drone": {
+        "name": "Crazyflie",
+        "type": "quadrotor",
+        "mass": 29.5
     }
 }
