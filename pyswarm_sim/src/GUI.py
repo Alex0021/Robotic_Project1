@@ -180,9 +180,8 @@ class myApp(tk.Frame):
         self.tabbed_pane.add(self.panel_algo, text='Algo params')
 
         # Panel concave hull
-        self.panel_hull = tk.Frame(self.mainframe, bg='lightgray')
+        self.panel_hull = tk.Frame(self.mainframe)
         self.panel_hull.grid_columnconfigure(0,weight=1)
-        self.panel_hull.grid_rowconfigure(0,weight=1)
         self.tabbed_pane.add(self.panel_hull, text='Concave hull')
         # Subpabels of sidebar
         self.panel_title = tk.Frame(self.panel_sidebar, bg='darkslategray')
@@ -545,25 +544,25 @@ class myApp(tk.Frame):
     def init_concave_hull_components(self):
         
         # Add a heading label
-        self.label_concave_hull = ttk.Label(self.panel_hull, anchor='center', text="Concave Hull", justify='center', font=font.Font(size=14, weight='bold'))
-        self.label_concave_hull.grid(column=0, row=0, pady=10, padx=10, sticky='NEWS')
+        self.label_concave_hull = ttk.Label(self.panel_hull, anchor='w', text="Concave Hull", justify='center', font=font.Font(size=14, weight='bold'), background='lightgray')
+        self.label_concave_hull.grid(column=0, row=0, ipady=10, ipadx=10, sticky='NEWS')
 
         # Add the alpha label and entry box panel directly under the heading
         self.panel_alpha = tk.Frame(self.panel_hull)
-        self.panel_alpha.grid(column=0, row=1, sticky='W', padx=20, pady=10)
+        self.panel_alpha.grid(column=0, row=1, sticky='W', padx=10, pady=10)
 
         # Add the label for alpha
         self.label_alpha = ttk.Label(self.panel_alpha, text="Alpha: ", font=font.Font(size=12))
-        self.label_alpha.grid(column=0, row=0, sticky='E', padx=5)
+        self.label_alpha.grid(column=0, row=0, sticky='E')
 
         # Add the entry box for alpha
         self.var_alpha = tk.DoubleVar(value=1.0)
-        self.entry_alpha = ttk.Entry(self.panel_alpha, textvariable=self.var_alpha, width=8)  # Smaller width
-        self.entry_alpha.grid(column=1, row=0, sticky='W')
+        self.spinner_alpha = ttk.Spinbox(self.panel_alpha, textvariable=self.var_alpha, width=8, from_=0.0, to=1.0, increment=0.05)  # Smaller width
+        self.spinner_alpha.grid(column=1, row=0, sticky='W')
 
         # Add a button to toggle concave hull computation and rendering
         self.btn_toggle_hull = ttk.Button(self.panel_hull, text="Enable Concave Hull", command=self._btn_concave_hull_callback)
-        self.btn_toggle_hull.grid(column=0, row=2, pady=10, padx=20, sticky='EW')
+        self.btn_toggle_hull.grid(column=0, row=2, ipady=10, padx=10, sticky='EW')
 
         # Trace the alpha for real-time updates
         self.var_alpha.trace_add('write', self._alpha_changed_callback)
@@ -1038,10 +1037,16 @@ class myApp(tk.Frame):
 
 
     def _btn_concave_hull_callback(self):
+        if self.swarm is None:
+            return
         self.swarm.concave_hull_enabled = not self.swarm.concave_hull_enabled
         if self.swarm.concave_hull_enabled:
             alpha = self.var_alpha.get()
             self.swarm.set_alpha(alpha) 
+            self.btn_toggle_hull.config(text='Disable Concave Hull')
+        else:
+            self.btn_toggle_hull.config(text='Enable Concave Hull')
+
 
     #==================================#
     #          KEYBOARD CALLBACKS      #
