@@ -1,10 +1,10 @@
 import numpy as np
 
-from olfati_saber import get_RB2W, get_W2B
+from pyswarm_sim.src.olfati_saber import get_RB2W, get_W2B
 from scipy import spatial
-from controllers import PdController
-from algorithms import get_viewing_dir
-from helper_functions import elapsed_timer
+from pyswarm_sim.src.controllers import PdController
+from pyswarm_sim.src.algorithms import get_viewing_dir
+from pyswarm_sim.src.helper_functions import elapsed_timer
 
 #========================#
 # DEFAULT PARAMETERS     #
@@ -53,7 +53,6 @@ class Drone:
 
         # Drone dynamics parameters
         self.motor_thrust = np.zeros(4)
-
 
     
     def update(self, dt: float, new_acc: np.ndarray, new_rates: np.ndarray=np.zeros(3)):

@@ -1,0 +1,16 @@
+{
+    "L_noise_topo": {
+        "metrics": ["neighbors_metric", "noise_type", "noise_param_dir"],
+        "values": ["Topological", "Gaussian", 0.025],
+        "var": [
+            {
+                "name": "viewing_metric_algorithm",
+                "values": ["convex_hull_adjacent", "convex_hull_visible"]
+            },
+            {
+                "name": "neighbors_count",
+                "values": [2]
+            }
+        ]
+    }
+}

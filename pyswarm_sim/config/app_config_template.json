@@ -2,12 +2,30 @@
     "spawn_area": [0.0,0.0,5.0,1.0],
     "swarm_2d": true,
     "drone_count": 9,
-    "swarm_spread": 1.00,
-    "delta": 0.1,
-    "r_coh": 20.0,
-    "vref": 0.5,
-    "a": 0.3,
-    "b": 0.5,
+    "swarming_algorithm": {
+        "name": "olfati-saber",
+        "params": {
+            "d_ref": 1.5,
+            "delta": 0.1,
+            "r_coh": 20.0,
+            "vref": 0.5,
+            "v_ref_target": 0.35,
+            "a": 0.3,
+            "b": 0.5,
+            "a_obs": 0.3,
+            "b_obs": 0.5,
+            "r_coh_obs": 0.75,
+            "d_ref_obs": 0.75,
+            "c_pm_obs": 6,
+            "c_vm_obs": 1.0,
+            "c_auto": true,
+            "c_coh": 0.5,
+            "c_sep": 2,
+            "c_align": 0.5,
+            "c_obs": 0.5,
+            "c_mig": 0.1
+        }
+    },
     "target": "",
     "cmd_yaw": 0.5,
     "cmd_vel": 0.5,
@@ -39,6 +57,8 @@
             "kd": 0.1,
             "rate_limit": 1.0
         },
-        "trajectory_mode": false
-    }
+        "trajectory_mode": "target",
+        "trajectory_type": "circle"
+    },
+    "obstacles": []
 }

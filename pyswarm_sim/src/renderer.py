@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 import tkinter as tk
 from matplotlib.animation import FuncAnimation
-from swarm import Swarm
-from collections import OrderedDict
+from pyswarm_sim.src.swarm import Swarm
+from pyswarm_sim.src.environment import Environment
 from matplotlib.widgets import Slider
+from matplotlib.backend_bases import MouseButton
+from collections import defaultdict
 
 # Set the default keymap to close the window to ctrl+w
 plt.rcParams['keymap.quit'] = 'ctrl+w'
@@ -23,22 +25,31 @@ class RendererData:
     axis_limits_single = np.array([[-viewing_radius,viewing_radius], [-viewing_radius,viewing_radius]], dtype=np.float64)
 
 class Renderer():
-    def __init__(self, panel:tk.Frame, swarm:Swarm):
+    def __init__(self, panel:tk.Frame, swarm:Swarm, env: Environment, callbacks: dict["callable"]=defaultdict(lambda: None), **kwargs):
         self.master = panel
         # Initialize the figure
         self.fig = plt.figure(1)
         self.fig.suptitle("Live Swarm View")
         self.fig.subplots_adjust(top=1.1, bottom=-0.1, left=-0.1, right=1.1)
         self.ax = self.fig.add_subplot(111, projection='3d')
-        self.ax.view_init(18,-170,0)
+        self.set_view("default")
         self.canvas = FigureCanvasTkAgg(self.fig, self.master)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         self.canvas.mpl_connect('pick_event', self.onpick)
+        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_moved)
         self.configure_plot()
+        self.artists_dict = defaultdict(lambda: None)
+        self.callbacks = callbacks
 
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.master, pack_toolbar=True)
         self.toolbar.update()
+        # Should be temporary
+        # Needs to find a correct way to extract coordinates from mouse mouvements
+        # event.xdata, event.ydata are not correct with 3D Axes
+        self.coord_lbl = self.toolbar.children['!label2']
+
+        self._env = env
 
         self._swarm_ref = swarm
         self.show_neighbors = True
@@ -81,6 +92,29 @@ class Renderer():
         Reset to original view
         """
         RendererData.axis_limits = np.array([[-5,5], [-5,5], [0,10]], dtype=np.float64)
+        self.set_view("default")
+
+    def set_view(self, view: str):
+        """
+        Set a predefined view for the plot
+
+        Args:
+            view (str): ["top", "front", "back","left","right", "default"]
+        """
+        if view == "top":
+            self.ax.view_init(89.9,-179.9)
+        elif view == "front":
+            self.ax.view_init(0,-179.9)
+        elif view == "back":
+            self.ax.view_init(0,0)
+        elif view == "left":
+            self.ax.view_init(0,89.9)
+        elif view == "right":
+            self.ax.view_init(0,-89.9)
+        elif view == "default":
+            self.ax.view_init(18,-170,0)
+        else:
+            print("Setting view impossible :: Invalid value --> '{0}'".format(view))
 
     def disable_rendering(self):
         """
@@ -98,21 +132,27 @@ class Renderer():
         Args:
             i (int): frame index
         """
+        self.ax.clear()
+        self.configure_plot()
         if self._swarm_ref is not None:
             try:
                 self.data = self._swarm_ref.get_states().copy()
-                self.ax.clear()
-                self.configure_plot()
                 # Plot the drones as points
                 colors = np.array(['#0000FFFF']*self._swarm_ref.count)
                 colors[self._swarm_ref.selected_drone] = '#00ff00ff'
-                if self.show_neighbors:
+
+                
+                # If the concave hull is enabled then color the drones on the border magenta using the outer_drones variable
+                if self._swarm_ref.concave_hull_enabled:
+                    colors[self._swarm_ref.outer_drones] = '#FF00FFFF'
+                    print(self._swarm_ref.alpha)
+                elif self.show_neighbors:
                     neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
                     if len(neighbors_id) > 0:
                         colors[neighbors_id] = '#ff0000ff'
                 #sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
                 sizes = [100]*self._swarm_ref.count
-                self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
+                self.artists_dict['drones'] = self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
                 # Plot the heading as arrows
                 self.ax.quiver(self.data[:,0],self.data[:,1],self.data[:,2], self.data[:,-3], self.data[:,-2], self.data[:,-1], length=0.25, normalize=True)
                 # Plot the desired viewing direction
@@ -120,17 +160,18 @@ class Renderer():
                 self.ax.quiver(self.data[id,0],self.data[id,1],self.data[id,2], self._swarm_ref.members[id].ground_truth_viewing_dir[0], 
                                self._swarm_ref.members[id].ground_truth_viewing_dir[1], self._swarm_ref.members[id].ground_truth_viewing_dir[2], 
                                color='#55FF00FF', length=0.5, normalize=True)
-                # Plot the migration point
-                if self._swarm_ref.migration_point is not None:
-                    self.ax.plot(self._swarm_ref.migration_point[0], self._swarm_ref.migration_point[1], self._swarm_ref.migration_point[2],'r', marker='x', markersize=20)
                 # VLOS DEBUG
                 if DEBUG_VLOS:
                     index = self._swarm_ref.selected_drone
                     for i in range(self._swarm_ref.count):
                         self.ax.plot([self.data[i,0], self.data[index,0]], [self.data[i,1], self.data[index,1]], [self.data[i,2], self.data[index,2]], 'k--', alpha=0.5)
-
             except Exception as e:
                 print(e)
+
+        # RENDER ENV
+        if self._env is not None:
+            self.artists_dict.update(self._env.render(self.ax))
+
 
     def stop(self):
         """
@@ -151,7 +192,6 @@ class Renderer():
         self.ax.clear()
         self.configure_plot()
         self.canvas.draw()
-        self.ax.view_init(18,-170,0)
 
     def onpick(self, event: tk.Event):
         """
@@ -161,17 +201,54 @@ class Renderer():
             event (tk.Event): data of the event
 
         """
-        index = event.ind
-        if index is None:
-            return
+        
+        artist = event.artist
 
-        print("Selected drone: {0}".format(index[0]))
-        self._swarm_ref.selected_drone = index[0]
-        # Update main app noise panel
-        try:
-            self.master.master.drone_selection_changed()
-        except:
-            pass
+        if artist == self.artists_dict['drones']:
+            index = event.ind
+            if index is None:
+                return
+            print("Selected drone: {0}".format(index[0]))
+            self._swarm_ref.selected_drone = index[0]
+            # Update main app noise panel
+            if self.callbacks['drone_selection_changed'] is not None:
+                self.callbacks['drone_selection_changed']()
+
+        else:
+            for k,v in self.artists_dict.items():
+                if k.startswith('obs'):
+                    if v == artist:
+                        obs_idx = int(k.split('_')[1])
+                        print(f"Selected obstacle: {obs_idx}")
+                        self._env.select_obstacle(obs_idx, with_mouse=True)
+                        if self.callbacks['obstacle_clicked_callback'] is not None:
+                            self.callbacks['obstacle_clicked_callback']()
+                        self.btn_press_cid = self.canvas.mpl_connect('button_press_event', self.on_mouse_pressed)
+                        break
+
+    def on_mouse_pressed(self, event: tk.Event):
+        if event.button == MouseButton.LEFT:
+            # Check if an obstacle is already selected
+            if self._env.obs_selected_mouse:
+                self._env.obs_selected_mouse = False
+                if self.callbacks['obstacle_moved_callback'] is not None:
+                    self.callbacks['obstacle_moved_callback']()
+                self.canvas.mpl_disconnect(self.btn_press_cid)
+
+    def on_mouse_moved(self, event: tk.Event):
+        if not (event.inaxes == self.ax):
+            return
+        if self._env.obs_selected_mouse:
+            # Move the obstacle
+            # self._env.move_obstacle(np.array([event.xdata, event.ydata, 0]))
+            # Temporary work around to get coordinates using toolbar label
+            try:
+                x, y, _ = [float(s.split('=')[-1]) for s in self.coord_lbl['text'].replace(u'\u2212', '-').split(',')]
+                obs = self._env.get_selected_obstacle()
+                obs.center[0] = x
+                obs.center[1] = y
+            except:
+                return
 
 
 class Renderer2D():

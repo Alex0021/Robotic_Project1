@@ -2,8 +2,8 @@ import numpy as np
 from threading import Thread
 import time
 
-from swarm import Swarm
-from recorder import SwarmRecorder
+from pyswarm_sim.src.swarm import Swarm
+from pyswarm_sim.src.recorder import SwarmRecorder
 
 class Simulator():
     """
@@ -40,6 +40,8 @@ class Simulator():
                     t = time.time() - self.last_time
                     if t < self._dt:
                         time.sleep(self._dt - t)
+            else:
+                time.sleep(0.01)
                     
 
     def start(self):
