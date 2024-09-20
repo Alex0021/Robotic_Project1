@@ -6,6 +6,8 @@ from scipy.spatial import ConvexHull
 from pyswarm_sim.src.helper_functions import elapsed_timer
 import typing
 from pyswarm_sim.src.environment import Environment
+import alphashape
+from shapely.geometry import Point
 
 #===============================================================================
 # Trajectory parameters
@@ -74,6 +76,11 @@ class Swarm():
         self.sim_time = 0.0
         self.dist_weights = np.ones(self.count)
                
+
+        # Hull variables
+        self.concave_hull_enabled = False
+        self.outer_drones = []
+        self.alpha = 1.0
 
         # Initialize trajectory points
         traj_type = kwargs.get('trajectory', 'circle')
@@ -170,9 +177,15 @@ class Swarm():
             self.members[i].update(dt, new_acc[i], self.ang_rates)
         # Increment the update counter (used for different purposes, e.g. sampling the computation of the neighborhood metric)
         self.update_counter += 1
-        # Compute each drone neighborhood
+        
         if self.update_counter % self.neighbors_params.get('sampling', 1) == 0:
+            # Compute each drone neighborhood
             self.compute_neighborhood()
+
+            # Idenfity which drones are on the boundary of the swarm
+            if self.concave_hull_enabled:
+                self.compute_outer_drones()        
+            
         # Check trajectory
         if self.migration_mode == 'trajectory':
             self.compute_next_target()
@@ -436,6 +449,39 @@ class Swarm():
                 coverage = np.sum(np.clip(coverage, 0, 1))*COVERAGE_RES*COVERAGE_RES
             self.swarm_coverage = min(coverage/(2*np.pi*np.pi), 1)
 
+    def compute_outer_drones(self):
+        """
+        Compute the concave hull of the swarm and identify the drones on the boundary.
+        """
+        if self.is_2D:
+            p_dim = 2
+        else:
+            p_dim = 3
+        
+        points = np.array([m.pos[:p_dim] for m in self.members])
+        alpha_shape = alphashape.alphashape(points, alpha=self.alpha)  # tune alpha to get the desired shape
+        
+        # Check if the alpha_shape has an exterior
+        if alpha_shape.is_empty or alpha_shape.exterior is None:
+            self.outer_drones = []
+            return
+        
+        outer_drones = []
+        for i, m in enumerate(self.members):
+            point = Point(points[i])
+            if alpha_shape.exterior.contains(point) or alpha_shape.boundary.contains(point):
+                outer_drones.append(i)
+        
+        self.outer_drones = outer_drones
+
+        # print('======================= ALPHA SHAPE =======================')
+        # print("\n------ points ------")
+        # print(points)
+        # print("\n------ alpha shape ------")
+        # print(alpha_shape)
+        # print('===========================================================\n')
+        
+
     #=======================================#
     #        Getters and Setters            #
     #=======================================#
@@ -685,6 +731,16 @@ class Swarm():
         # For semester project specific case
         self.update_drones_FOV(360/self.count)
         self.compute_neighborhood()
+
+    def set_alpha(self, alpha: float):
+        """
+        Set the alpha parameter of the concave hull.
+
+        Args:
+            alpha (float): Alpha parameter of the concave hull.
+        """
+        self.alpha = alpha
+
 
     #=======================================#
     #            Miscellaneous              #

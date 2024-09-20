@@ -140,7 +140,13 @@ class Renderer():
                 # Plot the drones as points
                 colors = np.array(['#0000FFFF']*self._swarm_ref.count)
                 colors[self._swarm_ref.selected_drone] = '#00ff00ff'
-                if self.show_neighbors:
+
+                
+                # If the concave hull is enabled then color the drones on the border magenta using the outer_drones variable
+                if self._swarm_ref.concave_hull_enabled:
+                    colors[self._swarm_ref.outer_drones] = '#FF00FFFF'
+                    print(self._swarm_ref.alpha)
+                elif self.show_neighbors:
                     neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
                     if len(neighbors_id) > 0:
                         colors[neighbors_id] = '#ff0000ff'

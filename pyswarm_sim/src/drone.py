@@ -51,6 +51,8 @@ class Drone:
         self.timing_viewing_dir = 0
         self.swarm_2d = swarm_2d
 
+        # Drone dynamics parameters
+        self.motor_thrust = np.zeros(4)
 
     
     def update(self, dt: float, new_acc: np.ndarray, new_rates: np.ndarray=np.zeros(3)):
