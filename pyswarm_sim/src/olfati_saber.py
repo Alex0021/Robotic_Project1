@@ -261,7 +261,7 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
     num_neighbours = len(neighbour_poses)
 
     # Getting v_ref vector from vel_cmd
-    v_ref_glob = rot_body2global(v_ref, drone_pose[3]) 
+    v_ref_glob = v_ref 
 
     # Normalize the reference velocity
     if np.linalg.norm(v_ref_glob) > 0:
