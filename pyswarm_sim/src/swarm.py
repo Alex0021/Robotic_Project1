@@ -462,7 +462,7 @@ class Swarm():
         alpha_shape = alphashape.alphashape(points, alpha=self.alpha)  # tune alpha to get the desired shape
         
         # Check if the alpha_shape has an exterior
-        if alpha_shape.is_empty or alpha_shape.exterior is None:
+        if alpha_shape.is_empty or not hasattr(alpha_shape, 'exterior') or alpha_shape.exterior is None:
             self.outer_drones = []
             return
         

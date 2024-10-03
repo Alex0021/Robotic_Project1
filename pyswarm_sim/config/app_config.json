@@ -6,7 +6,7 @@
         1.0
     ],
     "swarm_2d": true,
-    "drone_count": 5,
+    "drone_count": 12,
     "swarming_algorithm": {
         "name": "olfati-saber",
         "params": {
@@ -36,7 +36,7 @@
     "cmd_vel": 0.5,
     "neighbors": {
         "sampling": 1,
-        "count": 4,
+        "count": 5,
         "sensing_range": 30.0,
         "r_agent": 0.069,
         "metric": "topological",
@@ -62,40 +62,9 @@
             "kd": 0.1,
             "rate_limit": 1.0
         },
-        "trajectory_mode": "target",
-        "trajectory_type": "figure8"
+        "trajectory_mode": "keyboard"
     },
     "obstacles": [
-        {
-            "type": "Cylinder",
-            "center": [
-                2.8719,
-                -1.0373,
-                5.0
-            ],
-            "radius": 0.5,
-            "height": 10.0,
-            "color": [
-                0.0,
-                0.0,
-                1.0
-            ]
-        },
-        {
-            "type": "Cylinder",
-            "center": [
-                2.9052,
-                1.5848,
-                5.0
-            ],
-            "radius": 0.5,
-            "height": 10.0,
-            "color": [
-                0.0,
-                0.0,
-                1.0
-            ]
-        },
         {
             "type": "Cylinder",
             "center": [
@@ -103,37 +72,7 @@
                 0.0991,
                 5.0
             ],
-            "radius": 0.5,
-            "height": 10.0,
-            "color": [
-                0.0,
-                0.0,
-                1.0
-            ]
-        },
-        {
-            "type": "Cylinder",
-            "center": [
-                -1.7158,
-                1.5301,
-                5.0
-            ],
-            "radius": 0.5,
-            "height": 10.0,
-            "color": [
-                0.0,
-                0.0,
-                1.0
-            ]
-        },
-        {
-            "type": "Cylinder",
-            "center": [
-                -1.7459,
-                -1.4248,
-                5.0
-            ],
-            "radius": 0.5,
+            "radius": 1.0,
             "height": 10.0,
             "color": [
                 0.0,

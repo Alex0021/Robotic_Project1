@@ -894,7 +894,10 @@ class myApp(tk.Frame):
 
     def _alpha_changed_callback(self, *args):
         if self.swarm and self.swarm.concave_hull_enabled:
-            alpha = self.var_alpha.get()
+            try:
+                alpha = self.var_alpha.get()
+            except (ValueError, tk.TclError):
+                alpha = 1.0  # Default value
             self.swarm.set_alpha(alpha) 
 
 
