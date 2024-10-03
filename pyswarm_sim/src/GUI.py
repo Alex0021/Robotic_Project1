@@ -204,7 +204,7 @@ class myApp(tk.Frame):
     def init_algo_components(self):
         self.label_algo = ttk.Label(self.panel_algo, anchor='w', text="Algorithm choice: ", justify='left', font=font.Font(size=14))
         self.label_algo.grid(column=0,row=0, sticky='NEWS')
-        self.listbox_viewing_algo = ttk.Combobox(self.panel_algo, values=["None", "average", "outer", "tangent_plane", "convex_hull"], state='disabled', font=font.Font(size=14))
+        self.listbox_viewing_algo = ttk.Combobox(self.panel_algo, values=["None", "average", "outer", "tangent_plane", "convex_hull", "alpha_shape"], state='disabled', font=font.Font(size=14))
         self.listbox_viewing_algo.set(self.var_viewing_metric_algorithm.get())
         self.listbox_viewing_algo.grid(column=1,row=0, sticky='W', padx=5)
         self.listbox_viewing_algo.bind("<<ComboboxSelected>>", lambda _: self.var_viewing_metric_algorithm.set(self.listbox_viewing_algo.get()))
@@ -1079,6 +1079,7 @@ class myApp(tk.Frame):
                 target_vel[2] = self.cmd_vel
             case 'E':
                 target_vel[2] = -self.cmd_vel
+        
         self.swarm.set_cmd_velocity(target_vel)   
 
 

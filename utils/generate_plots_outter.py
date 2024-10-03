@@ -259,6 +259,8 @@ if __name__ == '__main__':
                     wkey = "convex_hull_adjacent"
                 elif "visible" in w:
                     wkey = "convex_hull_visible"
+                elif "alpha" in w:
+                    wkey = "alpha_shape"
                 elif "outer" in w:
                     idx = w.index("outer")
                     wkey = f'outer_{w[idx+1]}'

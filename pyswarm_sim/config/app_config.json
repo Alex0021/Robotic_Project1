@@ -51,7 +51,7 @@
     "viewing_metric": {
         "algorithm": "none",
         "outer_points": 4,
-        "faces": "visible",
+        "faces": "adjacent",
         "dim": 3
     },
     "simulation": {
