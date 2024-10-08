@@ -2,12 +2,13 @@ import numpy as np
 from pyswarm_sim.src.drone import *
 import pyswarm_sim.src.olfati_saber as olsab
 import pyswarm_sim.src.reynolds as reynolds
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, cKDTree
 from pyswarm_sim.src.helper_functions import elapsed_timer
 import typing
 from pyswarm_sim.src.environment import Environment
 import alphashape
-from shapely.geometry import Point
+from shapely.ops import unary_union
+from shapely.geometry import Point, Polygon, MultiPolygon, LineString, MultiLineString
 
 #===============================================================================
 # Trajectory parameters
@@ -80,7 +81,7 @@ class Swarm():
         # Hull variables
         self.concave_hull_enabled = False
         self.outer_drones = []
-        self.alpha = 1.0
+        self.alpha = 1.5
 
         # Initialize trajectory points
         traj_type = kwargs.get('trajectory', 'circle')
@@ -457,29 +458,48 @@ class Swarm():
             p_dim = 2
         else:
             p_dim = 3
-        
+
         points = np.array([m.pos[:p_dim] for m in self.members])
-        alpha_shape = alphashape.alphashape(points, alpha=self.alpha)  # tune alpha to get the desired shape
-        
-        # Check if the alpha_shape has an exterior
-        if alpha_shape.is_empty or not hasattr(alpha_shape, 'exterior') or alpha_shape.exterior is None:
+        alpha_shape = alphashape.alphashape(points, alpha=self.alpha)  # Tune alpha to get the desired shape
+
+        # Check if the alpha_shape is empty
+        if alpha_shape.is_empty:
             self.outer_drones = []
             return
-        
+
+        # Collect all boundary coordinates
+        boundary_coords = []
+
+        if isinstance(alpha_shape, Polygon):
+            boundary_coords.extend(alpha_shape.exterior.coords)
+        elif isinstance(alpha_shape, MultiPolygon):
+            for poly in alpha_shape.geoms:
+                boundary_coords.extend(poly.exterior.coords)
+        elif isinstance(alpha_shape, LineString):
+            boundary_coords.extend(alpha_shape.coords)
+        elif isinstance(alpha_shape, MultiLineString):
+            for line in alpha_shape.geoms:
+                boundary_coords.extend(line.coords)
+        else:
+            # Alpha shape is not a recognized type
+            print("WARNING :: Alpha shape is not a recognized type:", type(alpha_shape))
+            self.outer_drones = []
+            return
+
+        boundary_coords = np.array(boundary_coords)
+        # Build a KDTree for boundary coordinates
+        tree = cKDTree(boundary_coords)
+
+        # For each member, check if their point is close to any boundary coordinate
         outer_drones = []
         for i, m in enumerate(self.members):
-            point = Point(points[i])
-            if alpha_shape.exterior.contains(point) or alpha_shape.boundary.contains(point):
+            point_coords = points[i]
+            dist, idx = tree.query(point_coords)
+            if dist < 1e-8:  # Tolerance for floating point precision
                 outer_drones.append(i)
-        
+
         self.outer_drones = outer_drones
 
-        # print('======================= ALPHA SHAPE =======================')
-        # print("\n------ points ------")
-        # print(points)
-        # print("\n------ alpha shape ------")
-        # print(alpha_shape)
-        # print('===========================================================\n')
         
 
     #=======================================#
