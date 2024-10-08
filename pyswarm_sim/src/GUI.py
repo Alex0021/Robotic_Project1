@@ -556,7 +556,7 @@ class myApp(tk.Frame):
         self.label_alpha.grid(column=0, row=0, sticky='E')
 
         # Add the entry box for alpha
-        self.var_alpha = tk.DoubleVar(value=1.0)
+        self.var_alpha = tk.DoubleVar(value=1.5)
         self.spinner_alpha = ttk.Spinbox(self.panel_alpha, textvariable=self.var_alpha, width=8, from_=0.0, to=1.0, increment=0.05)  # Smaller width
         self.spinner_alpha.grid(column=1, row=0, sticky='W')
 

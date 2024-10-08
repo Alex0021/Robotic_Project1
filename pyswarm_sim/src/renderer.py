@@ -138,17 +138,17 @@ class Renderer():
             try:
                 self.data = self._swarm_ref.get_states().copy()
                 # Plot the drones as points
-                colors = np.array(['#0000FFFF']*self._swarm_ref.count)
-                colors[self._swarm_ref.selected_drone] = '#00ff00ff'
+                colors = np.array(['#1E90FF']*self._swarm_ref.count)  # DodgerBlue
+                colors[self._swarm_ref.selected_drone] = '#9932CC'    # DarkOrchid
 
                 
                 # If the concave hull is enabled then color the drones on the border magenta using the outer_drones variable
                 if self._swarm_ref.concave_hull_enabled:
-                    colors[self._swarm_ref.outer_drones] = '#FF00FFFF'
+                    colors[self._swarm_ref.outer_drones] = '#32CD32'  # LimeGreen 
                 elif self.show_neighbors:
                     neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
                     if len(neighbors_id) > 0:
-                        colors[neighbors_id] = '#ff0000ff'
+                        colors[neighbors_id] = '#FFD700'  # Gold
                 #sizes = [self._get_size_in_points(self._swarm_ref.member_size)]*self._swarm_ref.count
                 sizes = [100]*self._swarm_ref.count
                 self.artists_dict['drones'] = self.ax.scatter(self.data[:,0],self.data[:,1],self.data[:,2],s=sizes, marker='o', color=colors.tolist(), cmap=None, picker=True, depthshade=True)
