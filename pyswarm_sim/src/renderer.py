@@ -142,9 +142,16 @@ class Renderer():
                 colors[self._swarm_ref.selected_drone] = '#9932CC'    # DarkOrchid
 
                 
-                # If the concave hull is enabled then color the drones on the border magenta using the outer_drones variable
+                # If the concave hull is enabled then color the drones on the border Lime Green using the outer_drones variable
                 if self._swarm_ref.concave_hull_enabled:
-                    colors[self._swarm_ref.outer_drones] = '#32CD32'  # LimeGreen 
+                    # Centralized mode
+                    if self._swarm_ref.concave_hull_mode == "centralized":
+                        colors[self._swarm_ref.outer_drones] = '#32CD32'  # LimeGreen
+                    # Decentralized mode
+                    elif self._swarm_ref.concave_hull_mode == "decentralized":
+                        for i in range(self._swarm_ref.count):
+                            if self._swarm_ref.members[i].boundary_estimation:
+                                colors[i] = '#32CD32'   # LimeGreen
                 elif self.show_neighbors:
                     neighbors_id = [n.drone_index for n in self._swarm_ref.members[self._swarm_ref.selected_drone].neighbors]
                     if len(neighbors_id) > 0:

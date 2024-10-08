@@ -96,6 +96,7 @@ class myApp(tk.Frame):
         self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
         self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
         self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
+        self.var_estimate_mode = tk.StringVar(value='centralized')
 
         #==================================#
         #   APP VARIABLES TRACKING         #
@@ -567,6 +568,20 @@ class myApp(tk.Frame):
         # Trace the alpha for real-time updates
         self.var_alpha.trace_add('write', self._alpha_changed_callback)
 
+        # Add the estimation mode selection panel under the alpha panel
+        self.panel_estimation_mode = tk.Frame(self.panel_hull)
+        self.panel_estimation_mode.grid(column=0, row=3, sticky='W', padx=10, pady=10)
+
+        # Add a label for estimation mode
+        self.label_estimation_mode = ttk.Label(self.panel_estimation_mode, text="Estimation Mode: ", font=font.Font(size=12))
+        self.label_estimation_mode.grid(column=0, row=0, sticky='E')
+
+        # Add radio buttons for centralized and decentralized modes
+        self.radio_centralized = ttk.Radiobutton(self.panel_estimation_mode, text="Centralized", variable=self.var_estimate_mode, value='centralized', command=self._estimation_mode_changed)
+        self.radio_centralized.grid(column=1, row=0, sticky='W')
+
+        self.radio_decentralized = ttk.Radiobutton(self.panel_estimation_mode, text="Decentralized", variable=self.var_estimate_mode, value='decentralized', command=self._estimation_mode_changed)
+        self.radio_decentralized.grid(column=2, row=0, sticky='W')
 
 
     #==================================#
@@ -892,12 +907,26 @@ class myApp(tk.Frame):
         self.env.deselect_obstacle()
         self.treeview_obstacles.selection_remove(self.treeview_obstacles.selection())
 
+    def _estimation_mode_changed(self):
+        """
+        Handles the event when the user changes the estimation mode
+        """
+        if self.swarm:
+            mode = self.var_estimate_mode.get()
+            self.swarm.set_concave_hull_mode(mode)
+            # Update viewing algorithm
+            if self.swarm.concave_hull_enabled and mode == 'decentralized':
+                self.var_viewing_metric_algorithm.set('alpha_shape')
+    
     def _alpha_changed_callback(self, *args):
+        """
+        Callback for the alpha parameter in the concave hull panel
+        """
         if self.swarm and self.swarm.concave_hull_enabled:
             try:
                 alpha = self.var_alpha.get()
             except (ValueError, tk.TclError):
-                alpha = 1.0  # Default value
+                alpha = 1.5  # Default value
             self.swarm.set_alpha(alpha) 
 
 
@@ -1047,6 +1076,9 @@ class myApp(tk.Frame):
             alpha = self.var_alpha.get()
             self.swarm.set_alpha(alpha) 
             self.btn_toggle_hull.config(text='Disable Concave Hull')
+            # Update viewing algorithm
+            if self.var_estimate_mode.get() == 'decentralized':
+                self.var_viewing_metric_algorithm.set('alpha_shape')
         else:
             self.btn_toggle_hull.config(text='Enable Concave Hull')
 

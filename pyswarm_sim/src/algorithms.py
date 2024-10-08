@@ -326,8 +326,6 @@ def alpha_shape(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
 
         if len(indices) == 0:
             # Drone is not on the boundary
-            # Print the position of the drone
-            print("Drone not on boundary, position:", drone_coords)
             drone.set_boundary_estimate(False)
             return drone.get_heading()
         else:

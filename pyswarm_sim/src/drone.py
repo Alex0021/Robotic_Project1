@@ -51,6 +51,7 @@ class Drone:
         self.timing_viewing_dir = 0
         self.swarm_2d = swarm_2d
         self.boundary_estimation = False
+        self.concave_hull_mode = ""
 
         # Drone dynamics parameters
         self.motor_thrust = np.zeros(4)
@@ -326,6 +327,15 @@ class Drone:
             bool: boundary estimation flag
         """
         return self.boundary_estimation
+
+    def set_concave_hull_mode(self, mode: str):
+        """
+        Set the concave hull estimation mode.
+
+        Args:
+            mode (str): mode of the concave hull estimation
+        """
+        self.concave_hull_mode = mode
     
 
 class DroneNeighbor:

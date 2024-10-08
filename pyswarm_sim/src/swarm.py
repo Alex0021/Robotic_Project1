@@ -80,6 +80,7 @@ class Swarm():
 
         # Hull variables
         self.concave_hull_enabled = False
+        self.concave_hull_mode = "centralized"
         self.outer_drones = []
         self.alpha = 1.5
 
@@ -184,9 +185,9 @@ class Swarm():
             self.compute_neighborhood()
 
             # Idenfity which drones are on the boundary of the swarm
-            if self.concave_hull_enabled:
+            if self.concave_hull_enabled and self.concave_hull_mode == "centralized":
                 self.compute_outer_drones()        
-            
+                
         # Check trajectory
         if self.migration_mode == 'trajectory':
             self.compute_next_target()
@@ -761,6 +762,16 @@ class Swarm():
         """
         self.alpha = alpha
 
+    def set_concave_hull_mode(self, mode: str):
+        """
+        Set the mode of the concave hull estimation for the swarm and all the drones.
+
+        Args:
+            mode (str): Mode of the concave hull estimation ('centralized', 'decentralized').
+        """
+        self.concave_hull_mode = mode
+        for m in self.members:
+            m.set_concave_hull_mode(mode)
 
     #=======================================#
     #            Miscellaneous              #
