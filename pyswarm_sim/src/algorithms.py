@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial import ConvexHull
 from typing import TYPE_CHECKING
 import alphashape
+from shapely.geometry import Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon
 
 if TYPE_CHECKING:
     from pyswarm_sim.src.drone import Drone, DroneNeighbor
@@ -261,7 +262,7 @@ def alpha_shape(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
         neighbors: The neighbors of the drone
         params: {'faces': 'adjacent' or 'visible', 'in_2d': True or False}
     """
-
+    d_ref = 1.5
     in_2d = params.get('in_2d', False)
     if len(neighbors) < 2:
         print("WARNING :: Not enough neighbors to compute alpha shape")
@@ -281,21 +282,59 @@ def alpha_shape(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
             points = points[:, :2]
             ndim = 2
         else:
-            raise NotImplementedError("Alpha shape in 3D is not supported by the alphashape library.")
+            raise NotImplementedError("Not tested for 3D")
         # Add the drone's position
         points = np.vstack((points, drone.pos[:ndim]))
+
         # Compute the alpha shape
-        alpha_shape = alphashape.alphashape(points, alpha=1.0)
-        # Get the boundary coordinates
-        boundary_coords = np.array(alpha_shape.exterior.coords)
-        num_coords = len(boundary_coords) - 1  # Exclude the duplicate last point
+        alpha_shape = alphashape.alphashape(points, alpha=d_ref)
+        
+        # Get the drone's coordinates
         drone_coords = drone.pos[:ndim]
+        
+        if alpha_shape is None:
+            print("WARNING :: Alpha shape is None")
+            return drone.get_heading()
+        elif isinstance(alpha_shape, (Polygon, MultiPolygon)):
+            # Get boundary coordinates
+            if isinstance(alpha_shape, Polygon):
+                boundaries = [alpha_shape.exterior]
+            else:  # MultiPolygon
+                boundaries = [poly.exterior for poly in alpha_shape.geoms]
+            # Collect all boundary coordinates
+            boundary_coords_list = [np.array(boundary.coords) for boundary in boundaries]
+        elif isinstance(alpha_shape, (LineString, MultiLineString)):
+            if isinstance(alpha_shape, LineString):
+                lines = [alpha_shape]
+            else:  # MultiLineString
+                lines = list(alpha_shape.geoms)
+            # Collect all line coordinates
+            boundary_coords_list = [np.array(line.coords) for line in lines]
+        else:
+            # Alpha shape is not a Polygon or LineString, cannot proceed
+            print("WARNING :: Alpha shape is not a Polygon or LineString")
+            # Print the type of the alpha shape
+            print(type(alpha_shape))
+            return drone.get_heading()
+
         # Find indices where the drone's position matches boundary coordinates
-        indices = np.where(np.all(boundary_coords == drone_coords, axis=1))[0]
+        indices = []
+        for boundary_coords in boundary_coords_list:
+            idx = np.where(np.all(boundary_coords == drone_coords, axis=1))[0]
+            indices.extend(idx)
+        num_coords = len(boundary_coords)
 
         if len(indices) == 0:
             # Drone is not on the boundary
+            # Print the position of the drone
+            print("Drone not on boundary, position:", drone_coords)
+            drone.set_boundary_estimate(False)
             return drone.get_heading()
+        else:
+            # Drone is on the boundary
+            drone.set_boundary_estimate(True)
+        
+        # Compute the normals of the adjacent edges
         normals = []
         for idx in indices:
             prev_idx = (idx - 1) % num_coords

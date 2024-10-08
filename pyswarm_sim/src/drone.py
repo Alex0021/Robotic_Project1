@@ -50,6 +50,7 @@ class Drone:
         self.ASPECT_RATIO = FOV_ASPECT_RATIO
         self.timing_viewing_dir = 0
         self.swarm_2d = swarm_2d
+        self.boundary_estimation = False
 
         # Drone dynamics parameters
         self.motor_thrust = np.zeros(4)
@@ -307,6 +308,24 @@ class Drone:
             fov (float): field of view in degrees
         """
         self.fov = fov * np.pi / 180.0
+
+    def set_boundary_estimate(self, estimate: bool):
+        """
+        Set the boundary estimation flag.
+
+        Args:
+            estimate (bool): estimate boundary or not
+        """
+        self.boundary_estimation = estimate
+
+    def get_boundary_estimate(self) -> bool:
+        """
+        Get the boundary estimation flag.
+
+        Returns:
+            bool: boundary estimation flag
+        """
+        return self.boundary_estimation
     
 
 class DroneNeighbor:
