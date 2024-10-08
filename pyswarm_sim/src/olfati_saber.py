@@ -230,7 +230,7 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
     """
     # AGENT PARAMETERS
     v_ref = params.get('v_ref',np.array([0.0,0.0,0.0]))
-    d_ref = params.get('d_ref',1.0)
+    d_ref = params.get('d_ref',1.5)
     r0_coh = params.get('r0_coh',20)
     delta = params.get('delta',0.1)
     a = params.get('a',0.3)
@@ -242,7 +242,7 @@ def olfati_saber_input(drone_pose: np.ndarray, neighbour_poses: np.ndarray, obst
     b_obs = params.get('b_obs',0.5)
     c_obs = params.get('c_obs', (b_obs - a_obs)/(2*np.sqrt(a_obs*b_obs)))
     r0_obs = params.get('r0_coh_obs',0.8)
-    d_ref_obs = params.get('d_ref_obs',0.75)
+    d_ref_obs = params.get('d_ref_obs',1.00)
     lambda_obs = params.get('lambda_obs',1.0)
     c_pm_obs = params.get('c_pm_obs',6)
     c_vm_obs = params.get('c_vm_obs',0.5)

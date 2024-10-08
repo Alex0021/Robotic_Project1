@@ -332,7 +332,7 @@ class ControlSchemePanel(tk.Toplevel):
         """
         Generate the app config dictionary and save it to the parent
         """
-        if self.control_scheme == 'Olfati-Saber':
+        if self.control_scheme == 'olfati-saber':
             if self.current_tab == 'Agents':
                 str_ext = ''
             elif self.current_tab == 'Obstacles':

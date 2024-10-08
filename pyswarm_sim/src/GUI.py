@@ -1221,6 +1221,8 @@ class myApp(tk.Frame):
             self.var_viewing_metric_outer_points.set(self.app_config['viewing_metric'].get('outer_points', 10))
             self.var_viewing_metric_faces.set(self.app_config['viewing_metric'].get('faces', 10))
             self.var_viewing_metric_dim.set(self.app_config['viewing_metric'].get('dim', 3))
+            self._set_swarm_algo_params()
+
         
     
     def set_var_value(self, param, value):
