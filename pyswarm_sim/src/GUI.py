@@ -98,7 +98,8 @@ class myApp(tk.Frame):
         self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
         self.var_estimate_mode = tk.StringVar(value='centralized')
         self.var_d_ref = tk.DoubleVar(value=self.app_config['swarming_algorithm'].get('params', {}).get('d_ref', 1.0))
-        self.var_d_ref.trace_add('write', self._d_ref_changed)
+        self.var_alpha = tk.DoubleVar(value=1.50)
+        self.var_alpha_option = tk.StringVar(value='manual')  # 'manual' or 'd_ref'
         
 
         #==================================#
@@ -119,6 +120,9 @@ class myApp(tk.Frame):
         self.var_viewing_metric_algorithm.trace_add('write', self.viewing_metric_changed_callback)
         self.var_viewing_metric_faces.trace_add('write', self.viewing_metric_changed_callback)
         self.var_sim_dt.trace_add('write', self._update_sim_dt)
+        self.var_d_ref.trace_add('write', self._d_ref_changed)
+        self.var_alpha.trace_add('write', self._alpha_changed_callback)
+        self.var_neighbors_count.trace_add('write', self._update_neighbors_count)
 
         #==================================#
         #       APP INITIALIZATION         #
@@ -560,12 +564,8 @@ class myApp(tk.Frame):
         self.label_alpha.grid(column=0, row=0, sticky='E')
 
         # Add the entry box for alpha
-        self.var_alpha = tk.DoubleVar(value=1.50)
         self.spinner_alpha = ttk.Spinbox(self.panel_alpha, textvariable=self.var_alpha, width=8, from_=0.0, to=3.0, increment=0.05)  # Smaller width
         self.spinner_alpha.grid(column=1, row=0, sticky='W')
-
-        # Add a variable to track alpha option
-        self.var_alpha_option = tk.StringVar(value='manual')  # 'manual' or 'd_ref'
 
         # Add a panel for alpha option selection under the alpha spinner
         self.panel_alpha_option = tk.Frame(self.panel_hull)
@@ -586,8 +586,7 @@ class myApp(tk.Frame):
         self.btn_toggle_hull = ttk.Button(self.panel_hull, text="Enable Concave Hull", command=self._btn_concave_hull_callback)
         self.btn_toggle_hull.grid(column=0, row=3, ipady=10, padx=10, sticky='EW')
 
-        # Trace the alpha for real-time updates
-        self.var_alpha.trace_add('write', self._alpha_changed_callback)
+
 
         # Add the estimation mode selection panel under the alpha panel
         self.panel_estimation_mode = tk.Frame(self.panel_hull)
@@ -975,19 +974,49 @@ class myApp(tk.Frame):
         # Get d_ref from the swarming algorithm params
         try:
             d_ref = self.var_d_ref.get()
-            alpha_val = 1.0 / d_ref if d_ref > 0 else 1.5
+            # alpha_val = 1.0 / d_ref if d_ref > 0 else 1.5
+
+            if d_ref != 1.5:
+                alpha_val = 1.0 / d_ref
+                print("Look up table not implemented for d_ref value: {0}".format(d_ref))
+            else:
+
+                # Use a lookup table for alpha values given the number of neighbours
+                lookup_table = {
+                    2: 1.50,    # 0.67
+                    3: 1.50,    # 0.67
+                    4: 1.37,    # 0.73
+                    5: 1.24,    # 0.81
+                    6: 1.15,    # 0.87
+                    7: 1.05,    # 0.95
+                    8: 0.97,    # 1.03
+                    9: 0.90     # 1.11
+                }
+
+                # Get the number of neighbours
+                nb_neighbours = self.var_neighbors_count.get()
+
+                # Get the avg_sep from the lookup table
+                avg_sep = lookup_table.get(nb_neighbours, 1.5)
+
+                # Calculate the new alpha value
+                alpha_val = 1 / avg_sep
+
+                print('nb_neighbours: {0}, avg_sep: {1}, alpha_val: {2}'.format(nb_neighbours, avg_sep, alpha_val))
+
+
         except:
             print("Error getting d_ref value")
             alpha_val = 1.5  # Default value if d_ref is not set
 
-        # Set var_alpha to d_ref
+        # Set var_alpha to the new value
         self.var_alpha.set(alpha_val)
 
         self._update_alpha_value(alpha_val)
 
     def _d_ref_changed(self, *args):
+        # Update alpha to match the new d_ref value if linked
         if self.var_alpha_option.get() == 'd_ref':
-            # Update alpha to match the new d_ref value
             self._update_alpha_to_d_ref()
 
     def _update_alpha_value(self, alpha):
@@ -999,7 +1028,10 @@ class myApp(tk.Frame):
             for drone in self.swarm.members:
                 drone.set_alpha(alpha)
 
-
+    def _update_neighbors_count(self, *args):
+        # If the neighbors count changes update alpha to match the new value if linked to d_ref
+        if self.var_alpha_option.get() == 'd_ref':
+            self._update_alpha_to_d_ref()
 
     #==================================#
     #          BUTTON CALLBACKS        #
@@ -1160,10 +1192,8 @@ class myApp(tk.Frame):
 
         # Print in one line
         print(f'Average separation: {avg_sep:.2f} m, Average neighbours: {avg_neighbours:.2f}, d_ref: {d_ref:.2f}')
+           
         
-                
-        
-
     #==================================#
     #          KEYBOARD CALLBACKS      #
     #==================================#
