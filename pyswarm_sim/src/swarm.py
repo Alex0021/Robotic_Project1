@@ -631,9 +631,17 @@ class Swarm():
         '''
         match metric:
             case "Olfati-Saber":
+                
                 # Use all neighbors, internal algorithm automatically weight them
+                # m = self.members.copy()
+                # m.remove(d)
+                
+                # Use local neighbors
                 m = self.members.copy()
-                m.remove(d)
+                indices = [n.drone_index for n in d.neighbors]
+                m = [m[i] for i in indices]
+
+
                 return m
             case _:
                 return list()
