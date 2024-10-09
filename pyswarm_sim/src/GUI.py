@@ -604,6 +604,14 @@ class myApp(tk.Frame):
         self.radio_decentralized = ttk.Radiobutton(self.panel_estimation_mode, text="Decentralized", variable=self.var_estimate_mode, value='decentralized', command=self._estimation_mode_changed)
         self.radio_decentralized.grid(column=2, row=0, sticky='W')
 
+        # Add a new panel with a button to calculate the average separation distance by calling the 'compute_avg_separation()' method in swarm
+        self.panel_avg_separation = tk.Frame(self.panel_hull)
+        self.panel_avg_separation.grid(column=0, row=5, sticky='W', padx=10, pady=10)
+
+        # Add a button to calculate the average separation distance
+        self.btn_avg_separation = ttk.Button(self.panel_avg_separation, text="Calculate Average Separation", command=self._btn_avg_separation_callback)
+        self.btn_avg_separation.grid(column=0, row=0, sticky='EW')
+
 
     #==================================#
     #   SIM COMPONENTS CALLBACK        #
@@ -1055,7 +1063,6 @@ class myApp(tk.Frame):
         else:
             self.set_rendering('on')
 
-
     def btn_2D_view_callback(self):
         # Initialize 2D view windows
         if self.window_2d is None:
@@ -1068,7 +1075,6 @@ class myApp(tk.Frame):
             self.window_2d.bind("<KeyRelease>", self.key_release_callback)
             self.window_2d.drone_selection_changed = self.drone_selection_changed
         self.window_2d.deiconify()
-
 
     def btn_apply_all_callback(self):
         try:
@@ -1130,7 +1136,6 @@ class myApp(tk.Frame):
         self.app_config['obstacles'] = [obs.to_dict() for obs in self.env.obstacles]
         self.export_app_config()
 
-
     def _btn_concave_hull_callback(self):
         if self.swarm is None:
             return
@@ -1145,6 +1150,19 @@ class myApp(tk.Frame):
         else:
             self.btn_toggle_hull.config(text='Enable Concave Hull')
 
+    def _btn_avg_separation_callback(self):
+        if self.swarm is None:
+            return
+        avg_sep = self.swarm.compute_avg_separation()
+        d_ref = self.var_d_ref.get()
+        # Get the average number of neighbours from the swarm members
+        avg_neighbours = np.mean([len(member.neighbors) for member in self.swarm.members])
+
+        # Print in one line
+        print(f'Average separation: {avg_sep:.2f} m, Average neighbours: {avg_neighbours:.2f}, d_ref: {d_ref:.2f}')
+        
+                
+        
 
     #==================================#
     #          KEYBOARD CALLBACKS      #

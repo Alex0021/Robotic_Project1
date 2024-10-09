@@ -2,7 +2,8 @@ import numpy as np
 from pyswarm_sim.src.drone import *
 import pyswarm_sim.src.olfati_saber as olsab
 import pyswarm_sim.src.reynolds as reynolds
-from scipy.spatial import ConvexHull, cKDTree
+from scipy.spatial import ConvexHull, cKDTree, Delaunay
+from scipy.spatial.qhull import QhullError
 from pyswarm_sim.src.helper_functions import elapsed_timer
 import typing
 from pyswarm_sim.src.environment import Environment
@@ -297,7 +298,6 @@ class Swarm():
             eq_norm = hull.equations[idx_min][:p_dim] / np.linalg.norm(hull.equations[idx_min][:p_dim])
             d_center = np.abs(np.dot(np.mean(points[hull.simplices[idx_min]]) - hull_center, eq_norm))
             self.dist_weights[i] = np.clip(1 - (dist[idx_min]/d_center), 0, 1)
-        
 
     def compute_coverage(self, only_selected: bool=False):
         """
@@ -501,7 +501,68 @@ class Swarm():
 
         self.outer_drones = outer_drones
 
-        
+    def compute_avg_separation(self):
+        """
+        Compute the average edge length of the swarm based on Delaunay triangulation.
+
+        Only considers edges where at least one of the drones is a neighbor of the other.
+
+        Returns:
+            float: The average length of the selected edges.
+        """
+
+        # Determine dimensionality based on whether the swarm is 2D or 3D
+        if self.is_2D:
+            positions = np.array([m.pos[:2] for m in self.members])  # Use x and y coordinates
+        else:
+            positions = np.array([m.pos for m in self.members])      # Use x, y, z coordinates
+
+        # Check if we have enough points for Delaunay triangulation
+        if positions.shape[0] <= positions.shape[1]:
+            # Not enough points to form a simplex
+            return 0.0
+
+        try:
+            # Perform Delaunay triangulation
+            tri = Delaunay(positions)
+
+            # Extract unique edges from the simplices
+            edges = set()
+            for simplex in tri.simplices:
+                for i in range(len(simplex)):
+                    for j in range(i + 1, len(simplex)):
+                        edge = tuple(sorted([simplex[i], simplex[j]]))
+                        edges.add(edge)
+
+            # Precompute neighbor indices for each drone
+            neighbor_indices_list = []
+            for m in self.members:
+                neighbor_indices = set(n.drone_index for n in m.neighbors)
+                neighbor_indices_list.append(neighbor_indices)
+
+            # Initialize list to store lengths of valid edges
+            lengths = []
+
+            # Check each edge to see if at least one drone is a neighbor of the other
+            for i, j in edges:
+                # Check if drone_j is in drone_i's neighbors or vice versa
+                if (j in neighbor_indices_list[i]) or (i in neighbor_indices_list[j]):
+                    # Calculate the length of the edge
+                    length = np.linalg.norm(positions[i] - positions[j])
+                    lengths.append(length)
+
+            # Compute the average length of the valid edges
+            if lengths:
+                avg_length = sum(lengths) / len(lengths)
+            else:
+                avg_length = 0.0  # Or use np.nan to indicate no valid edges
+
+            return avg_length
+
+        except QhullError as e:
+            # Handle the case where Delaunay triangulation fails
+            print(f"Delaunay triangulation failed: {e}")
+            return 0.0  # Or use np.nan to indicate failure
 
     #=======================================#
     #        Getters and Setters            #
@@ -780,7 +841,7 @@ class Swarm():
         self.concave_hull_mode = mode
         for m in self.members:
             m.set_concave_hull_mode(mode)
-
+    
     #=======================================#
     #            Miscellaneous              #
     #=======================================#

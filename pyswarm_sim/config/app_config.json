@@ -6,7 +6,7 @@
         1.0
     ],
     "swarm_2d": true,
-    "drone_count": 12,
+    "drone_count": 10,
     "swarming_algorithm": {
         "name": "olfati-saber",
         "params": {
