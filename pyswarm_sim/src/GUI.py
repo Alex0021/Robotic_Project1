@@ -97,6 +97,9 @@ class myApp(tk.Frame):
         self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
         self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
         self.var_estimate_mode = tk.StringVar(value='centralized')
+        self.var_d_ref = tk.DoubleVar(value=self.app_config['swarming_algorithm'].get('params', {}).get('d_ref', 1.0))
+        self.var_d_ref.trace_add('write', self._d_ref_changed)
+        
 
         #==================================#
         #   APP VARIABLES TRACKING         #
@@ -550,27 +553,45 @@ class myApp(tk.Frame):
 
         # Add the alpha label and entry box panel directly under the heading
         self.panel_alpha = tk.Frame(self.panel_hull)
-        self.panel_alpha.grid(column=0, row=1, sticky='W', padx=10, pady=10)
+        self.panel_alpha.grid(column=0, row=1, sticky='W', padx=10, pady=20)
 
         # Add the label for alpha
         self.label_alpha = ttk.Label(self.panel_alpha, text="Alpha: ", font=font.Font(size=12))
         self.label_alpha.grid(column=0, row=0, sticky='E')
 
         # Add the entry box for alpha
-        self.var_alpha = tk.DoubleVar(value=1.5)
-        self.spinner_alpha = ttk.Spinbox(self.panel_alpha, textvariable=self.var_alpha, width=8, from_=0.0, to=1.0, increment=0.05)  # Smaller width
+        self.var_alpha = tk.DoubleVar(value=1.50)
+        self.spinner_alpha = ttk.Spinbox(self.panel_alpha, textvariable=self.var_alpha, width=8, from_=0.0, to=3.0, increment=0.05)  # Smaller width
         self.spinner_alpha.grid(column=1, row=0, sticky='W')
+
+        # Add a variable to track alpha option
+        self.var_alpha_option = tk.StringVar(value='manual')  # 'manual' or 'd_ref'
+
+        # Add a panel for alpha option selection under the alpha spinner
+        self.panel_alpha_option = tk.Frame(self.panel_hull)
+        self.panel_alpha_option.grid(column=0, row=2, sticky='W', padx=10, pady=10)
+
+        # Add label for alpha option
+        self.label_alpha_option = ttk.Label(self.panel_alpha_option, text="Set alpha: ", font=font.Font(size=12))
+        self.label_alpha_option.grid(column=0, row=0, sticky='E')
+
+        # Add radio buttons for selecting alpha option
+        self.radio_alpha_manual = ttk.Radiobutton(self.panel_alpha_option, text="Manually", variable=self.var_alpha_option, value='manual', command=self._alpha_option_changed)
+        self.radio_alpha_manual.grid(column=1, row=0, sticky='W')
+
+        self.radio_alpha_d_ref = ttk.Radiobutton(self.panel_alpha_option, text="To d_ref", variable=self.var_alpha_option, value='d_ref', command=self._alpha_option_changed)
+        self.radio_alpha_d_ref.grid(column=2, row=0, sticky='W')
 
         # Add a button to toggle concave hull computation and rendering
         self.btn_toggle_hull = ttk.Button(self.panel_hull, text="Enable Concave Hull", command=self._btn_concave_hull_callback)
-        self.btn_toggle_hull.grid(column=0, row=2, ipady=10, padx=10, sticky='EW')
+        self.btn_toggle_hull.grid(column=0, row=3, ipady=10, padx=10, sticky='EW')
 
         # Trace the alpha for real-time updates
         self.var_alpha.trace_add('write', self._alpha_changed_callback)
 
         # Add the estimation mode selection panel under the alpha panel
         self.panel_estimation_mode = tk.Frame(self.panel_hull)
-        self.panel_estimation_mode.grid(column=0, row=3, sticky='W', padx=10, pady=10)
+        self.panel_estimation_mode.grid(column=0, row=4, sticky='W', padx=10, pady=10)
 
         # Add a label for estimation mode
         self.label_estimation_mode = ttk.Label(self.panel_estimation_mode, text="Estimation Mode: ", font=font.Font(size=12))
@@ -645,6 +666,9 @@ class myApp(tk.Frame):
                 'algorithm': self.var_swarming_algorithm.get(),
                 **self.app_config['swarming_algorithm'].get('params', {})
             })
+            # Update d_ref
+            d_ref = self.swarm.algo_params.get('d_ref', 1.5)
+            self.var_d_ref.set(d_ref)
         except ValueError as e:
             pass
         except Exception as e:
@@ -672,8 +696,7 @@ class myApp(tk.Frame):
                 self.btn_update_target.config(state='disabled')
                 self.listbox_trajectories.config(state='disabled')
         if self.swarm is not None:
-            self.swarm.set_migration_mode(mode)
-                
+            self.swarm.set_migration_mode(mode)          
 
     def _update_neighbors_panel_components(self, *args):
         current_algo = self.var_neighbors_metric.get()
@@ -922,12 +945,52 @@ class myApp(tk.Frame):
         """
         Callback for the alpha parameter in the concave hull panel
         """
+        try:
+            alpha = self.var_alpha.get()
+        except (ValueError, tk.TclError):
+            alpha = 1.5  # Default value
+        self._update_alpha_value(alpha)
+
+    def _alpha_option_changed(self):
+        if self.var_alpha_option.get() == 'manual':
+            # Enable alpha spinner for manual input
+            self.spinner_alpha.config(state='normal')
+            # Update alpha based on spinner value
+            self._alpha_changed_callback()
+        elif self.var_alpha_option.get() == 'd_ref':
+            # Disable alpha spinner when tied to d_ref
+            self.spinner_alpha.config(state='disabled')
+            # Update alpha to match d_ref
+            self._update_alpha_to_d_ref()
+
+    def _update_alpha_to_d_ref(self):
+        # Get d_ref from the swarming algorithm params
+        try:
+            d_ref = self.var_d_ref.get()
+            alpha_val = 1.0 / d_ref if d_ref > 0 else 1.5
+        except:
+            print("Error getting d_ref value")
+            alpha_val = 1.5  # Default value if d_ref is not set
+
+        # Set var_alpha to d_ref
+        self.var_alpha.set(alpha_val)
+
+        self._update_alpha_value(alpha_val)
+
+    def _d_ref_changed(self, *args):
+        if self.var_alpha_option.get() == 'd_ref':
+            # Update alpha to match the new d_ref value
+            self._update_alpha_to_d_ref()
+
+    def _update_alpha_value(self, alpha):
+        # Update alpha in the swarm and drone scripts
+
         if self.swarm and self.swarm.concave_hull_enabled:
-            try:
-                alpha = self.var_alpha.get()
-            except (ValueError, tk.TclError):
-                alpha = 1.5  # Default value
-            self.swarm.set_alpha(alpha) 
+            self.swarm.set_alpha(alpha)
+
+            for drone in self.swarm.members:
+                drone.set_alpha(alpha)
+
 
 
     #==================================#
@@ -1223,8 +1286,6 @@ class myApp(tk.Frame):
             self.var_viewing_metric_dim.set(self.app_config['viewing_metric'].get('dim', 3))
             self._set_swarm_algo_params()
 
-        
-    
     def set_var_value(self, param, value):
         self.app_config.update({param: value})
         param = "var_" + param.lower()

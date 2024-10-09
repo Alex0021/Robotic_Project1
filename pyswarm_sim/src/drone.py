@@ -52,6 +52,7 @@ class Drone:
         self.swarm_2d = swarm_2d
         self.boundary_estimation = False
         self.concave_hull_mode = ""
+        self.alpha = 1.50
 
         # Drone dynamics parameters
         self.motor_thrust = np.zeros(4)
@@ -187,7 +188,7 @@ class Drone:
         face_type = algo_dict.get('faces', 'adjacent')
         in_2d = algo_dict.get('in_2d', False)
         with elapsed_timer() as elapsed:
-            self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo, n_points=nb_points, faces=face_type, in_2d=in_2d)
+            self.estimated_viewing_dir = get_viewing_dir(self, self.neighbors, algo, n_points=nb_points, faces=face_type, in_2d=in_2d, alpha=self.alpha)
             self.timing_viewing_dir = elapsed()
         # Calculate error (in degrees)
         self.viewing_error = np.arccos(np.clip(np.dot(self.get_heading(), self.ground_truth_viewing_dir),-1,1)) * 180 / np.pi
@@ -336,6 +337,15 @@ class Drone:
             mode (str): mode of the concave hull estimation
         """
         self.concave_hull_mode = mode
+
+    def set_alpha(self, alpha: float):
+        """
+        Set the alpha value for the decentralized concave hull estimation.
+
+        Args:
+            alpha (float): alpha value
+        """
+        self.alpha = alpha
     
 
 class DroneNeighbor:

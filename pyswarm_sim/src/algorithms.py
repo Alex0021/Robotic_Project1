@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial import ConvexHull
 from typing import TYPE_CHECKING
 import alphashape
-from shapely.geometry import Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon
+from shapely.geometry import Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection
 
 if TYPE_CHECKING:
     from pyswarm_sim.src.drone import Drone, DroneNeighbor
@@ -138,7 +138,6 @@ def outer(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
         viewing_dir = np.hstack((viewing_dir, 0))
     return viewing_dir
 
-
 def tangent_plane(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
     """
     Compute the desired viewing direction based on the normal 
@@ -260,10 +259,10 @@ def alpha_shape(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
     Args:
         drone: The selected drone
         neighbors: The neighbors of the drone
-        params: {'faces': 'adjacent' or 'visible', 'in_2d': True or False}
+        params: {'in_2d': True or False, 'alpha': float}
     """
-    d_ref = 1.5
     in_2d = params.get('in_2d', False)
+    alpha = params.get('alpha', 1.5)
     if len(neighbors) < 2:
         print("WARNING :: Not enough neighbors to compute alpha shape")
         return drone.get_heading()
@@ -287,7 +286,7 @@ def alpha_shape(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
         points = np.vstack((points, drone.pos[:ndim]))
 
         # Compute the alpha shape
-        alpha_shape = alphashape.alphashape(points, alpha=d_ref)
+        alpha_shape = alphashape.alphashape(points, alpha=alpha)
         
         # Get the drone's coordinates
         drone_coords = drone.pos[:ndim]
