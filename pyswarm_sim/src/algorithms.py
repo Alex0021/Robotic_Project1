@@ -265,6 +265,7 @@ def alpha_shape(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
     alpha = params.get('alpha', 1.5)
     if len(neighbors) < 2:
         print("WARNING :: Not enough neighbors to compute alpha shape")
+        drone.set_boundary_estimate(False)
         return drone.get_heading()
     elif len(neighbors) == 2:
         # Do outer2 metric (max angle)
@@ -286,66 +287,114 @@ def alpha_shape(drone: 'Drone', neighbors: list['DroneNeighbor'], params: dict):
         points = np.vstack((points, drone.pos[:ndim]))
 
         # Compute the alpha shape
-        alpha_shape = alphashape.alphashape(points, alpha=alpha)
+        alpha_shape_geom = alphashape.alphashape(points, alpha=alpha)
         
         # Get the drone's coordinates
         drone_coords = drone.pos[:ndim]
         
-        if alpha_shape is None:
+        if alpha_shape_geom is None:
             print("WARNING :: Alpha shape is None")
-            return drone.get_heading()
-        elif isinstance(alpha_shape, (Polygon, MultiPolygon)):
-            # Get boundary coordinates
-            if isinstance(alpha_shape, Polygon):
-                boundaries = [alpha_shape.exterior]
-            else:  # MultiPolygon
-                boundaries = [poly.exterior for poly in alpha_shape.geoms]
-            # Collect all boundary coordinates
-            boundary_coords_list = [np.array(boundary.coords) for boundary in boundaries]
-        elif isinstance(alpha_shape, (LineString, MultiLineString)):
-            if isinstance(alpha_shape, LineString):
-                lines = [alpha_shape]
-            else:  # MultiLineString
-                lines = list(alpha_shape.geoms)
-            # Collect all line coordinates
-            boundary_coords_list = [np.array(line.coords) for line in lines]
-        else:
-            # Alpha shape is not a Polygon or LineString, cannot proceed
-            print("WARNING :: Alpha shape is not a Polygon or LineString")
-            # Print the type of the alpha shape
-            print(type(alpha_shape))
-            return drone.get_heading()
-
-        # Find indices where the drone's position matches boundary coordinates
-        indices = []
-        for boundary_coords in boundary_coords_list:
-            idx = np.where(np.all(boundary_coords == drone_coords, axis=1))[0]
-            indices.extend(idx)
-        num_coords = len(boundary_coords)
-
-        if len(indices) == 0:
-            # Drone is not on the boundary
             drone.set_boundary_estimate(False)
             return drone.get_heading()
         else:
-            # Drone is on the boundary
-            drone.set_boundary_estimate(True)
-        
-        # Compute the normals of the adjacent edges
-        normals = []
-        for idx in indices:
-            prev_idx = (idx - 1) % num_coords
-            next_idx = (idx + 1) % num_coords
-            vec_prev = boundary_coords[idx] - boundary_coords[prev_idx]
-            vec_next = boundary_coords[next_idx] - boundary_coords[idx]
-            normal_prev = np.array([-vec_prev[1], vec_prev[0]])
-            normal_next = np.array([-vec_next[1], vec_next[0]])
-            normals.append(normal_prev)
-            normals.append(normal_next)
+            # Initialize variables
+            boundary_coords_list = []
+            found_drone_in_geometry = False
             
-        # Compute the viewing direction
-        viewing_dir = np.mean(normals, axis=0)
-        viewing_dir /= np.linalg.norm(viewing_dir)
+            # Handle different geometry types
+            if isinstance(alpha_shape_geom, (Polygon, MultiPolygon)):
+                # Handle MultiPolygon
+                if isinstance(alpha_shape_geom, Polygon):
+                    geometries = [alpha_shape_geom]
+                else:  # MultiPolygon
+                    geometries = list(alpha_shape_geom.geoms)
+                for geom in geometries:
+                    if geom.contains(Point(drone_coords)) or geom.touches(Point(drone_coords)):
+                        # Drone is inside or on the boundary of this polygon
+                        boundaries = [geom.exterior]
+                        boundary_coords_list = [np.array(boundary.coords) for boundary in boundaries]
+                        found_drone_in_geometry = True
+                        break  # Exit loop since we found the polygon
+                if not found_drone_in_geometry:
+                    # Drone is not in any polygon
+                    drone.set_boundary_estimate(False)
+                    return drone.get_heading()
+            elif isinstance(alpha_shape_geom, (LineString, MultiLineString)):
+                # Handle MultiLineString
+                if isinstance(alpha_shape_geom, LineString):
+                    geometries = [alpha_shape_geom]
+                else:
+                    geometries = list(alpha_shape_geom.geoms)
+                for geom in geometries:
+                    if geom.contains(Point(drone_coords)) or geom.distance(Point(drone_coords)) < 1e-8:
+                        # Drone is on this line
+                        boundaries = [geom]
+                        boundary_coords_list = [np.array(boundary.coords) for boundary in boundaries]
+                        found_drone_in_geometry = True
+                        break
+                if not found_drone_in_geometry:
+                    # Drone is not on any line
+                    drone.set_boundary_estimate(False)
+                    return drone.get_heading()
+            elif isinstance(alpha_shape_geom, GeometryCollection):
+                geometries = list(alpha_shape_geom.geoms)
+                for geom in geometries:
+                    if isinstance(geom, Polygon):
+                        if geom.contains(Point(drone_coords)) or geom.touches(Point(drone_coords)):
+                            boundaries = [geom.exterior]
+                            boundary_coords_list = [np.array(boundary.coords) for boundary in boundaries]
+                            found_drone_in_geometry = True
+                            break
+                    elif isinstance(geom, LineString):
+                        if geom.contains(Point(drone_coords)) or geom.distance(Point(drone_coords)) < 1e-8:
+                            boundaries = [geom]
+                            boundary_coords_list = [np.array(boundary.coords) for boundary in boundaries]
+                            found_drone_in_geometry = True
+                            break
+                    else:
+                        # Ignore other geometry types
+                        pass
+                if not found_drone_in_geometry:
+                    # Drone is not in any geometry
+                    drone.set_boundary_estimate(False)
+                    return drone.get_heading()
+            else:
+                # Alpha shape is of unsupported type
+                print("WARNING :: Alpha shape is of unsupported type:", type(alpha_shape_geom))
+                drone.set_boundary_estimate(False)
+                return drone.get_heading()
+        
+            # At this point, boundary_coords_list contains the boundary of the geometry the drone is in
+            # Now, proceed to find the indices where the drone's position matches boundary coordinates
+            indices = []
+            boundary_coords = boundary_coords_list[0]
+            idx = np.where(np.all(boundary_coords == drone_coords, axis=1))[0]
+            indices.extend(idx)
+            
+            if len(indices) == 0:
+                # Drone is inside the polygon but not on the boundary
+                drone.set_boundary_estimate(False)
+                return drone.get_heading()
+            else:
+                # Drone is on the boundary
+                drone.set_boundary_estimate(True)
+            
+            # Compute the normals of the adjacent edges
+            normals = []
+            num_coords = len(boundary_coords)
+            for idx in indices:
+                prev_idx = (idx - 1) % num_coords
+                next_idx = (idx + 1) % num_coords
+                vec_prev = boundary_coords[idx] - boundary_coords[prev_idx]
+                vec_next = boundary_coords[next_idx] - boundary_coords[idx]
+                normal_prev = np.array([-vec_prev[1], vec_prev[0]])
+                normal_next = np.array([-vec_next[1], vec_next[0]])
+                normals.append(normal_prev)
+                normals.append(normal_next)
+                
+            # Compute the viewing direction
+            viewing_dir = np.mean(normals, axis=0)
+            viewing_dir /= np.linalg.norm(viewing_dir)
 
     # Add z component as zero if in 2D
     if in_2d:
