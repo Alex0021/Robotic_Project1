@@ -96,14 +96,6 @@ class myApp(tk.Frame):
         self.var_viewing_metric_faces = tk.StringVar(value=self.app_config['viewing_metric'].get('faces', 'adjacent'))
         self.var_sim_dt = tk.DoubleVar(value=self.app_config['simulation'].get('dt', 0.01))
         self.var_autorun_filename = tk.StringVar(value=AUTORUN_FILENAME)
-<<<<<<< HEAD
-=======
-        self.var_estimate_mode = tk.StringVar(value='centralized')
-        self.var_d_ref = tk.DoubleVar(value=self.app_config['swarming_algorithm'].get('params', {}).get('d_ref', 1.0))
-        self.var_alpha = tk.DoubleVar(value=1.50)
-        self.var_alpha_option = tk.StringVar(value='manual')  # 'manual' or 'd_ref'
-        
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
 
         #==================================#
         #   APP VARIABLES TRACKING         #
@@ -123,12 +115,6 @@ class myApp(tk.Frame):
         self.var_viewing_metric_algorithm.trace_add('write', self.viewing_metric_changed_callback)
         self.var_viewing_metric_faces.trace_add('write', self.viewing_metric_changed_callback)
         self.var_sim_dt.trace_add('write', self._update_sim_dt)
-<<<<<<< HEAD
-=======
-        self.var_d_ref.trace_add('write', self._d_ref_changed)
-        self.var_alpha.trace_add('write', self._alpha_changed_callback)
-        self.var_neighbors_count.trace_add('write', self._update_neighbors_count)
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
 
         #==================================#
         #       APP INITIALIZATION         #
@@ -218,7 +204,7 @@ class myApp(tk.Frame):
     def init_algo_components(self):
         self.label_algo = ttk.Label(self.panel_algo, anchor='w', text="Algorithm choice: ", justify='left', font=font.Font(size=14))
         self.label_algo.grid(column=0,row=0, sticky='NEWS')
-        self.listbox_viewing_algo = ttk.Combobox(self.panel_algo, values=["None", "average", "outer", "tangent_plane", "convex_hull", "alpha_shape"], state='disabled', font=font.Font(size=14))
+        self.listbox_viewing_algo = ttk.Combobox(self.panel_algo, values=["None", "average", "outer", "tangent_plane", "convex_hull"], state='disabled', font=font.Font(size=14))
         self.listbox_viewing_algo.set(self.var_viewing_metric_algorithm.get())
         self.listbox_viewing_algo.grid(column=1,row=0, sticky='W', padx=5)
         self.listbox_viewing_algo.bind("<<ComboboxSelected>>", lambda _: self.var_viewing_metric_algorithm.set(self.listbox_viewing_algo.get()))
@@ -563,18 +549,13 @@ class myApp(tk.Frame):
 
         # Add the alpha label and entry box panel directly under the heading
         self.panel_alpha = tk.Frame(self.panel_hull)
-<<<<<<< HEAD
         self.panel_alpha.grid(column=0, row=1, sticky='W', padx=10, pady=10)
-=======
-        self.panel_alpha.grid(column=0, row=1, sticky='W', padx=10, pady=20)
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
 
         # Add the label for alpha
         self.label_alpha = ttk.Label(self.panel_alpha, text="Alpha: ", font=font.Font(size=12))
         self.label_alpha.grid(column=0, row=0, sticky='E')
 
         # Add the entry box for alpha
-<<<<<<< HEAD
         self.var_alpha = tk.DoubleVar(value=1.0)
         self.spinner_alpha = ttk.Spinbox(self.panel_alpha, textvariable=self.var_alpha, width=8, from_=0.0, to=1.0, increment=0.05)  # Smaller width
         self.spinner_alpha.grid(column=1, row=0, sticky='W')
@@ -586,54 +567,6 @@ class myApp(tk.Frame):
         # Trace the alpha for real-time updates
         self.var_alpha.trace_add('write', self._alpha_changed_callback)
 
-=======
-        self.spinner_alpha = ttk.Spinbox(self.panel_alpha, textvariable=self.var_alpha, width=8, from_=0.0, to=3.0, increment=0.05)  # Smaller width
-        self.spinner_alpha.grid(column=1, row=0, sticky='W')
-
-        # Add a panel for alpha option selection under the alpha spinner
-        self.panel_alpha_option = tk.Frame(self.panel_hull)
-        self.panel_alpha_option.grid(column=0, row=2, sticky='W', padx=10, pady=10)
-
-        # Add label for alpha option
-        self.label_alpha_option = ttk.Label(self.panel_alpha_option, text="Set alpha: ", font=font.Font(size=12))
-        self.label_alpha_option.grid(column=0, row=0, sticky='E')
-
-        # Add radio buttons for selecting alpha option
-        self.radio_alpha_manual = ttk.Radiobutton(self.panel_alpha_option, text="Manually", variable=self.var_alpha_option, value='manual', command=self._alpha_option_changed)
-        self.radio_alpha_manual.grid(column=1, row=0, sticky='W')
-
-        self.radio_alpha_d_ref = ttk.Radiobutton(self.panel_alpha_option, text="To d_ref", variable=self.var_alpha_option, value='d_ref', command=self._alpha_option_changed)
-        self.radio_alpha_d_ref.grid(column=2, row=0, sticky='W')
-
-        # Add a button to toggle concave hull computation and rendering
-        self.btn_toggle_hull = ttk.Button(self.panel_hull, text="Enable Concave Hull", command=self._btn_concave_hull_callback)
-        self.btn_toggle_hull.grid(column=0, row=3, ipady=10, padx=10, sticky='EW')
-
-
-
-        # Add the estimation mode selection panel under the alpha panel
-        self.panel_estimation_mode = tk.Frame(self.panel_hull)
-        self.panel_estimation_mode.grid(column=0, row=4, sticky='W', padx=10, pady=10)
-
-        # Add a label for estimation mode
-        self.label_estimation_mode = ttk.Label(self.panel_estimation_mode, text="Estimation Mode: ", font=font.Font(size=12))
-        self.label_estimation_mode.grid(column=0, row=0, sticky='E')
-
-        # Add radio buttons for centralized and decentralized modes
-        self.radio_centralized = ttk.Radiobutton(self.panel_estimation_mode, text="Centralized", variable=self.var_estimate_mode, value='centralized', command=self._estimation_mode_changed)
-        self.radio_centralized.grid(column=1, row=0, sticky='W')
-
-        self.radio_decentralized = ttk.Radiobutton(self.panel_estimation_mode, text="Decentralized", variable=self.var_estimate_mode, value='decentralized', command=self._estimation_mode_changed)
-        self.radio_decentralized.grid(column=2, row=0, sticky='W')
-
-        # Add a new panel with a button to calculate the average separation distance by calling the 'compute_avg_separation()' method in swarm
-        self.panel_avg_separation = tk.Frame(self.panel_hull)
-        self.panel_avg_separation.grid(column=0, row=5, sticky='W', padx=10, pady=10)
-
-        # Add a button to calculate the average separation distance
-        self.btn_avg_separation = ttk.Button(self.panel_avg_separation, text="Calculate Average Separation", command=self._btn_avg_separation_callback)
-        self.btn_avg_separation.grid(column=0, row=0, sticky='EW')
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
 
 
     #==================================#
@@ -697,9 +630,6 @@ class myApp(tk.Frame):
                 'algorithm': self.var_swarming_algorithm.get(),
                 **self.app_config['swarming_algorithm'].get('params', {})
             })
-            # Update d_ref
-            d_ref = self.swarm.algo_params.get('d_ref', 1.5)
-            self.var_d_ref.set(d_ref)
         except ValueError as e:
             pass
         except Exception as e:
@@ -727,12 +657,8 @@ class myApp(tk.Frame):
                 self.btn_update_target.config(state='disabled')
                 self.listbox_trajectories.config(state='disabled')
         if self.swarm is not None:
-<<<<<<< HEAD
             self.swarm.set_migration_mode(mode)
                 
-=======
-            self.swarm.set_migration_mode(mode)          
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
 
     def _update_neighbors_panel_components(self, *args):
         current_algo = self.var_neighbors_metric.get()
@@ -966,109 +892,11 @@ class myApp(tk.Frame):
         self.env.deselect_obstacle()
         self.treeview_obstacles.selection_remove(self.treeview_obstacles.selection())
 
-<<<<<<< HEAD
     def _alpha_changed_callback(self, *args):
         if self.swarm and self.swarm.concave_hull_enabled:
             alpha = self.var_alpha.get()
             self.swarm.set_alpha(alpha) 
 
-=======
-    def _estimation_mode_changed(self):
-        """
-        Handles the event when the user changes the estimation mode
-        """
-        if self.swarm:
-            mode = self.var_estimate_mode.get()
-            self.swarm.set_concave_hull_mode(mode)
-            # Update viewing algorithm
-            if self.swarm.concave_hull_enabled and mode == 'decentralized':
-                self.var_viewing_metric_algorithm.set('alpha_shape')
-    
-    def _alpha_changed_callback(self, *args):
-        """
-        Callback for the alpha parameter in the concave hull panel
-        """
-        try:
-            alpha = self.var_alpha.get()
-        except (ValueError, tk.TclError):
-            alpha = 1.5  # Default value
-        self._update_alpha_value(alpha)
-
-    def _alpha_option_changed(self):
-        if self.var_alpha_option.get() == 'manual':
-            # Enable alpha spinner for manual input
-            self.spinner_alpha.config(state='normal')
-            # Update alpha based on spinner value
-            self._alpha_changed_callback()
-        elif self.var_alpha_option.get() == 'd_ref':
-            # Disable alpha spinner when tied to d_ref
-            self.spinner_alpha.config(state='disabled')
-            # Update alpha to match d_ref
-            self._update_alpha_to_d_ref()
-
-    def _update_alpha_to_d_ref(self):
-        # Get d_ref from the swarming algorithm params
-        try:
-            d_ref = self.var_d_ref.get()
-            # alpha_val = 1.0 / d_ref if d_ref > 0 else 1.5
-
-            if d_ref != 1.5:
-                alpha_val = 1.0 / d_ref
-                print("Look up table not implemented for d_ref value: {0}".format(d_ref))
-            else:
-
-                # Use a lookup table for alpha values given the number of neighbours
-                lookup_table = {
-                    2: 1.50,    # 0.67
-                    3: 1.50,    # 0.67
-                    4: 1.37,    # 0.73
-                    5: 1.24,    # 0.81
-                    6: 1.15,    # 0.87
-                    7: 1.05,    # 0.95
-                    8: 0.97,    # 1.03
-                    9: 0.90     # 1.11
-                }
-
-                # Get the number of neighbours
-                nb_neighbours = self.var_neighbors_count.get()
-
-                # Get the avg_sep from the lookup table
-                avg_sep = lookup_table.get(nb_neighbours, 1.5)
-
-                # Calculate the new alpha value
-                alpha_val = 1 / avg_sep
-
-                print('nb_neighbours: {0}, avg_sep: {1}, alpha_val: {2}'.format(nb_neighbours, avg_sep, alpha_val))
-
-
-        except:
-            print("Error getting d_ref value")
-            alpha_val = 1.5  # Default value if d_ref is not set
-
-        # Set var_alpha to the new value
-        self.var_alpha.set(alpha_val)
-
-        self._update_alpha_value(alpha_val)
-
-    def _d_ref_changed(self, *args):
-        # Update alpha to match the new d_ref value if linked
-        if self.var_alpha_option.get() == 'd_ref':
-            self._update_alpha_to_d_ref()
-
-    def _update_alpha_value(self, alpha):
-        # Update alpha in the swarm and drone scripts
-
-        if self.swarm and self.swarm.concave_hull_enabled:
-            self.swarm.set_alpha(alpha)
-
-            for drone in self.swarm.members:
-                drone.set_alpha(alpha)
-
-    def _update_neighbors_count(self, *args):
-        # If the neighbors count changes update alpha to match the new value if linked to d_ref
-        if self.var_alpha_option.get() == 'd_ref':
-            self._update_alpha_to_d_ref()
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
 
     #==================================#
     #          BUTTON CALLBACKS        #
@@ -1131,10 +959,7 @@ class myApp(tk.Frame):
             self.set_rendering('off')
         else:
             self.set_rendering('on')
-<<<<<<< HEAD
 
-=======
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
 
     def btn_2D_view_callback(self):
         # Initialize 2D view windows
@@ -1148,6 +973,7 @@ class myApp(tk.Frame):
             self.window_2d.bind("<KeyRelease>", self.key_release_callback)
             self.window_2d.drone_selection_changed = self.drone_selection_changed
         self.window_2d.deiconify()
+
 
     def btn_apply_all_callback(self):
         try:
@@ -1209,10 +1035,7 @@ class myApp(tk.Frame):
         self.app_config['obstacles'] = [obs.to_dict() for obs in self.env.obstacles]
         self.export_app_config()
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
     def _btn_concave_hull_callback(self):
         if self.swarm is None:
             return
@@ -1221,31 +1044,10 @@ class myApp(tk.Frame):
             alpha = self.var_alpha.get()
             self.swarm.set_alpha(alpha) 
             self.btn_toggle_hull.config(text='Disable Concave Hull')
-<<<<<<< HEAD
         else:
             self.btn_toggle_hull.config(text='Enable Concave Hull')
 
 
-=======
-            # Update viewing algorithm
-            if self.var_estimate_mode.get() == 'decentralized':
-                self.var_viewing_metric_algorithm.set('alpha_shape')
-        else:
-            self.btn_toggle_hull.config(text='Enable Concave Hull')
-
-    def _btn_avg_separation_callback(self):
-        if self.swarm is None:
-            return
-        avg_sep = self.swarm.compute_avg_separation()
-        d_ref = self.var_d_ref.get()
-        # Get the average number of neighbours from the swarm members
-        avg_neighbours = np.mean([len(member.neighbors) for member in self.swarm.members])
-
-        # Print in one line
-        print(f'Average separation: {avg_sep:.2f} m, Average neighbours: {avg_neighbours:.2f}, d_ref: {d_ref:.2f}')
-           
-        
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
     #==================================#
     #          KEYBOARD CALLBACKS      #
     #==================================#
@@ -1274,7 +1076,6 @@ class myApp(tk.Frame):
                 target_vel[2] = self.cmd_vel
             case 'E':
                 target_vel[2] = -self.cmd_vel
-        
         self.swarm.set_cmd_velocity(target_vel)   
 
 
@@ -1384,13 +1185,8 @@ class myApp(tk.Frame):
             self.var_viewing_metric_outer_points.set(self.app_config['viewing_metric'].get('outer_points', 10))
             self.var_viewing_metric_faces.set(self.app_config['viewing_metric'].get('faces', 10))
             self.var_viewing_metric_dim.set(self.app_config['viewing_metric'].get('dim', 3))
-<<<<<<< HEAD
         
     
-=======
-            self._set_swarm_algo_params()
-
->>>>>>> 8613e43008c849ed1a179e082ae9ca8bd65e8a5a
     def set_var_value(self, param, value):
         self.app_config.update({param: value})
         param = "var_" + param.lower()
