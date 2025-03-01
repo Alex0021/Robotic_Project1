@@ -1,6 +1,6 @@
 
 import numpy as np
-from pyswarm_sim.src.obstacles import Obstacle
+from pyswarm_lis.obstacles import Obstacle
 
 #===============================#
 #        Reynolds Model         #

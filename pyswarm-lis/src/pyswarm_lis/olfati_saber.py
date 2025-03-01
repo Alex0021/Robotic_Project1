@@ -1,5 +1,5 @@
 import numpy as np
-from pyswarm_sim.src.obstacles import Obstacle, Cylinder
+from pyswarm_lis.obstacles import Obstacle, Cylinder
 
 '''
     This code is greatly inspired from the swarm_pilot.py file

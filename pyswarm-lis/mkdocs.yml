@@ -1,0 +1,4 @@
+site_name: PySwarmLIS
+nav:
+  - Home: index.md
+  - About: about.md

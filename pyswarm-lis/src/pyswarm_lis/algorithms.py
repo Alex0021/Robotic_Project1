@@ -2,10 +2,10 @@ import numpy as np
 from scipy.spatial import ConvexHull
 from typing import TYPE_CHECKING
 import alphashape
-from shapely.geometry import Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection
+from shapely.geometry import Point, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection
 
 if TYPE_CHECKING:
-    from pyswarm_sim.src.drone import Drone, DroneNeighbor
+    from pyswarm_lis.drone import Drone, DroneNeighbor
 
 
 def get_viewing_dir(drone, neighbors: list['DroneNeighbor'], algo: str, **params):

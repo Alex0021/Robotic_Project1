@@ -1,5 +1,5 @@
 import numpy as np
-from pyswarm_sim.src.obstacles import Cylinder, Obstacle
+from pyswarm_lis.obstacles import Cylinder, Obstacle
 import matplotlib.pyplot as plt
 
 class Environment:

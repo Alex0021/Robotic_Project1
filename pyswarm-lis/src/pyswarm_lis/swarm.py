@@ -1,11 +1,11 @@
 import numpy as np
-from pyswarm_sim.src.drone import *
-import pyswarm_sim.src.olfati_saber as olsab
-import pyswarm_sim.src.reynolds as reynolds
+from pyswarm_lis.drone import *
+import pyswarm_lis.olfati_saber as olsab
+import pyswarm_lis.reynolds as reynolds
 from scipy.spatial import ConvexHull
-from pyswarm_sim.src.helper_functions import elapsed_timer
+from pyswarm_lis.helper_functions import elapsed_timer
 import typing
-from pyswarm_sim.src.environment import Environment
+from pyswarm_lis.environment import Environment
 import alphashape
 from shapely.geometry import Point
 

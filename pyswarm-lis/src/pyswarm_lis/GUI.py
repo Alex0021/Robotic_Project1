@@ -1,23 +1,24 @@
 ####################################################
 # THIS FILE CONTAINS THE GUI OF THE SIMULATOR
 ####################################################
-import sys, os
-# sys.path.insert(0, './src')
-
+import os
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import font
-from pyswarm_sim.src.swarm import *
-from pyswarm_sim.src.renderer import *
-from pyswarm_sim.src.simulator import Simulator
-from pyswarm_sim.src.recorder import SwarmRecorder
 import json
 import time
-from pyswarm_sim.src.autorun import AutorunSim
-from pyswarm_sim.src.panels.control_scheme_panel import ControlSchemePanel
-from pyswarm_sim.src.environment import Environment
+#=======================#
+#    INTERNAL IMPORTS   #
+#=======================#
+from pyswarm_lis.swarm import *
+from pyswarm_lis.renderer import *
+from pyswarm_lis.simulator import Simulator
+from pyswarm_lis.recorder import SwarmRecorder
+from pyswarm_lis.autorun import AutorunSim
+from pyswarm_lis.panels.control_scheme_panel import ControlSchemePanel
+from pyswarm_lis.environment import Environment
 
-os.path.join(os.path.dirname(__file__), 'pyswarm_sim')
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 w,h = (1600,800)
 CONFIG_FILENAME = 'app_config.json'     # Default config filename
@@ -60,15 +61,15 @@ class myApp(tk.Frame):
         # JSON CONFIG FILE INITIALIZATION  #
         #==================================#
         try:
-            with open(os.path.join('./pyswarm_sim/config', CONFIG_FILENAME)) as f:
+            with open(os.path.join(ROOT_DIR, 'config', CONFIG_FILENAME)) as f:
                 self.app_config = json.load(f)
         except FileNotFoundError:
             # Default config file
             # Create app config file if not found
             print(f'!! Config file not found. Creating default config file {CONFIG_FILENAME} from {DEFAULT_CONFIG_FILENAME}')
-            with open(os.path.join('./pyswarm_sim/config', DEFAULT_CONFIG_FILENAME)) as f:
+            with open(os.path.join(ROOT_DIR, 'config', DEFAULT_CONFIG_FILENAME)) as f:
                 self.app_config = json.load(f)
-            with open(os.path.join('./pyswarm_sim/config', CONFIG_FILENAME), 'w') as f:
+            with open(os.path.join(ROOT_DIR, 'config', CONFIG_FILENAME), 'w') as f:
                 json.dump(self.app_config, f, indent=4)
 
         # Initialize app variables with json values or defaults
@@ -1226,11 +1227,11 @@ class myApp(tk.Frame):
 
     def export_app_config(self):
         self.app_config.update(self.get_app_params_dict())
-        with open(os.path.join('./pyswarm_sim/config', CONFIG_FILENAME), 'w') as f:
+        with open(os.path.join(ROOT_DIR, 'config', CONFIG_FILENAME), 'w') as f:
             json.dump(self.app_config, f, indent=4)
     
 
-if __name__ == "__main__":
+def main():
     root = tk.Tk()
     #if len(sys.argv) > 1:
     #    # Set width and height
@@ -1240,3 +1241,7 @@ if __name__ == "__main__":
     app = myApp(root)
 
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

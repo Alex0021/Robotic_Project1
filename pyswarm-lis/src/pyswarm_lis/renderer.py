@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 import tkinter as tk
 from matplotlib.animation import FuncAnimation
-from pyswarm_sim.src.swarm import Swarm
-from pyswarm_sim.src.environment import Environment
+from pyswarm_lis.swarm import Swarm
+from pyswarm_lis.environment import Environment
 from matplotlib.widgets import Slider
 from matplotlib.backend_bases import MouseButton
 from collections import defaultdict

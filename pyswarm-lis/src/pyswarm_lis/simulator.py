@@ -2,8 +2,8 @@ import numpy as np
 from threading import Thread
 import time
 
-from pyswarm_sim.src.swarm import Swarm
-from pyswarm_sim.src.recorder import SwarmRecorder
+from pyswarm_lis.swarm import Swarm
+from pyswarm_lis.recorder import SwarmRecorder
 
 class Simulator():
     """

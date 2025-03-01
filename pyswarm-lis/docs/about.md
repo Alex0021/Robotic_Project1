@@ -1,0 +1,2 @@
+## What is Pyswarm-Lis?
+Pyswarm-Lis is a Python library that provides a simple and efficient way to perform optimization tasks using Particle Swarm Optimization (PSO) algorithm. The library is designed to be easy to use and flexible, allowing users to quickly set up and run optimization tasks with minimal effort. Pyswarm-Lis is built on top of the popular NumPy library, making it fast and efficient for large-scale optimization problems.

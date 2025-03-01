@@ -3,8 +3,8 @@ from tkinter import ttk
 import numpy as np
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 import matplotlib.pyplot as plt
-import pyswarm_sim.src.olfati_saber as olsaber
-import pyswarm_sim.src.reynolds as renoylds
+import pyswarm_lis.olfati_saber as olsaber
+import pyswarm_lis.reynolds as renoylds
 import json
 
 #==============================================================================#
@@ -453,7 +453,7 @@ def dump_config(app_config):
 if __name__ == "__main__":
     root = tk.Tk()
     # load config file
-    with open("pyswarm_sim/config/app_config.json", "r") as f:
+    with open("config/app_config.json", "r") as f:
         app_config = json.load(f)
     root.get_app_params_dict = lambda: app_config
     root.set_app_params_dict_values = dump_config
