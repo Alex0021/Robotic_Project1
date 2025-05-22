@@ -1,8 +1,40 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "pyswarm_sim"
 version = "0.1.0"
 description = "A simple swarm simulator using point mass dynamics"
+readme="README.md"
+requires-python=">= 3.11"
 
-[build-system]
-build-backend = "flit_core.buildapi"
-requires = ["flit_core >=3.2,<4"]
+dependencies = [
+    "matplotlib>=3.8",
+    "numpy>=1.26.4",
+    "scipy",
+    "alphashape"
+]
+
+[project.optional-dependencies]
+doc = [
+    "sphynx",
+    "pydoclint"
+]
+test = [
+    "pytest"
+]
+lint = [
+    "black",
+    "ruff",
+    "mypy"
+]
+
+[dependency-groups]
+dev = ["pyswarm_sim[doc,test,lint]"]
+
+[project.scripts]
+pyswarm-sim="pyswarm_sim.src.GUI:main"
+
+
+
