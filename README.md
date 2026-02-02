@@ -1,6 +1,11 @@
 # Python swarm simulator
 ## LIS - Semester project
 
+:right_arrow: [Project Report](extras/RO1_LIS_Report_final.pdf) (IEEE conference style paper)
+
+:dark_sunglasses: Check out some cool [demos](https://youtube.com/playlist?list=PL8cx2cevn_sbnwVWY66kf_ksNLqBBo-WO&si=GFOuRQenx1OGiNKr) using crazyfly drones
+
+
 ## Viewing Coverage Optimization In Aerial Swarm with Local Sensing
 ### Author: Alexandre Hébert
 #### Supervised by Benjamin Jarvis
